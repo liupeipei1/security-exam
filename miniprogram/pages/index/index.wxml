@@ -1,1 +1,1 @@
-<web-view src="https://security-exam.netlify.app/index.html"></web-view>
+<web-view src="http://localhost:8080/index.html"></web-view>
