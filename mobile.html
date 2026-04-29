@@ -116,6 +116,12 @@
         .type-item {
             flex: 1;
             text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .type-item:active {
+            transform: scale(0.95);
+            opacity: 0.8;
         }
         .type-icon {
             width: 40px;
@@ -547,17 +553,17 @@
 
                 <!-- 类型统计 -->
                 <div class="type-stats">
-                    <div class="type-item">
+                    <div class="type-item" @click="switchQuestionType('judgment')">
                         <div class="type-icon judgment">判断</div>
                         <div class="type-name">判断题</div>
                         <div class="type-count">{{ judgmentCount }}</div>
                     </div>
-                    <div class="type-item">
+                    <div class="type-item" @click="switchQuestionType('single')">
                         <div class="type-icon single">单选</div>
                         <div class="type-name">单选题</div>
                         <div class="type-count">{{ singleCount }}</div>
                     </div>
-                    <div class="type-item">
+                    <div class="type-item" @click="switchQuestionType('multiple')">
                         <div class="type-icon multiple">多选</div>
                         <div class="type-name">多选题</div>
                         <div class="type-count">{{ multipleCount }}</div>
@@ -895,6 +901,22 @@
                         this.correctCount = 0;
                         this.showResult = false;
                     }
+                },
+                // 切换题目类型
+                switchQuestionType(type) {
+                    if (this.currentMode !== 'practice') return;
+                    
+                    if (type === 'all') {
+                        // 显示全部题目
+                        this.currentQuestions = [...this.allQuestions];
+                    } else {
+                        // 只显示指定类型的题目
+                        this.currentQuestions = this.allQuestions.filter(q => q.type === type);
+                    }
+                    
+                    this.currentQuestionIndex = 0;
+                    this.selectedOptions = [];
+                    this.showAnswer = false;
                 }
             }
         });
