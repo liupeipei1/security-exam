@@ -59,10 +59,10 @@ git add .
 git commit -m "Initial commit - 安全考试训练系统"
 
 # 添加远程仓库（替换为你的用户名）
-git remote add origin https://github.com/你的用户名/security-exam.git
+git remote add bitbucket https://liupeipei841@bitbucket.org/pl37572/security-exam.git
+# 推送到 Bitbucket
+git push -u bitbucket main
 
-# 推送到 GitHub
-git push -u origin main
 ```
 
 **步骤 3：开启 GitHub Pages**
@@ -74,7 +74,7 @@ git push -u origin main
 
 **步骤 4：访问地址**
 ```
-https://你的用户名.github.io/security-exam/
+https://bitbucket.org/pl37572/security-exam/src/master/
 ```
 
 ---
