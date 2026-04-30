@@ -123,6 +123,10 @@
             transform: scale(0.95);
             opacity: 0.8;
         }
+        .type-item.active {
+            background-color: #e8f4ff;
+            border-radius: 8px;
+        }
         .type-icon {
             width: 40px;
             height: 40px;
@@ -141,6 +145,103 @@
         }
         .type-icon.multiple {
             background-color: #faad14;
+        }
+        .type-icon.all {
+            background-color: #722ed1;
+        }
+        /* 统计视图样式 */
+        .stats-view {
+            padding: 15px;
+        }
+        .stats-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .stats-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .stat-card .stat-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1890ff;
+        }
+        .stat-card .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        .stats-section {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .stats-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .type-distribution {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .type-distribution .type-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .type-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .type-text {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+        .type-count {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1890ff;
+        }
+        .suggestion-box {
+            background: linear-gradient(135deg, #e8f4ff 0%, #fff7e6 100%);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .suggestion-box p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin: 0;
         }
         .type-name {
             font-size: 12px;
@@ -510,25 +611,27 @@
 
             <!-- 主内容区 -->
             <div class="main-content">
-                <!-- 模式切换 -->
-                <div class="mode-tabs">
-                    <div 
-                        class="mode-tab" 
-                        :class="{ active: currentMode === 'practice' }"
-                        @click="switchMode('practice')"
-                    >
-                        练习模式<br/>
-                        <span style="font-size: 12px; opacity: 0.8;">{{ allQuestions.length }}题</span>
+                <!-- 题库视图 -->
+                <div v-if="currentView === 'home'">
+                    <!-- 模式切换 -->
+                    <div class="mode-tabs">
+                        <div 
+                            class="mode-tab" 
+                            :class="{ active: currentMode === 'practice' }"
+                            @click="switchMode('practice')"
+                        >
+                            练习模式<br/>
+                            <span style="font-size: 12px; opacity: 0.8;">{{ allQuestions.length }}题</span>
+                        </div>
+                        <div 
+                            class="mode-tab" 
+                            :class="{ active: currentMode === 'exam' }"
+                            @click="switchMode('exam')"
+                        >
+                            考试模式<br/>
+                            <span style="font-size: 12px; opacity: 0.8;">{{ (examConfig?.judgment || 10) + (examConfig?.single || 10) + (examConfig?.multiple || 5) }}题</span>
+                        </div>
                     </div>
-                    <div 
-                        class="mode-tab" 
-                        :class="{ active: currentMode === 'exam' }"
-                        @click="switchMode('exam')"
-                    >
-                        考试模式<br/>
-                        <span style="font-size: 12px; opacity: 0.8;">{{ (examConfig?.judgment || 10) + (examConfig?.single || 10) + (examConfig?.multiple || 5) }}题</span>
-                    </div>
-                </div>
 
                 <!-- 考试模式提示 -->
                 <div v-if="currentMode === 'exam'" class="exam-tip">
@@ -553,17 +656,22 @@
 
                 <!-- 类型统计 -->
                 <div class="type-stats">
-                    <div class="type-item" @click="switchQuestionType('judgment')">
+                    <div class="type-item" :class="{ active: currentQuestionType === 'all' }" @click="switchQuestionType('all')">
+                        <div class="type-icon all">全部</div>
+                        <div class="type-name">全部题目</div>
+                        <div class="type-count">{{ allQuestions.length }}</div>
+                    </div>
+                    <div class="type-item" :class="{ active: currentQuestionType === 'judgment' }" @click="switchQuestionType('judgment')">
                         <div class="type-icon judgment">判断</div>
                         <div class="type-name">判断题</div>
                         <div class="type-count">{{ judgmentCount }}</div>
                     </div>
-                    <div class="type-item" @click="switchQuestionType('single')">
+                    <div class="type-item" :class="{ active: currentQuestionType === 'single' }" @click="switchQuestionType('single')">
                         <div class="type-icon single">单选</div>
                         <div class="type-name">单选题</div>
                         <div class="type-count">{{ singleCount }}</div>
                     </div>
-                    <div class="type-item" @click="switchQuestionType('multiple')">
+                    <div class="type-item" :class="{ active: currentQuestionType === 'multiple' }" @click="switchQuestionType('multiple')">
                         <div class="type-icon multiple">多选</div>
                         <div class="type-name">多选题</div>
                         <div class="type-count">{{ multipleCount }}</div>
@@ -630,6 +738,76 @@
                         <button class="page-btn" @click="prevQuestion" :disabled="currentQuestionIndex === 0">◀</button>
                         <span class="page-info">{{ currentQuestionIndex + 1 }} / {{ currentQuestions.length }}</span>
                         <button class="page-btn" @click="nextQuestion" :disabled="currentQuestionIndex === currentQuestions.length - 1">▶</button>
+                    </div>
+                </div>
+                </div> <!-- 关闭题库视图 -->
+
+                <!-- 统计视图 -->
+                <div v-if="currentView === 'stats'" class="stats-view">
+                    <div class="stats-header">
+                        <h2>学习统计</h2>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">📚</div>
+                            <div class="stat-value">{{ allQuestions.length }}</div>
+                            <div class="stat-label">总题数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-value">{{ correctCount }}</div>
+                            <div class="stat-label">正确数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📝</div>
+                            <div class="stat-value">{{ answeredCount }}</div>
+                            <div class="stat-label">已答题</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-value">{{ accuracyRate }}%</div>
+                            <div class="stat-label">正确率</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <h3>题型分布</h3>
+                        <div class="type-distribution">
+                            <div class="type-item">
+                                <span class="type-color" style="background-color: #52c41a;"></span>
+                                <span class="type-text">判断题</span>
+                                <span class="type-count">{{ judgmentCount }}题</span>
+                            </div>
+                            <div class="type-item">
+                                <span class="type-color" style="background-color: #1890ff;"></span>
+                                <span class="type-text">单选题</span>
+                                <span class="type-count">{{ singleCount }}题</span>
+                            </div>
+                            <div class="type-item">
+                                <span class="type-color" style="background-color: #faad14;"></span>
+                                <span class="type-text">多选题</span>
+                                <span class="type-count">{{ multipleCount }}题</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <h3>学习建议</h3>
+                        <div class="suggestion-box">
+                            <p v-if="answeredCount === 0">
+                                🎯 开始你的学习之旅吧！点击底部"题库"按钮开始练习。
+                            </p>
+                            <p v-else-if="accuracyRate >= 80">
+                                🌟 太棒了！你的正确率很高，继续保持！
+                            </p>
+                            <p v-else-if="accuracyRate >= 60">
+                                💪 还不错！多做练习可以提高正确率。
+                            </p>
+                            <p v-else>
+                                📖 需要多加练习，建议复习错题并加强薄弱环节。
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -734,6 +912,7 @@
                     correctCount: 0,
                     allQuestions: [],           // 全部题目
                     currentQuestions: [],      
+                    currentQuestionType: 'all', // 当前选中的题目类型
                     loading: true,
                     chapters: [{ name: "全部题目", count: 0 }],
                     examConfig: typeof EXAM_CONFIG !== 'undefined' ? EXAM_CONFIG : { judgment: 40, single: 140, multiple: 10 }
@@ -904,7 +1083,14 @@
                 },
                 // 切换题目类型
                 switchQuestionType(type) {
-                    if (this.currentMode !== 'practice') return;
+                    console.log('switchQuestionType called with type:', type, 'currentMode:', this.currentMode);
+                    if (this.currentMode !== 'practice') {
+                        console.log('Not in practice mode, returning');
+                        return;
+                    }
+                    
+                    // 更新当前选中的题型
+                    this.currentQuestionType = type;
                     
                     if (type === 'all') {
                         // 显示全部题目
@@ -914,6 +1100,7 @@
                         this.currentQuestions = this.allQuestions.filter(q => q.type === type);
                     }
                     
+                    console.log('Filtered questions count:', this.currentQuestions.length);
                     this.currentQuestionIndex = 0;
                     this.selectedOptions = [];
                     this.showAnswer = false;
