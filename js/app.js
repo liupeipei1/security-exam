@@ -1,0 +1,270 @@
+// 考试模式题目数量配置
+const EXAM_CONFIG = {
+    judgment: 40,   // 判断题数
+    single: 140,    // 单选题数量
+    multiple: 10    // 多选题数量
+};
+
+// Fisher-Yates洗牌算法
+function shuffleArray(arr) {
+    const newArr = [...arr];
+    for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+    }
+    return newArr;
+}
+
+// 根据类型筛选题目并随机抽取指定数量
+function getRandomQuestionsByType(allQuestions, type, count) {
+    const filtered = allQuestions.filter(q => q.type === type);
+    const shuffled = shuffleArray(filtered);
+    return shuffled.slice(0, Math.min(count, shuffled.length));
+}
+
+// 生成考试题目
+function generateExamQuestions(allQuestions) {
+    const config = typeof EXAM_CONFIG !== 'undefined' ? EXAM_CONFIG : { judgment: 40, single: 140, multiple: 10 };
+    
+    const judgmentQuestions = getRandomQuestionsByType(allQuestions, 'judgment', config.judgment);
+    const singleQuestions = getRandomQuestionsByType(allQuestions, 'single', config.single);
+    const multipleQuestions = getRandomQuestionsByType(allQuestions, 'multiple', config.multiple);
+    
+    const allExamQuestions = [...judgmentQuestions, ...singleQuestions, ...multipleQuestions];
+    return allExamQuestions;
+}
+
+const chapters = [
+    { name: "全部题目", count: 0 }
+];
+
+// 初始化Vue应用
+function initApp() {
+    const app = Vue.createApp({
+        data() {
+            return {
+                currentView: 'home',
+                currentMode: 'practice',
+                currentChapterIndex: 0,
+                currentQuestionIndex: 0,
+                selectedOptions: [],
+                showAnswer: false,
+                showResult: false,
+                answeredCount: 0,
+                correctCount: 0,
+                allQuestions: [],
+                currentQuestions: [],
+                currentQuestionType: 'all',
+                loading: true,
+                chapters: [{ name: "全部题目", count: 0 }],
+                examConfig: typeof EXAM_CONFIG !== 'undefined' ? EXAM_CONFIG : { judgment: 40, single: 140, multiple: 10 }
+            };
+        },
+        computed: {
+            currentQuestion() {
+                return this.currentQuestions[this.currentQuestionIndex] || {};
+            },
+            accuracyRate() {
+                if (this.answeredCount === 0) return 0;
+                return Math.round((this.correctCount / this.answeredCount) * 100);
+            },
+            progressPercent() {
+                if (this.currentQuestions.length === 0) return 0;
+                return Math.round(((this.currentQuestionIndex + 1) / this.currentQuestions.length) * 100);
+            },
+            judgmentCount() {
+                return this.allQuestions.filter(q => q.type === 'judgment').length;
+            },
+            singleCount() {
+                return this.allQuestions.filter(q => q.type === 'single').length;
+            },
+            multipleCount() {
+                return this.allQuestions.filter(q => q.type === 'multiple').length;
+            }
+        },
+        mounted() {
+            this.loadQuestions();
+        },
+        methods: {
+            loadQuestions() {
+                this.loading = true;
+                fetch('questions.json')
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        } else {
+                            throw new Error('网络响应异常');
+                        }
+                    })
+                    .then(data => {
+                        this.allQuestions = data;
+                        console.log('题目数据加载成功，共', this.allQuestions.length, '题');
+                    })
+                    .catch(error => {
+                        console.error('加载题目数据失败:', error);
+                        alert('加载题目数据失败，请检查questions.json文件是否存在');
+                        this.allQuestions = [];
+                    })
+                    .finally(() => {
+                        this.chapters = [{ name: "全部题目", count: this.allQuestions.length }];
+                        this.switchMode('practice');
+                        this.loading = false;
+                    });
+            },
+            getQuestionTypeLabel(type) {
+                const labels = {
+                    'single': '单选题',
+                    'multiple': '多选题',
+                    'judgment': '判断题'
+                };
+                return labels[type] || type;
+            },
+            getOptionLabel(index) {
+                return String.fromCharCode(65 + index);
+            },
+            getOptionClass(index) {
+                if (!this.showAnswer) {
+                    return this.selectedOptions.includes(index) ? 'selected' : '';
+                }
+                const optionText = this.currentQuestion.options[index];
+                const optionLabel = this.getOptionLabel(index);
+                const answer = this.currentQuestion.answer || [];
+                // 检查答案是否是字母（如"A"、"B"）或者文本内容
+                if (answer.includes(optionText) || answer.includes(optionLabel)) {
+                    return 'correct';
+                }
+                if (this.selectedOptions.includes(index)) {
+                    return 'incorrect';
+                }
+                return '';
+            },
+            selectOption(index) {
+                if (this.showAnswer) return;
+                if (this.currentQuestion.type === 'single' || this.currentQuestion.type === 'judgment') {
+                    this.selectedOptions = [index];
+                } else {
+                    const idx = this.selectedOptions.indexOf(index);
+                    if (idx > -1) {
+                        this.selectedOptions.splice(idx, 1);
+                    } else {
+                        this.selectedOptions.push(index);
+                    }
+                }
+            },
+            submitAnswer() {
+                if (this.selectedOptions.length === 0) {
+                    alert('请先选择答案');
+                    return;
+                }
+                this.showAnswer = true;
+                this.answeredCount++;
+                
+                const answer = this.currentQuestion.answer || [];
+                // 检查答案是否是字母格式（如"A"、"B"）
+                const isLetterAnswer = answer.length > 0 && /^[A-D]$/.test(answer[0]);
+                
+                let isCorrect = false;
+                if (isLetterAnswer) {
+                    // 字母答案格式：比较选中选项的字母标签
+                    const selectedLabels = this.selectedOptions.map(i => this.getOptionLabel(i));
+                    isCorrect = selectedLabels.length === answer.length &&
+                        selectedLabels.every(l => answer.includes(l));
+                } else {
+                    // 文本答案格式：比较选中选项的文本内容
+                    const selectedTexts = this.selectedOptions.map(i => this.currentQuestion.options[i]);
+                    isCorrect = selectedTexts.length === answer.length &&
+                        selectedTexts.every(t => answer.includes(t));
+                }
+                
+                if (isCorrect) {
+                    this.correctCount++;
+                }
+            },
+            resetAnswer() {
+                this.selectedOptions = [];
+                this.showAnswer = false;
+            },
+            nextQuestion() {
+                if (this.currentQuestionIndex < this.currentQuestions.length - 1) {
+                    this.currentQuestionIndex++;
+                    this.selectedOptions = [];
+                    this.showAnswer = false;
+                } else {
+                    this.showResult = true;
+                }
+            },
+            prevQuestion() {
+                if (this.currentQuestionIndex > 0) {
+                    this.currentQuestionIndex--;
+                    this.selectedOptions = [];
+                    this.showAnswer = false;
+                }
+            },
+            selectChapter(index) {
+                this.currentChapterIndex = index;
+                this.currentQuestionIndex = 0;
+                this.selectedOptions = [];
+                this.showAnswer = false;
+            },
+            switchMode(mode) {
+                this.currentMode = mode;
+                this.currentQuestionIndex = 0;
+                this.selectedOptions = [];
+                this.showAnswer = false;
+                this.answeredCount = 0;
+                this.correctCount = 0;
+                this.showResult = false;
+                
+                if (mode === 'practice') {
+                    this.currentQuestions = [...this.allQuestions];
+                } else {
+                    this.currentQuestions = generateExamQuestions(this.allQuestions);
+                }
+            },
+            restartExam() {
+                if (this.currentMode === 'exam') {
+                    this.currentQuestions = generateExamQuestions(this.allQuestions);
+                    this.currentQuestionIndex = 0;
+                    this.selectedOptions = [];
+                    this.showAnswer = false;
+                    this.answeredCount = 0;
+                    this.correctCount = 0;
+                    this.showResult = false;
+                }
+            },
+            switchQuestionType(type) {
+                console.log('switchQuestionType called with type:', type, 'currentMode:', this.currentMode);
+                if (this.currentMode !== 'practice') {
+                    console.log('Not in practice mode, returning');
+                    return;
+                }
+                
+                this.currentQuestionType = type;
+                
+                if (type === 'all') {
+                    this.currentQuestions = [...this.allQuestions];
+                } else {
+                    this.currentQuestions = this.allQuestions.filter(q => q.type === type);
+                }
+                
+                console.log('Filtered questions count:', this.currentQuestions.length);
+                this.currentQuestionIndex = 0;
+                this.selectedOptions = [];
+                this.showAnswer = false;
+            }
+        }
+    });
+
+    app.mount('#app');
+}
+
+// 等待Vue加载完成后初始化
+if (typeof Vue !== 'undefined') {
+    initApp();
+} else {
+    window.addEventListener('load', () => {
+        if (typeof Vue !== 'undefined') {
+            initApp();
+        }
+    });
+}
