@@ -1,6 +1,6 @@
 # 安全考试训练系统
 
-一个基于 HTML + Vue.js 的网络安全考试训练应用，包含判断题、单选题、多选题练习和模拟考试功能。
+一个基于 **HTML + Vue.js + Node.js + MySQL** 的网络安全考试训练应用，包含判断题、单选题、多选题练习和模拟考试功能。
 
 ## 🎯 功能特点
 
@@ -10,176 +10,209 @@
 - ✅ **模拟考试** - 完整的考试模拟（40道判断+140道单选+10道多选，共190题，90分钟）
 - ✅ **答题记录** - 记录答题历史和正确率统计
 - ✅ **知识要点** - 查看安全知识总结
+- ✅ **后端API** - 支持从MySQL数据库获取题目数据
+- ✅ **离线模式** - 支持本地JSON文件作为备用数据源
 
 ## 🛠️ 技术栈
 
-- HTML5
-- Vue.js 2.x
-- Tailwind CSS 样式
-- LocalStorage 数据持久化
+| 层次 | 技术 | 说明 |
+|------|------|------|
+| 前端 | HTML5 + Vue.js 2.x | 单页面应用 |
+| 后端 | Node.js + Express | RESTful API |
+| 数据库 | MySQL 8.0 | 题库数据存储 |
+| 容器 | Docker + Docker Compose | 一键部署 |
+| 样式 | Tailwind CSS | 响应式布局 |
 
 ## 🚀 快速开始
 
-### 本地运行
+### 环境要求
+
+- Docker Desktop（用于运行后端服务）
+- Python 3.x 或 Node.js（用于启动前端静态服务器）
+
+### 一键启动（推荐）
 
 ```bash
 # 进入项目目录
 cd security-exam
 
-# 启动本地服务器（Python）
-python -m http.server 8080
+# 运行启动脚本（Windows）
+start.bat
 
-# 或使用 Node.js
-npx serve .
-
-# 访问地址
-# http://localhost:8080
+# 或手动执行
+docker-compose up -d
+python -m http.server 8000
 ```
+
+### 手动启动步骤
+
+**1. 启动后端服务（Docker）**
+
+```bash
+# 进入项目目录
+cd security-exam
+
+# 启动容器（首次启动需下载镜像，耐心等待）
+docker-compose up -d
+
+# 停止容器
+docker-compose down
+```
+
+**2. 启动前端服务**
+
+```bash
+# 方式一：使用 Python（推荐）
+python -m http.server 8000
+
+# 方式二：使用 Node.js
+npx http-server -p 8000
+
+# 方式三：使用 VS Code Live Server 插件
+```
+
+### 访问地址
+
+| 服务 | 地址 |
+|------|------|
+| 前端页面 | http://localhost:8000 |
+| 后端API | http://localhost:3001 |
+
+## 🔌 API 接口
+
+### 获取所有题目
+```
+GET http://localhost:3001/api/questions
+```
+
+### 获取随机题目
+```
+GET http://localhost:3001/api/questions/random
+```
+
+### 获取指定数量随机题目
+```
+GET http://localhost:3001/api/questions/random/{count}
+```
+
+### 按类型获取题目
+```
+GET http://localhost:3001/api/questions/type/{type}
+```
+类型值：`judge`（判断题）、`single`（单选题）、`multiple`（多选题）
+
+### 测试API状态
+```
+GET http://localhost:3001/api/health
+```
+
+## 📁 项目结构
+
+```
+security-exam/
+├── index.html          # 主应用页面（桌面端）
+├── mobile.html         # 移动端页面
+├── questions.json      # 题库数据（离线备用）
+├── start.bat           # Windows 一键启动脚本
+├── docker-compose.yml  # Docker Compose 配置
+├── css/
+│   └── style.css       # 样式文件
+├── js/
+│   ├── app.js          # 主应用逻辑
+│   ├── config.js       # 配置文件
+│   └── utils/          # 工具函数
+├── backend/            # 后端服务
+│   ├── server.js       # Node.js 服务器
+│   ├── package.json    # 后端依赖
+│   └── Dockerfile      # 后端镜像配置
+└── miniprogram/        # 微信小程序模板
+    ├── app.js
+    ├── app.json
+    └── pages/
+        └── index/
+```
+
+## 📊 数据源说明
+
+系统支持双重数据源，自动降级：
+
+1. **优先尝试 API 获取**（后端运行时）
+   - 请求地址：`http://localhost:3001/api/questions`
+   - 数据来源：MySQL 数据库
+
+2. **自动降级本地 JSON**（后端关闭时）
+   - 文件路径：`/questions.json`
+   - 作为离线备用方案
+
+## 🐳 Docker 配置说明
+
+### 容器服务
+| 服务名 | 镜像 | 端口 | 说明 |
+|--------|------|------|------|
+| mysql | mysql:8.0 | 3306 | 数据库服务 |
+| backend | 自定义Node.js | 3001 | API服务 |
+
+### 数据库配置
+- 数据库名：`exam_db`
+- 用户名：`admin`
+- 密码：`password`
+- 端口：`3306`（主机映射）
+
+### 首次启动说明
+1. Docker Compose 会自动创建数据库表
+2. 题库数据会自动初始化
+3. 首次启动可能需要等待1-2分钟
 
 ## 📦 部署指南
 
-### 方案一：GitHub Pages（推荐，完全免费）
+### 方案一：本地开发
 
-**步骤 1：创建 GitHub 仓库**
-- 登录 [GitHub](https://github.com/)
-- 点击 "New" 创建新仓库
-- 仓库名建议：`security-exam`
-- 选择 "Public"（公开仓库）
-- 点击 "Create repository"
-
-**步骤 2：上传代码**
 ```bash
-# 初始化 Git
-git init
+# 启动完整服务
+docker-compose up -d
+python -m http.server 8000
+```
 
-# 添加所有文件
+### 方案二：GitHub Pages（纯前端）
+
+```bash
+# 仅部署前端文件（使用本地JSON数据）
 git add .
-
-# 提交
-git commit -m "Initial commit - 安全考试训练系统"
-
-# 添加远程仓库（替换为你的用户名）
-git remote add bitbucket https://liupeipei841@bitbucket.org/pl37572/security-exam.git
-# 推送到 Bitbucket
-git push -u bitbucket main
-
+git commit -m "Deploy to GitHub Pages"
+git push origin main
 ```
 
-**步骤 3：开启 GitHub Pages**
-1. 进入仓库 → 点击 "Settings"
-2. 在左侧菜单找到 "Pages"
-3. "Source" 选择：`main` 分支，`/root` 目录
-4. 点击 "Save"
-5. 等待约1-5分钟，页面会显示你的访问地址
+### 方案三：Vercel / Netlify（全栈）
 
-**步骤 4：访问地址**
-```
-https://bitbucket.org/pl37572/security-exam/src/master/
-```
-
----
-
-### 方案二：Vercel（免费，功能更强）
-
-```bash
-# 安装 Vercel CLI
-npm install -g vercel
-
-# 部署
-vercel
-```
-
----
-
-### 方案三：Netlify（免费，界面友好）
-
-1. 登录 [Netlify](https://www.netlify.com/)
-2. 点击 "New site from Git"
-3. 选择 GitHub 仓库
-4. 直接部署，无需配置
-
----
+需配置环境变量：
+- `DB_HOST`: MySQL 数据库地址
+- `DB_USER`: 数据库用户名
+- `DB_PASSWORD`: 数据库密码
+- `DB_NAME`: 数据库名称
 
 ## 📱 微信小程序配置
 
 ### 1. 注册小程序账号
 - 前往 [微信公众平台](https://mp.weixin.qq.com/)
 - 注册「小程序」类型账号
-- 完成主体认证
 
-### 2. 配置业务域名（关键步骤）
+### 2. 配置业务域名
 1. 登录小程序后台 → 开发 → 开发设置 → 业务域名
-2. 点击「添加域名」
-3. 输入：`你的用户名.github.io`
-4. 下载校验文件 `MP_verify_xxxxxx.txt`
-5. 将校验文件上传到项目根目录并推送到 GitHub
-6. 点击「验证」
+2. 添加域名并完成验证
 
-### 3. 创建小程序项目
-
-**项目结构**（已在 `miniprogram/` 目录提供模板）：
-
-```
-miniprogram/
-├── app.js              # 小程序入口
-├── app.json            # 全局配置
-├── app.wxss            # 全局样式
-├── sitemap.json        # 搜索配置
-└── pages/
-    └── index/
-        ├── index.js    # 页面逻辑
-        ├── index.wxml  # 页面结构
-        └── index.wxss  # 页面样式
-```
-
-**修改 index.wxml**（替换为你的域名）：
+### 3. 修改配置
 ```wxml
-<web-view src="https://你的用户名.github.io/security-exam/index.html"></web-view>
-```
-
-**修改 index.json**：
-```json
-{
-  "navigationBarTitleText": "安全考试",
-  "navigationStyle": "custom"
-}
-```
-
-### 4. 预览与发布
-1. 使用微信开发者工具打开 `miniprogram/` 目录
-2. 配置 AppID（在微信公众平台获取）
-3. 预览测试
-4. 提交审核
-
----
-
-## 📁 项目结构
-
-```
-security-exam/
-├── index.html          # 主应用文件
-├── questions.json      # 题库数据（判断题、单选题、多选题）
-├── .gitignore          # Git 忽略配置
-├── README.md           # 项目说明文档
-└── miniprogram/        # 微信小程序模板
-    ├── app.js
-    ├── app.json
-    ├── app.wxss
-    ├── sitemap.json
-    └── pages/
-        └── index/
-            ├── index.js
-            ├── index.wxml
-            └── index.wxss
+<!-- miniprogram/pages/index/index.wxml -->
+<web-view src="https://your-domain.com/index.html"></web-view>
 ```
 
 ## ⚠️ 注意事项
 
-1. **题库数据**：存储在 `questions.json` 文件中，包含约200道题目
-2. **数据持久化**：答题记录使用浏览器 LocalStorage 存储，仅保存在当前设备
-3. **模拟考试**：90分钟倒计时，时间结束自动提交
-4. **小程序域名校验**：必须完成业务域名配置才能正常访问
-5. **HTTPS 要求**：微信小程序要求使用 HTTPS 协议
+1. **首次启动**：首次运行 `docker-compose up -d` 会下载镜像，请耐心等待
+2. **数据初始化**：数据库表和题库数据会自动创建
+3. **端口占用**：确保 3001 和 8000 端口未被占用
+4. **离线模式**：关闭后端后，前端会自动使用本地 JSON 数据
+5. **LocalStorage**：答题记录保存在浏览器本地，清除缓存会丢失
 
 ## 📄 License
 
@@ -189,11 +222,12 @@ MIT License
 
 ## 📞 帮助
 
-如果在部署过程中遇到问题：
+**常见问题：**
 
-1. **GitHub Pages 无法访问**：检查仓库是否公开，等待5分钟后重试
-2. **小程序 web-view 空白**：确认业务域名已正确配置并通过验证
-3. **题库加载失败**：检查 `questions.json` 文件路径是否正确
+1. **API 无法访问**：检查 Docker 容器是否运行，端口是否正确
+2. **页面显示空白**：检查前端服务器是否启动，端口是否被占用
+3. **题库加载失败**：确认 `questions.json` 文件存在且格式正确
+4. **Docker 启动失败**：检查 Docker Desktop 是否已启动
 
 ---
 

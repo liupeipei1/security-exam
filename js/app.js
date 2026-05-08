@@ -88,7 +88,8 @@ function initApp() {
         methods: {
             loadQuestions() {
                 this.loading = true;
-                fetch('questions.json')
+                // 从后端API读取题目数据
+                fetch('http://localhost:3001/api/questions')
                     .then(response => {
                         if (response.ok) {
                             return response.json();
@@ -97,13 +98,31 @@ function initApp() {
                         }
                     })
                     .then(data => {
-                        this.allQuestions = data;
+                        // 将数据库字段映射到前端需要的字段
+                        this.allQuestions = data.map(item => ({
+                            id: item.id,
+                            type: item.question_type,
+                            question: item.question_content,
+                            options: item.options ? JSON.parse(item.options) : [],
+                            answer: item.correct_answer ? JSON.parse(item.correct_answer) : [],
+                            analysis: item.analysis || ''
+                        }));
                         console.log('题目数据加载成功，共', this.allQuestions.length, '题');
                     })
                     .catch(error => {
                         console.error('加载题目数据失败:', error);
-                        alert('加载题目数据失败，请检查questions.json文件是否存在');
-                        this.allQuestions = [];
+                        // 如果API调用失败，尝试从本地JSON文件加载（备用方案）
+                        return fetch('questions.json')
+                            .then(response => response.json())
+                            .then(data => {
+                                this.allQuestions = data;
+                                console.log('从本地JSON文件加载题目数据，共', this.allQuestions.length, '题');
+                            })
+                            .catch(jsonError => {
+                                console.error('从本地JSON文件加载也失败:', jsonError);
+                                alert('加载题目数据失败，请检查后端服务是否启动');
+                                this.allQuestions = [];
+                            });
                     })
                     .finally(() => {
                         this.chapters = [{ name: "全部题目", count: this.allQuestions.length }];

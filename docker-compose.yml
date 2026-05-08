@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # 后端 API 服务
+  backend:
+    build: ./backend
+    container_name: security-exam-backend
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: 123456
+      DB_NAME: exam-db
+    networks:
+      - default
+      - code_default
+    restart: always
+
+networks:
+  code_default:
+    external: true
