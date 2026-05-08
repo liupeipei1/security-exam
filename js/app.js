@@ -111,18 +111,8 @@ function initApp() {
                     })
                     .catch(error => {
                         console.error('加载题目数据失败:', error);
-                        // 如果API调用失败，尝试从本地JSON文件加载（备用方案）
-                        return fetch('questions.json')
-                            .then(response => response.json())
-                            .then(data => {
-                                this.allQuestions = data;
-                                console.log('从本地JSON文件加载题目数据，共', this.allQuestions.length, '题');
-                            })
-                            .catch(jsonError => {
-                                console.error('从本地JSON文件加载也失败:', jsonError);
-                                alert('加载题目数据失败，请检查后端服务是否启动');
-                                this.allQuestions = [];
-                            });
+                        alert('后端服务异常，请检查后端服务是否启动');
+                        this.allQuestions = [];
                     })
                     .finally(() => {
                         this.chapters = [{ name: "全部题目", count: this.allQuestions.length }];

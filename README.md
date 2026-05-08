@@ -190,6 +190,214 @@ git push origin main
 - `DB_PASSWORD`: 数据库密码
 - `DB_NAME`: 数据库名称
 
+---
+
+## 🌐 公网访问方案（跨网络访问）
+
+### 方案四：云服务器部署（推荐）
+
+**步骤 1：购买云服务器**
+
+推荐选择：
+- 阿里云 ECS（国内）
+- 腾讯云 CVM（国内）
+- AWS EC2（海外）
+- 华为云弹性云服务器
+
+配置建议：
+- CPU：1核以上
+- 内存：2GB以上
+- 系统：Ubuntu 22.04 LTS
+
+**步骤 2：连接服务器**
+
+```bash
+# 使用 SSH 连接（Windows 使用 Xshell 或 PowerShell）
+ssh root@你的服务器IP
+```
+
+**步骤 3：安装依赖**
+
+```bash
+# 更新系统
+sudo apt update && sudo apt upgrade -y
+
+# 安装 Docker
+curl -fsSL https://get.docker.com | sh
+
+# 安装 Docker Compose
+sudo apt install docker-compose-plugin -y
+
+# 安装 Git
+sudo apt install git -y
+```
+
+**步骤 4：克隆项目**
+
+```bash
+git clone https://github.com/你的用户名/security-exam.git
+cd security-exam
+```
+
+**步骤 5：启动服务**
+
+```bash
+# 启动容器（后台运行）
+docker-compose up -d
+
+# 查看运行状态
+docker-compose ps
+```
+
+**步骤 6：配置防火墙**
+
+```bash
+# 开放端口
+sudo ufw allow 8000/tcp
+sudo ufw allow 3001/tcp
+sudo ufw enable
+```
+
+**步骤 7：访问地址**
+
+| 服务 | 地址 |
+|------|------|
+| 前端页面 | http://你的服务器IP:8000 |
+| 后端API | http://你的服务器IP:3001 |
+
+---
+
+### 方案五：内网穿透（临时测试）
+
+适用于没有云服务器的情况，临时分享给外网用户测试。
+
+**方式 1：使用 ngrok**
+
+```bash
+# 1. 下载 ngrok（Windows）
+# 访问 https://ngrok.com/download 下载
+
+# 2. 注册账号获取 auth token
+# https://dashboard.ngrok.com/get-started/your-authtoken
+
+# 3. 认证（Windows）
+ngrok config add-authtoken 你的authtoken
+
+# 4. 启动穿透（前端）
+ngrok http 8000
+
+# 5. 启动穿透（后端，新终端）
+ngrok http 3001
+```
+
+输出示例：
+```
+Forwarding  https://abc123.ngrok.io -> http://localhost:8000
+Forwarding  https://def456.ngrok.io -> http://localhost:3001
+```
+
+**方式 2：使用 FRP（自建穿透）**
+
+需要有一台公网服务器。
+
+---
+
+### 方案六：配置域名（专业部署）
+
+**步骤 1：购买域名**
+
+- 阿里云域名
+- 腾讯云域名
+- GoDaddy（海外）
+
+**步骤 2：解析域名**
+
+添加 A 记录指向你的服务器 IP：
+```
+exam.yourdomain.com -> 服务器IP
+api.exam.yourdomain.com -> 服务器IP
+```
+
+**步骤 3：配置 Nginx 反向代理**
+
+```bash
+# 安装 Nginx
+sudo apt install nginx -y
+
+# 创建配置文件
+sudo nano /etc/nginx/sites-available/exam
+```
+
+配置内容：
+```nginx
+server {
+    listen 80;
+    server_name exam.yourdomain.com;
+
+    location / {
+        root /var/www/security-exam;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.exam.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# 启用配置
+sudo ln -s /etc/nginx/sites-available/exam /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+**步骤 4：配置 HTTPS（SSL证书）**
+
+```bash
+# 安装 Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# 获取证书
+sudo certbot --nginx -d exam.yourdomain.com -d api.exam.yourdomain.com
+```
+
+**步骤 5：更新前端配置**
+
+修改 `js/app.js` 中的 API 地址：
+```javascript
+// 将 localhost:3001 改为你的域名
+const API_URL = 'https://api.exam.yourdomain.com/api/questions';
+```
+
+---
+
+## 🔄 前端API地址动态配置
+
+为了支持多环境部署，可以修改前端代码实现动态配置：
+
+```javascript
+// js/app.js - 修改API地址配置
+const getApiUrl = () => {
+  // 生产环境（域名）
+  if (window.location.hostname.includes('yourdomain.com')) {
+    return 'https://api.exam.yourdomain.com/api/questions';
+  }
+  // 本地开发
+  return 'http://localhost:3001/api/questions';
+};
+```
+
+这样前端会自动根据访问域名选择对应的API地址。
+
 ## 📱 微信小程序配置
 
 ### 1. 注册小程序账号

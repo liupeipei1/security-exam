@@ -1647,8 +1647,8 @@
                 const questions = ref([]);
                 const loading = ref(true);
                 
-                // 从 JSON 文件加载题库数据
-                fetch('questions.json')
+                // 从后端 API 加载题库数据
+                fetch('http://localhost:3001/api/questions')
                     .then(response => response.json())
                     .then(data => {
                         questions.value = data;
