@@ -282,6 +282,7 @@ sudo ufw enable
 
 # 3. 认证（Windows）
 ngrok config add-authtoken 你的authtoken
+ngrok config add-authtoken 3DRDzNioSmlH7BSqYO2O3lMR7Jb_4UsXyLCokJFVaM7tKtg7H
 
 # 4. 启动穿透（前端）
 ngrok http 8000
@@ -292,7 +293,7 @@ ngrok http 3001
 
 输出示例：
 ```
-Forwarding  https://abc123.ngrok.io -> http://localhost:8000
+Forwarding  https://scary-lung-scabby.ngrok-free.dev/ -> http://localhost:8000
 Forwarding  https://def456.ngrok.io -> http://localhost:3001
 ```
 

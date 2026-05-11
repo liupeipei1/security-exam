@@ -1,0 +1,26 @@
+  CREATE TABLE IF NOT EXISTS bank_medium_questions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    type ENUM('judgment', 'single', 'multiple') NOT NULL COMMENT '题型',
+    question TEXT NOT NULL COMMENT '题目内容',
+    options JSON NOT NULL COMMENT '选项列表',
+    answer JSON NOT NULL COMMENT '正确答案',
+    explanation VARCHAR(500) COMMENT '解析说明',
+    analysis VARCHAR(1000) COMMENT '题目分析',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_type (type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表';
+
+
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      openid VARCHAR(100) NOT NULL UNIQUE,
+      session_key VARCHAR(100) DEFAULT NULL,
+      nickname VARCHAR(100) DEFAULT NULL,
+      avatar VARCHAR(500) DEFAULT NULL,
+      is_vip TINYINT(1) DEFAULT 0,
+      vip_expire DATETIME DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -12,6 +12,11 @@ services:
       DB_USER: root
       DB_PASSWORD: 123456
       DB_NAME: exam-db
+      # 微信小程序配置
+      WECHAT_APPID: wxbbfc83572c7db218
+      WECHAT_APPSECRET: 58fa649790458708aa941492f5c15b66
+      # 微信H5授权回调地址
+      WECHAT_REDIRECT_URI: http://localhost:8080
     networks:
       - default
       - code_default

@@ -7,3 +7,6 @@ docker-compose up -d
 
 echo 正在启动前端服务...
 python -m http.server 8000
+
+# 启动 ngrok
+ngrok http 8000
