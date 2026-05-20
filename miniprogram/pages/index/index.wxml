@@ -5,7 +5,7 @@
 </view>
 
 <!-- 未登录状态 -->
-<view wx:elif="!isLoggedIn" class="login-page">
+<view wx:elif="{{!isLoggedIn}}" class="login-page">
   <view class="login-logo">
     <text class="logo-text">🛡️</text>
   </view>

@@ -239,6 +239,256 @@ page {
   color: #fff;
 }
 
+/* 题库选择器 */
+.bank-selector {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 12px;
+  border-radius: 20px;
+}
+
+.bank-icon {
+  font-size: 18px;
+  margin-right: 6px;
+}
+
+.bank-name {
+  font-size: 14px;
+  color: #fff;
+  font-weight: bold;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bank-arrow {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-left: 6px;
+}
+
+/* 题库选择弹窗 */
+.bank-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.bank-modal-content {
+  width: 85%;
+  max-width: 320px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.bank-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.bank-modal-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.bank-modal-close {
+  font-size: 20px;
+  color: #999;
+  padding: 5px;
+}
+
+.bank-list {
+  padding: 10px;
+}
+
+.bank-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  background: #f8f8f8;
+}
+
+.bank-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.bank-item-icon {
+  font-size: 24px;
+  margin-right: 12px;
+}
+
+.bank-item-info {
+  flex: 1;
+}
+
+.bank-item-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bank-item.active .bank-item-name {
+  color: #fff;
+}
+
+.bank-item-desc {
+  font-size: 12px;
+  color: #999;
+}
+
+.bank-item.active .bank-item-desc {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bank-item-check {
+  font-size: 18px;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.bank-item.active .bank-item-check {
+  color: #fff;
+}
+
+/* 题库详情弹窗 */
+.bank-detail-content {
+  width: 90%;
+  max-width: 340px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.bank-detail-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.bank-detail-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bank-detail-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.bank-detail-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #fff;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.bank-detail-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.bank-detail-body {
+  padding: 20px;
+}
+
+.bank-detail-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.bank-detail-desc-detail {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.bank-detail-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.bank-detail-stat {
+  flex: 1;
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.bank-detail-stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #667eea;
+  display: block;
+}
+
+.bank-detail-stat-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.bank-detail-btn {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* 语音读题按钮 */
+.read-btn {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 15px;
+  margin-left: auto;
+}
+
+.read-icon {
+  font-size: 16px;
+  margin-right: 4px;
+}
+
+.read-text {
+  font-size: 12px;
+  color: #fff;
+}
+
 .nav-right {
   display: flex;
   flex-direction: column;
@@ -456,71 +706,164 @@ page {
 }
 
 .question-content {
-  font-size: 18px;
+  font-size: 17px;
   color: #333;
-  line-height: 1.6;
-  margin-bottom: 20px;
+  line-height: 1.7;
+  margin-bottom: 22px;
+  padding: 15px;
+  background: #fafafa;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
 }
 
 .options-list {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .options-list .option-item {
   display: flex;
   align-items: center;
-  padding: 15px;
+  padding: 14px 48px 14px 16px;
   border-radius: 12px;
-  margin-bottom: 10px;
-  background: #f8f9fa;
-  border: 2px solid transparent;
+  margin-bottom: 12px;
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  transition: all 0.3s ease;
+  min-height: 52px;
+  box-sizing: border-box;
+  position: relative;
 }
 
 .options-list .option-item.selected {
   border-color: #667eea;
-  background: #f0f0ff;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e6ebff 100%);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.options-list .option-item.selected .option-label {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-color: #667eea;
 }
 
 .options-list .option-item.correct {
-  border-color: #52c41a;
-  background: #f6ffed;
+  border-color: #52c41a !important;
+  background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%) !important;
+  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.15) !important;
+}
+
+.options-list .option-item.correct .option-label {
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%) !important;
+  color: #fff !important;
+  border-color: #52c41a !important;
 }
 
 .options-list .option-item.wrong {
-  border-color: #f5222d;
-  background: #fff2f0;
+  border-color: #ff4d4f !important;
+  background: linear-gradient(135deg, #fff7f7 0%, #fff2f0 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.15) !important;
+}
+
+.options-list .option-item.wrong .option-label {
+  background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%) !important;
+  color: #fff !important;
+  border-color: #ff4d4f !important;
 }
 
 .option-label {
-  width: 30px;
-  height: 30px;
-  background: #fff;
+  width: 26px;
+  height: 26px;
+  line-height: 24px;
+  text-align: center;
+  background: #f5f5f5;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 500;
   color: #666;
   margin-right: 12px;
   flex-shrink: 0;
+  border: 1px solid #ddd;
 }
 
 .option-text {
   flex: 1;
   font-size: 15px;
   color: #333;
+  word-break: break-all;
+  line-height: 1.5;
+  min-width: 0;
+  align-self: center;
 }
 
 .option-icon {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  border: 1px solid #ccc;
+  background: #fff !important;
+  color: #1890ff !important;
+}
+
+.option-icon-text {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 14px;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
   font-weight: bold;
+}
+
+.option-icon-text.selected {
+  background: #1890ff;
+  color: #fff;
+}
+
+.option-icon-text.correct {
+  background: #52c41a;
+  color: #fff;
+}
+
+.option-icon-text.wrong {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.option-indicator {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.option-icon.selected {
+  background: #1890ff !important;
+  color: #fff !important;
+  display: flex !important;
+  z-index: 10;
 }
 
 .option-icon.correct {
@@ -529,8 +872,34 @@ page {
 }
 
 .option-icon.wrong {
-  background: #f5222d;
+  background: #ff4d4f;
   color: #fff;
+}
+
+@keyframes correctPulse {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 /* 答案解析 */

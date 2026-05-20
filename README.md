@@ -1,6 +1,28 @@
 # 安全考试训练系统
 
-一个基于 **HTML + Vue.js + Node.js + MySQL** 的网络安全考试训练应用，包含判断题、单选题、多选题练习和模拟考试功能。
+一个多题库考试训练应用，支持判断题、单选题、多选题练习和模拟考试、微信登录与会员。
+
+## Spring Cloud 版（推荐）
+
+项目已提供 **Spring Boot + Spring Cloud 前后端分离** 实现：
+
+| 目录 | 说明 |
+|------|------|
+| [backend-spring/](backend-spring/README.md) | 微服务后端（Gateway + Auth + User + Question） |
+| [frontend/](frontend/README.md) | Vue 3 + Vite Web 前端 |
+| [miniprogram/](miniprogram/) | 微信小程序（API 指向网关 `:8080`） |
+
+- **API 网关**：`http://localhost:8080`（原 Node 版为 `:3001`）
+- **启动**：`start-spring.bat` 或见 [backend-spring/README.md](backend-spring/README.md)
+- **基础设施**：`docker compose -f docker-compose.spring.yml up -d`
+
+原 Node.js 后端保留在 `backend/`，仅供对照。
+
+---
+
+## 经典版（Node.js）
+
+一个基于 **HTML + Vue.js + Node.js + MySQL** 的实现，包含判断题、单选题、多选题练习和模拟考试功能。
 
 ## 🎯 功能特点
 

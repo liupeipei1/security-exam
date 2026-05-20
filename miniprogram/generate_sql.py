@@ -20,7 +20,7 @@ cursor = conn.cursor()
 try:
     # 创建表结构（如果不存在）
     create_table_sql = """
-    CREATE TABLE IF NOT EXISTS bank_medium_questions (
+    CREATE TABLE IF NOT EXISTS security_exam_3 (
         id INT PRIMARY KEY,
         type VARCHAR(20) NOT NULL,
         question TEXT NOT NULL,
@@ -42,7 +42,7 @@ try:
     # 批量插入/更新
     for q in questions:
         sql = """
-        INSERT INTO bank_medium_questions (id, type, question, options, answer, explanation, analysis)
+        INSERT INTO security_exam_3 (id, type, question, options, answer, explanation, analysis)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE 
             type = VALUES(type),

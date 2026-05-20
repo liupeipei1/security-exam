@@ -1,0 +1,42 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: exam-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: lb://exam-auth-service
+          predicates:
+            - Path=/api/auth/**
+        - id: user-service
+          uri: lb://exam-user-service
+          predicates:
+            - Path=/api/user/**
+        - id: question-service
+          uri: lb://exam-question-service
+          predicates:
+            - Path=/api/banks/**,/api/questions/**,/api/exam/**,/api/speech
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

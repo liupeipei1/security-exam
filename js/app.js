@@ -98,13 +98,13 @@ function initApp() {
                         }
                     })
                     .then(data => {
-                        // 将数据库字段映射到前端需要的字段
+                        // 将数据库字段映射到前端需要的字段（兼容两种字段命名格式）
                         this.allQuestions = data.map(item => ({
                             id: item.id,
-                            type: item.question_type,
-                            question: item.question_content,
+                            type: item.type || item.question_type,
+                            question: item.question || item.question_content,
                             options: item.options ? JSON.parse(item.options) : [],
-                            answer: item.correct_answer ? JSON.parse(item.correct_answer) : [],
+                            answer: item.answer ? JSON.parse(item.answer) : (item.correct_answer ? JSON.parse(item.correct_answer) : []),
                             analysis: item.analysis || ''
                         }));
                         console.log('题目数据加载成功，共', this.allQuestions.length, '题');
@@ -138,8 +138,25 @@ function initApp() {
                 const optionText = this.currentQuestion.options[index];
                 const optionLabel = this.getOptionLabel(index);
                 const answer = this.currentQuestion.answer || [];
-                // 检查答案是否是字母（如"A"、"B"）或者文本内容
-                if (answer.includes(optionText) || answer.includes(optionLabel)) {
+                
+                // 检查答案是否匹配：支持字母格式和文本内容格式
+                let isCorrect = answer.includes(optionText) || answer.includes(optionLabel);
+                
+                // 特殊处理判断题：选项可能是"正确"/"错误"，答案可能是"对"/"错"或"A"/"B"
+                if (this.currentQuestion.type === 'judgment') {
+                    // 如果选项是"正确"或"对"，且答案包含"A"或"对"或"正确"，则正确
+                    if ((optionText.includes('正确') || optionText.includes('对')) && 
+                        (answer.includes('A') || answer.includes('对') || answer.includes('正确'))) {
+                        isCorrect = true;
+                    }
+                    // 如果选项是"错误"或"错"，且答案包含"B"或"错"或"错误"，则正确
+                    if ((optionText.includes('错误') || optionText.includes('错')) && 
+                        (answer.includes('B') || answer.includes('错') || answer.includes('错误'))) {
+                        isCorrect = true;
+                    }
+                }
+                
+                if (isCorrect) {
                     return 'correct';
                 }
                 if (this.selectedOptions.includes(index)) {

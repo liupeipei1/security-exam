@@ -1,3 +1,5 @@
+const { API_BASE } = require('../../utils/config.js')
+
 Page({
   data: {
     // 用户状态
@@ -16,8 +18,12 @@ Page({
     allQuestions: [],
     currentQuestions: [],
     currentQuestionIndex: 0,
+    // 当前题目数据（用于模板渲染）
+    currentQuestionData: null,
     // 当前选中的答案
     selectedOptions: [],
+    // 选中状态标志（用于模板渲染）
+    selectedFlags: {},
     // 是否显示答案
     showAnswer: false,
     // 统计数据
@@ -30,10 +36,10 @@ Page({
     showPayModal: false,
     // 考试配置
     examConfig: {
-      judgment: 10,
-      single: 10,
-      multiple: 5
-    },
+       judgment: 40,
+       single: 140,
+       multiple: 10
+     },
     // 会员信息
     vipEndTime: null,
     // 价格配置
@@ -41,7 +47,11 @@ Page({
       monthly: 19.9,
       quarterly: 49.9,
       yearly: 129.9
-    }
+    },
+    // 题库配置
+    banks: [],
+    currentBank: null,
+    showBankSelector: false
   },
 
   onLoad: function (options) {
@@ -60,6 +70,9 @@ Page({
     const userInfo = wx.getStorageSync('userInfo')
     const isVip = wx.getStorageSync('isVip')
     const vipEndTime = wx.getStorageSync('vipEndTime')
+    
+    console.log('检查登录状态 - userInfo:', userInfo);
+    console.log('检查登录状态 - isVip:', isVip);
     
     if (userInfo) {
       that.setData({
@@ -84,16 +97,21 @@ Page({
     const that = this
     const userInfo = this.data.userInfo
     
+    console.log('checkVipStatus 被调用，userInfo:', userInfo)
+    
     if (!userInfo || !userInfo.openid) {
+      console.log('userInfo 或 openid 为空')
       that.setData({ loading: false })
       return
     }
     
     wx.request({
-      url: 'http://localhost:3001/api/user/vip-status',
+      url: API_BASE + '/api/user/vip-status',
       method: 'GET',
+      timeout: 30000, // 30秒超时
       data: { openid: userInfo.openid },
       success: function(res) {
+        console.log('VIP状态查询成功:', res.data)
         if (res.data.success) {
           const vipData = res.data.data
           wx.setStorageSync('isVip', vipData.is_vip)
@@ -103,10 +121,12 @@ Page({
             isVip: vipData.is_vip,
             vipEndTime: vipData.vip_expire
           })
+          console.log('设置 isVip 为:', vipData.is_vip)
         }
-        that.loadQuestions()
+        that.loadBanks()
       },
-      fail: function() {
+      fail: function(err) {
+        console.error('VIP状态查询失败:', err)
         that.loadQuestions()
       }
     })
@@ -123,14 +143,18 @@ Page({
         if (res.code) {
           // 发送code到后端获取openid和用户信息
           wx.request({
-            url: 'http://localhost:3001/api/auth/login',
+            url: API_BASE + '/api/auth/login',
             method: 'POST',
+            timeout: 30000, // 30秒超时
             data: { code: res.code },
             success: function(response) {
               wx.hideLoading()
               
+              console.log('登录响应数据:', response.data);
+              
               if (response.data.success) {
                 const userData = response.data.data
+                console.log('用户数据:', userData);
                 
                 // 保存用户信息到本地缓存
                 wx.setStorageSync('userInfo', {
@@ -143,6 +167,7 @@ Page({
                 wx.setStorageSync('vipEndTime', userData.vip_expire)
                 
                 that.setData({
+                  loading: false,
                   isLoggedIn: true,
                   userInfo: {
                     id: userData.id,
@@ -159,8 +184,8 @@ Page({
                   icon: 'success'
                 })
                 
-                // 加载题目数据
-                that.loadQuestions()
+                // 加载题库列表
+                that.loadBanks()
               } else {
                 wx.showToast({
                   title: response.data.message || '登录失败',
@@ -196,37 +221,144 @@ Page({
     })
   },
 
+  // 加载题库列表
+  loadBanks: function() {
+    const that = this
+    wx.request({
+      url: API_BASE + '/api/banks',
+      method: 'GET',
+      timeout: 30000,
+      success: function(res) {
+        console.log('加载题库列表成功:', res.data)
+        if (res.data.success && res.data.data && res.data.data.length > 0) {
+          const banks = res.data.data
+          // 默认选择第一个题库
+          const defaultBank = banks.find(b => b.is_default) || banks[0]
+          that.setData({
+            banks: banks,
+            currentBank: defaultBank
+          })
+          // 如果已经是会员，加载对应题库的题目
+          if (that.data.isVip && that.data.userInfo) {
+            that.loadQuestions()
+          }
+        }
+      },
+      fail: function(err) {
+        console.error('加载题库列表失败:', err)
+      }
+    })
+  },
+
+  // 切换题库
+  switchBank: function(e) {
+    const bankCode = e.currentTarget.dataset.bankCode
+    const bank = this.data.banks.find(b => b.bank_code === bankCode)
+    if (bank) {
+      this.setData({
+        currentBank: bank,
+        showBankSelector: false,
+        currentQuestionIndex: 0,
+        selectedOptions: [],
+        showAnswer: false
+      })
+      if (this.data.isVip) {
+        this.loadQuestions()
+      }
+    }
+  },
+
+  // 显示题库选择器
+  showBankSelector: function() {
+    this.setData({
+      showBankSelector: true
+    })
+  },
+
+  // 隐藏题库选择器
+  hideBankSelector: function() {
+    this.setData({
+      showBankSelector: false
+    })
+  },
+
+  // 阻止事件冒泡
+  stopPropagation: function(e) {
+    e.stopPropagation()
+  },
+
   // 从后端API加载题目数据
   loadQuestions: function() {
     const that = this
     
+    console.log('loadQuestions 被调用，isVip:', this.data.isVip)
+    
     // 如果不是会员，不加载题目
     if (!this.data.isVip) {
+      console.log('不是会员，不加载题目')
       that.setData({ loading: false })
       return
     }
     
+    const bankCode = this.data.currentBank ? this.data.currentBank.bank_code : null
+    
     wx.request({
-      url: 'http://localhost:3001/api/questions',
+      url: API_BASE + '/api/questions',
       method: 'GET',
-      data: { openid: this.data.userInfo?.openid },
+      timeout: 30000, // 30秒超时
+      data: { 
+        openid: this.data.userInfo ? this.data.userInfo.openid : null,
+        bank_code: bankCode
+      },
       success: function(res) {
-        console.log('加载题目成功', res.data)
+        console.log('加载题目成功，res.data:', res.data)
         if (res.data.success) {
+          console.log('原始数据长度:', res.data.data.length)
+          console.log('原始数据第一条:', res.data.data[0])
+          
           const questions = res.data.data.map(q => ({
             id: q.id,
             question: q.question,
-            options: [q.option_a, q.option_b, q.option_c, q.option_d].filter(o => o && o.trim()),
+            options: q.options || [q.option_a, q.option_b, q.option_c, q.option_d].filter(o => o && o.trim()),
             answer: q.answer,
-            analysis: q.analysis || '暂无解析',
-            type: q.question_type || 'single'
+            analysis: q.analysis || q.explanation || '暂无解析',
+            type: q.type || q.question_type || 'single'
           }))
+          console.log('转换后的题目数据:', questions[0])
+          console.log('加载到的题目总数:', questions.length)
+          
           that.setData({
             allQuestions: questions,
             currentQuestions: questions,
-            loading: false
+            loading: false,
+            currentQuestionData: questions[0] || null
+          }, function() {
+            // 数据设置完成后验证
+            console.log('数据设置完成后验证:')
+            console.log('allQuestions.length:', that.data.allQuestions.length)
+            console.log('currentQuestions.length:', that.data.currentQuestions.length)
+            console.log('currentQuestionIndex:', that.data.currentQuestionIndex)
+            console.log('currentQuestions[0]:', that.data.currentQuestions[0])
+            
+            // 检查第一个题目是否有问题
+            if (that.data.currentQuestions.length > 0) {
+              console.log('第一个题目的question:', that.data.currentQuestions[0].question)
+              console.log('第一个题目的options:', that.data.currentQuestions[0].options)
+              console.log('第一个题目的type:', that.data.currentQuestions[0].type)
+            }
+            
+            // 只有考试模式才调用 generateExamQuestions
+            if (that.data.currentMode === 'exam') {
+              that.generateExamQuestions()
+            }
+            
+            console.log('最终状态:', {
+              showAnswer: that.data.showAnswer,
+              selectedOptions: that.data.selectedOptions,
+              currentQuestionIndex: that.data.currentQuestionIndex,
+              currentQuestions: that.data.currentQuestions.length
+            })
           })
-          that.generateExamQuestions()
         } else {
           wx.showToast({
             title: res.data.message || '加载失败',
@@ -263,9 +395,12 @@ Page({
       ...shuffle(multipleQuestions).slice(0, examConfig.multiple)
     ]
 
+    const shuffledExamQuestions = shuffle(examQuestions)
+    
     this.setData({
-      currentQuestions: shuffle(examQuestions),
+      currentQuestions: shuffledExamQuestions,
       currentQuestionIndex: 0,
+      currentQuestionData: shuffledExamQuestions[0] || null,
       selectedOptions: [],
       showAnswer: false
     })
@@ -300,6 +435,20 @@ Page({
   // 切换模式
   switchMode: function(e) {
     const mode = e.currentTarget.dataset.mode
+    const { allQuestions, currentQuestionType } = this.data
+    
+    console.log('switchMode 被调用，mode:', mode, 'allQuestions.length:', allQuestions.length)
+    
+    // 检查 allQuestions 是否有数据
+    if (!allQuestions || allQuestions.length === 0) {
+      console.error('allQuestions 为空，无法切换模式')
+      wx.showToast({
+        title: '题目数据加载中，请稍候...',
+        icon: 'none'
+      })
+      return
+    }
+    
     this.setData({ 
       currentMode: mode,
       currentQuestionIndex: 0,
@@ -310,23 +459,48 @@ Page({
     if (mode === 'exam') {
       this.generateExamQuestions()
     } else {
-      this.switchQuestionType({ currentTarget: { dataset: { type: this.data.currentQuestionType } } })
+      // 直接设置 currentQuestions，而不是调用 switchQuestionType
+      let newCurrentQuestions = allQuestions
+      if (currentQuestionType !== 'all') {
+        newCurrentQuestions = allQuestions.filter(q => q.type === currentQuestionType)
+      }
+      this.setData({
+        currentQuestions: newCurrentQuestions,
+        currentQuestionData: newCurrentQuestions[0] || null
+      })
     }
   },
 
   // 切换题型筛选
   switchQuestionType: function(e) {
     const type = e.currentTarget.dataset.type
-    let questions = this.data.allQuestions
+    const { allQuestions } = this.data
+    
+    console.log('switchQuestionType 被调用，type:', type, 'allQuestions.length:', allQuestions.length)
+    
+    // 检查 allQuestions 是否有数据
+    if (!allQuestions || allQuestions.length === 0) {
+      console.error('allQuestions 为空，无法切换题型')
+      wx.showToast({
+        title: '题目数据加载中，请稍候...',
+        icon: 'none'
+      })
+      return
+    }
+    
+    let questions = allQuestions
     
     if (type !== 'all') {
       questions = questions.filter(q => q.type === type)
     }
     
+    console.log('筛选后的题目数量:', questions.length)
+    
     this.setData({ 
       currentQuestionType: type,
       currentQuestions: questions,
       currentQuestionIndex: 0,
+      currentQuestionData: questions[0] || null,
       selectedOptions: [],
       showAnswer: false
     })
@@ -335,20 +509,102 @@ Page({
   // 切换视图
   switchView: function(e) {
     const view = e.currentTarget.dataset.view
-    this.setData({ currentView: view })
+    const { allQuestions, currentQuestions, currentMode, currentQuestionType } = this.data
+    
+    console.log('switchView 被调用，view:', view, 'allQuestions.length:', allQuestions.length, 'currentQuestions.length:', currentQuestions.length)
+    
+    let newCurrentQuestions = currentQuestions
+    
+    // 如果切换到题库视图且当前没有题目数据
+    if (view === 'home' && allQuestions.length > 0) {
+      // 确保有题目数据
+      if (currentQuestions.length === 0) {
+        if (currentMode === 'exam') {
+          this.generateExamQuestions()
+          return
+        } else {
+          // 根据当前题型筛选题目
+          if (currentQuestionType !== 'all') {
+            newCurrentQuestions = allQuestions.filter(q => q.type === currentQuestionType)
+          } else {
+            newCurrentQuestions = allQuestions
+          }
+        }
+      }
+    }
+    
+    console.log('设置 newCurrentQuestions:', newCurrentQuestions.length)
+    
+    this.setData({ 
+      currentView: view,
+      currentQuestions: newCurrentQuestions,
+      selectedOptions: [],
+      showAnswer: false,
+      answeredCount: 0,
+      correctCount: 0,
+      showResult: false
+    })
+  },
+
+  // 通过索引选择选项（供内部调用）
+  selectOptionByIndex: function(index) {
+    const e = { currentTarget: { dataset: { index: index } } }
+    this.selectOption(e)
   },
 
   // 选择选项
   selectOption: function(e) {
-    if (this.data.showAnswer) return
-    
     const index = parseInt(e.currentTarget.dataset.index)
-    const { currentQuestion, selectedOptions } = this.data
+    const { selectedOptions, showAnswer, currentQuestions, allQuestions, currentMode, currentQuestionType, currentQuestionData } = this.data
+    
+    // 检查题目数据是否存在
+    if (!currentQuestions || currentQuestions.length === 0) {
+      console.error('currentQuestions 为空！尝试重新加载...')
+      
+      if (allQuestions && allQuestions.length > 0) {
+        // 如果 allQuestions 有数据，重新设置 currentQuestions
+        console.log('从 allQuestions 重新加载题目数据')
+        let newCurrentQuestions = allQuestions
+        
+        if (currentMode === 'exam') {
+          this.generateExamQuestions()
+          return
+        } else if (currentQuestionType !== 'all') {
+          newCurrentQuestions = allQuestions.filter(q => q.type === currentQuestionType)
+        }
+        
+        this.setData({
+          currentQuestions: newCurrentQuestions,
+          currentQuestionData: newCurrentQuestions[0] || null
+        }, () => {
+          // 数据加载完成后，重新调用 selectOption
+          // 使用保存的 index 值，避免事件对象在异步回调中失效
+          setTimeout(() => this.selectOptionByIndex(index), 100)
+        })
+        return
+      } else {
+        wx.showToast({
+          title: '题目数据加载失败，请刷新页面',
+          icon: 'none'
+        })
+        return
+      }
+    }
+    
+    // 检查当前题目是否存在
+    if (!currentQuestionData || !currentQuestionData.type) {
+      console.error('当前题目数据不存在！')
+      wx.showToast({
+        title: '题目数据异常',
+        icon: 'none'
+      })
+      return
+    }
     
     let newSelected = [...selectedOptions]
     
     // 多选题可以多选，单选题只能单选
-    if (currentQuestion.type === 'multiple') {
+    if (currentQuestionData.type === 'multiple') {
       if (newSelected.includes(index)) {
         newSelected = newSelected.filter(i => i !== index)
       } else {
@@ -359,26 +615,108 @@ Page({
       newSelected = [index]
     }
     
-    this.setData({ selectedOptions: newSelected })
+    // 如果之前已经显示过答案，选择新选项时重置状态
+    const resetAnswer = showAnswer
+    
+    // 重新初始化 selectedFlags，清除之前的选中状态
+    const newSelectedFlags = {}
+    newSelected.forEach(idx => {
+      newSelectedFlags[idx] = true
+    })
+    
+    this.setData({ 
+      selectedOptions: newSelected,
+      // 添加选中状态标志用于模板渲染
+      selectedFlags: newSelectedFlags,
+      // 如果之前显示过答案，重置状态允许重新答题
+      showAnswer: resetAnswer ? false : showAnswer
+    }, () => {
+      // 在回调中确认数据更新
+      console.log('setData回调 - selectedFlags:', this.data.selectedFlags)
+      console.log('setData回调 - selectedOptions:', this.data.selectedOptions)
+      console.log('setData回调 - getOptionClass(0):', this.getOptionClass(0))
+    })
+    
+    console.log('选中状态更新:', { selectedOptions: newSelected, selectedFlags: this.data.selectedFlags })
+    
+    // 所有题型统一：选择后不立即判断，等待用户点击提交按钮
+    // 这样单选和多选的交互方式保持一致
+    if (resetAnswer) {
+      console.log('用户重新选择选项，等待提交')
+    }
+  },
+
+  // 判断答案
+  judgeAnswer: function() {
+    const { selectedOptions, currentQuestionIndex, currentQuestions, answeredCount, correctCount, currentQuestionData } = this.data
+    
+    console.log('judgeAnswer called:', {
+      selectedOptions: selectedOptions,
+      correctAnswer: currentQuestionData ? currentQuestionData.answer : 'N/A',
+      questionType: currentQuestionData ? currentQuestionData.type : 'N/A'
+    })
+    
+    // 判断答案是否正确
+    const correctAnswer = currentQuestionData.answer || ''
+    const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
+    
+    let isCorrect = true
+    if (selectedOptions.length !== answerIndices.length) {
+      isCorrect = false
+    } else {
+      for (let i = 0; i < selectedOptions.length; i++) {
+        if (selectedOptions[i] !== answerIndices[i]) {
+          isCorrect = false
+          break
+        }
+      }
+    }
+    
+    this.setData({
+      showAnswer: true,
+      answeredCount: answeredCount + 1,
+      correctCount: isCorrect ? correctCount + 1 : correctCount
+    })
+    
+    // 显示答题结果提示
+    console.log('准备显示Toast:', isCorrect ? '回答正确！' : '回答错误')
+    wx.showToast({
+      title: isCorrect ? '回答正确！' : '回答错误',
+      icon: isCorrect ? 'success' : 'error',
+      duration: 2000,
+      complete: function() {
+        console.log('Toast显示完成')
+      }
+    })
+    
+    // 如果是最后一题，显示结果
+    if (currentQuestionIndex === currentQuestions.length - 1) {
+      setTimeout(() => {
+        this.setData({ showResult: true })
+      }, 500)
+    }
   },
 
   // 获取选项样式类
   getOptionClass: function(index) {
-    const { selectedOptions, showAnswer, currentQuestion } = this.data
+    const { selectedFlags, showAnswer, currentQuestionData } = this.data
     const classes = ['option-item']
     
-    if (selectedOptions.includes(index)) {
+    if (selectedFlags[index]) {
       classes.push('selected')
     }
     
-    if (showAnswer) {
-      const correctAnswer = currentQuestion.answer || ''
-      const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
-      
-      if (answerIndices.includes(index)) {
-        classes.push('correct')
-      } else if (selectedOptions.includes(index)) {
-        classes.push('wrong')
+    if (showAnswer && currentQuestionData) {
+      const correctAnswer = currentQuestionData.answer || ''
+      // 只有当有答案时才判断正确/错误
+      if (correctAnswer) {
+        const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
+        
+        if (answerIndices.includes(index)) {
+          classes.push('correct')
+        } else if (selectedFlags[index]) {
+          classes.push('wrong')
+        }
       }
     }
     
@@ -387,25 +725,35 @@ Page({
 
   // 是否是正确选项
   isCorrectOption: function(index) {
-    const { currentQuestion } = this.data
-    const correctAnswer = currentQuestion.answer || ''
+    const { currentQuestionData } = this.data
+    if (!currentQuestionData) return false
+    const correctAnswer = currentQuestionData.answer || ''
     const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
     return answerIndices.includes(index)
   },
 
+  // 选项是否被选中
+  isOptionSelected: function(index) {
+    const { selectedOptions } = this.data
+    console.log('isOptionSelected', { index, selectedOptions, result: selectedOptions.includes(index) })
+    return selectedOptions.includes(index)
+  },
+
   // 是否选中了错误选项
   isSelectedWrong: function(index) {
-    const { selectedOptions, currentQuestion } = this.data
-    if (!selectedOptions.includes(index)) return false
+    const { selectedFlags, currentQuestionData } = this.data
+    if (!selectedFlags[index] || !currentQuestionData) return false
     
-    const correctAnswer = currentQuestion.answer || ''
+    const correctAnswer = currentQuestionData.answer || ''
+    if (!correctAnswer) return false // 没有答案时不认为是错误选项
+    
     const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
     return !answerIndices.includes(index)
   },
 
   // 提交答案
   submitAnswer: function() {
-    const { selectedOptions, currentQuestion, currentQuestionIndex, currentQuestions } = this.data
+    const { selectedOptions, currentQuestionIndex, currentQuestions, currentQuestionData } = this.data
     
     if (selectedOptions.length === 0) {
       wx.showToast({
@@ -416,7 +764,7 @@ Page({
     }
     
     // 判断答案是否正确
-    const correctAnswer = currentQuestion.answer || ''
+    const correctAnswer = currentQuestionData.answer || ''
     const answerIndices = correctAnswer.split('').map(c => c.charCodeAt(0) - 65)
     
     let isCorrect = true
@@ -437,6 +785,12 @@ Page({
       correctCount: isCorrect ? this.data.correctCount + 1 : this.data.correctCount
     })
     
+    // 显示答题结果提示
+    wx.showToast({
+      title: isCorrect ? '回答正确！' : '回答错误',
+      icon: isCorrect ? 'success' : 'error'
+    })
+    
     // 如果是最后一题，显示结果
     if (currentQuestionIndex === currentQuestions.length - 1) {
       setTimeout(() => {
@@ -449,6 +803,7 @@ Page({
   resetAnswer: function() {
     this.setData({ 
       selectedOptions: [],
+      selectedFlags: {},
       showAnswer: false
     })
   },
@@ -457,9 +812,12 @@ Page({
   nextQuestion: function() {
     const { currentQuestionIndex, currentQuestions } = this.data
     if (currentQuestionIndex < currentQuestions.length - 1) {
+      const newIndex = currentQuestionIndex + 1
       this.setData({ 
-        currentQuestionIndex: currentQuestionIndex + 1,
+        currentQuestionIndex: newIndex,
+        currentQuestionData: currentQuestions[newIndex],
         selectedOptions: [],
+        selectedFlags: {},
         showAnswer: false
       })
     }
@@ -467,11 +825,14 @@ Page({
 
   // 上一题
   prevQuestion: function() {
-    const { currentQuestionIndex } = this.data
+    const { currentQuestionIndex, currentQuestions } = this.data
     if (currentQuestionIndex > 0) {
+      const newIndex = currentQuestionIndex - 1
       this.setData({ 
-        currentQuestionIndex: currentQuestionIndex - 1,
+        currentQuestionIndex: newIndex,
+        currentQuestionData: currentQuestions[newIndex],
         selectedOptions: [],
+        selectedFlags: {},
         showAnswer: false
       })
     }
@@ -608,8 +969,9 @@ Page({
     
     // 调用后端支付接口
     wx.request({
-      url: 'http://localhost:3001/api/user/buy-vip',
+      url: API_BASE + '/api/user/buy-vip',
       method: 'POST',
+      timeout: 30000, // 30秒超时
       data: {
         openid: that.data.userInfo?.openid,
         package_type: selectedPackage
