@@ -1,4 +1,4 @@
-  CREATE TABLE IF NOT EXISTS bank_medium_questions (
+CREATE TABLE IF NOT EXISTS security_exam_3 (
     id INT PRIMARY KEY AUTO_INCREMENT,
     type ENUM('judgment', 'single', 'multiple') NOT NULL COMMENT '题型',
     question TEXT NOT NULL COMMENT '题目内容',
