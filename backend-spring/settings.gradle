@@ -1,0 +1,8 @@
+rootProject.name = 'exam-parent'
+
+include 'exam-common'
+include 'exam-registry'
+include 'exam-gateway'
+include 'exam-auth-service'
+include 'exam-user-service'
+include 'exam-question-service'

@@ -37,7 +37,7 @@
 ## 环境要求
 
 - JDK 17+
-- Maven 3.8+
+- Gradle 8.7+（或使用项目 Gradle Wrapper）
 - MySQL 8（库名 `exam-db`，沿用 `backend/DML/` 脚本）
 - Redis 7
 
@@ -65,17 +65,19 @@ set WECHAT_QR_REDIRECT_URI=http://localhost:8080/api/auth/qrcode/callback
 
 ```bash
 cd backend-spring
-mvn -q -DskipTests package
+gradle build -x test
 
 # 终端 1
-mvn -pl exam-registry spring-boot:run
+gradle :exam-registry:bootRun
 
 # 终端 2（等 Eureka 就绪后）
-mvn -pl exam-gateway spring-boot:run
-mvn -pl exam-auth-service spring-boot:run
-mvn -pl exam-user-service spring-boot:run
-mvn -pl exam-question-service spring-boot:run
+gradle :exam-gateway:bootRun
+gradle :exam-auth-service:bootRun
+gradle :exam-user-service:bootRun
+gradle :exam-question-service:bootRun
 ```
+
+生成可执行 jar：`gradle :exam-gateway:bootJar`（产物在 `exam-gateway/build/libs/app.jar`）。
 
 Windows 可使用项目根目录 `start-spring.bat`（若已提供）。
 
