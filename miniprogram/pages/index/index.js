@@ -1,4 +1,5 @@
 const { API_BASE } = require('../../utils/config.js')
+const { request } = require('../../utils/request.js')
 
 Page({
   data: {
@@ -105,10 +106,10 @@ Page({
       return
     }
     
-    wx.request({
-      url: API_BASE + '/api/user/vip-status',
+    request({
+      url: '/api/user/vip-status',
       method: 'GET',
-      timeout: 30000, // 30秒超时
+      timeout: 30000,
       data: { openid: userInfo.openid },
       success: function(res) {
         console.log('VIP状态查询成功:', res.data)
@@ -142,11 +143,11 @@ Page({
       success: function(res) {
         if (res.code) {
           // 发送code到后端获取openid和用户信息
-          wx.request({
-            url: API_BASE + '/api/auth/login',
+          request({
+            url: '/api/auth/login',
             method: 'POST',
-            timeout: 30000, // 30秒超时
-            data: { code: res.code },
+            timeout: 30000,
+            data: { code: res.code, loginType: 'mini' },
             success: function(response) {
               wx.hideLoading()
               
@@ -161,7 +162,8 @@ Page({
                   id: userData.id,
                   openid: userData.openid,
                   nickname: userData.nickname,
-                  avatar: userData.avatar
+                  avatar: userData.avatar,
+                  token: userData.token
                 })
                 wx.setStorageSync('isVip', userData.is_vip)
                 wx.setStorageSync('vipEndTime', userData.vip_expire)
@@ -224,8 +226,8 @@ Page({
   // 加载题库列表
   loadBanks: function() {
     const that = this
-    wx.request({
-      url: API_BASE + '/api/banks',
+    request({
+      url: '/api/banks',
       method: 'GET',
       timeout: 30000,
       success: function(res) {
@@ -302,14 +304,11 @@ Page({
     
     const bankCode = this.data.currentBank ? this.data.currentBank.bank_code : null
     
-    wx.request({
-      url: API_BASE + '/api/questions',
+    request({
+      url: '/api/questions',
       method: 'GET',
-      timeout: 30000, // 30秒超时
-      data: { 
-        openid: this.data.userInfo ? this.data.userInfo.openid : null,
-        bank_code: bankCode
-      },
+      timeout: 30000,
+      data: { bank_code: bankCode },
       success: function(res) {
         console.log('加载题目成功，res.data:', res.data)
         if (res.data.success) {
@@ -952,6 +951,17 @@ Page({
     })
   },
 
+  applyVipSuccess: function(vipExpire) {
+    wx.setStorageSync('isVip', true)
+    wx.setStorageSync('vipEndTime', vipExpire)
+    this.setData({
+      isVip: true,
+      vipEndTime: vipExpire,
+      showPayModal: false
+    })
+    this.loadQuestions()
+  },
+
   // 支付
   pay: function() {
     const that = this
@@ -967,51 +977,46 @@ Page({
     
     wx.showLoading({ title: '支付中...' })
     
-    // 调用后端支付接口
-    wx.request({
-      url: API_BASE + '/api/user/buy-vip',
+    request({
+      url: '/api/user/pay/create',
       method: 'POST',
-      timeout: 30000, // 30秒超时
+      timeout: 30000,
       data: {
         openid: that.data.userInfo?.openid,
         package_type: selectedPackage
       },
       success: function(res) {
         wx.hideLoading()
-        
-        if (res.data.success) {
-          // 更新本地会员状态
-          const newEndTime = res.data.data.vip_expire
-          wx.setStorageSync('isVip', true)
-          wx.setStorageSync('vipEndTime', newEndTime)
-          
-          that.setData({
-            isVip: true,
-            vipEndTime: newEndTime,
-            showPayModal: false
-          })
-          
-          wx.showToast({
-            title: '开通成功',
-            icon: 'success'
-          })
-          
-          // 加载题目数据
-          that.loadQuestions()
-        } else {
-          wx.showToast({
-            title: res.data.message || '支付失败',
-            icon: 'none'
-          })
+        if (!res.data.success) {
+          wx.showToast({ title: res.data.message || '支付失败', icon: 'none' })
+          return
         }
+        const payData = res.data.data
+        if (payData.mock) {
+          that.applyVipSuccess(payData.vip_expire)
+          wx.showToast({ title: payData.message || '开通成功', icon: 'success' })
+          return
+        }
+        wx.requestPayment({
+          timeStamp: payData.timeStamp,
+          nonceStr: payData.nonceStr,
+          package: payData.package,
+          signType: payData.signType,
+          paySign: payData.paySign,
+          success: function() {
+            that.applyVipSuccess(payData.vip_expire)
+            wx.showToast({ title: '支付成功', icon: 'success' })
+          },
+          fail: function(err) {
+            console.error('微信支付失败', err)
+            wx.showToast({ title: '支付已取消', icon: 'none' })
+          }
+        })
       },
       fail: function(err) {
         wx.hideLoading()
         console.error('支付请求失败', err)
-        wx.showToast({
-          title: '支付失败',
-          icon: 'none'
-        })
+        wx.showToast({ title: '支付失败', icon: 'none' })
       }
     })
   },

@@ -101,6 +101,31 @@ npm run dev
 
 网关对外路径与原 Node 版一致（`/api/auth/*`、`/api/user/*`、`/api/banks/*`、`/api/questions/*`、`/api/exam/*`），客户端仅需将基址从 `http://localhost:3001` 改为 `http://localhost:8080`。
 
+## JWT 鉴权
+
+- 登录接口返回 `data.token`
+- 客户端请求头：`Authorization: Bearer <token>`
+- 网关校验 JWT，并向下游传递 `X-Openid`
+- 仍兼容 URL 参数 `openid`（过渡期）
+
+## 微信支付
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/user/pay/create` | 统一下单，返回小程序 `wx.requestPayment` 参数 |
+| `POST /api/user/pay/notify` | 微信支付回调（XML） |
+
+`WECHAT_PAY_ENABLED=false` 时，`pay/create` 直接开通 VIP（开发模式）。
+
+## Docker 一键部署
+
+```bash
+# 项目根目录
+docker compose up -d --build
+```
+
+服务：MySQL、Redis、Eureka、Gateway、Auth、User、Question。
+
 ## 原 Node 后端
 
 `backend/server.js` 保留作对照，新开发请以 `backend-spring` 为准。

@@ -2,6 +2,8 @@ package com.exam.question.controller;
 
 import com.exam.common.api.ApiResult;
 import com.exam.question.service.ExamCacheService;
+import com.exam.question.util.OpenidContext;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,13 +20,14 @@ public class ExamController {
     }
 
     @GetMapping("/records")
-    public ApiResult<List<Map<String, Object>>> records(@RequestParam String openid) throws Exception {
-        return ApiResult.ok(examCacheService.getRecords(openid));
+    public ApiResult<List<Map<String, Object>>> records(HttpServletRequest request,
+                                                       @RequestParam(required = false) String openid) throws Exception {
+        return ApiResult.ok(examCacheService.getRecords(OpenidContext.resolve(request, openid)));
     }
 
     @PostMapping("/record")
-    public ApiResult<String> saveRecord(@RequestBody Map<String, Object> body) throws Exception {
-        String openid = (String) body.get("openid");
+    public ApiResult<String> saveRecord(HttpServletRequest request, @RequestBody Map<String, Object> body) throws Exception {
+        String openid = OpenidContext.resolve(request, (String) body.get("openid"));
         @SuppressWarnings("unchecked")
         Map<String, Object> record = (Map<String, Object>) body.get("record");
         if (openid == null || record == null) {
@@ -35,21 +38,23 @@ public class ExamController {
     }
 
     @DeleteMapping("/records")
-    public ApiResult<String> deleteRecords(@RequestParam String openid) {
-        examCacheService.deleteRecords(openid);
+    public ApiResult<String> deleteRecords(HttpServletRequest request,
+                                           @RequestParam(required = false) String openid) {
+        examCacheService.deleteRecords(OpenidContext.resolve(request, openid));
         return ApiResult.okMessage("删除成功");
     }
 
     @GetMapping("/progress")
     public ApiResult<Map<String, Object>> getProgress(
-            @RequestParam String openid,
+            HttpServletRequest request,
+            @RequestParam(required = false) String openid,
             @RequestParam(name = "bank_code", required = false) String bankCode) throws Exception {
-        return ApiResult.ok(examCacheService.getProgress(openid, bankCode));
+        return ApiResult.ok(examCacheService.getProgress(OpenidContext.resolve(request, openid), bankCode));
     }
 
     @PostMapping("/progress")
-    public ApiResult<String> saveProgress(@RequestBody Map<String, Object> body) throws Exception {
-        String openid = (String) body.get("openid");
+    public ApiResult<String> saveProgress(HttpServletRequest request, @RequestBody Map<String, Object> body) throws Exception {
+        String openid = OpenidContext.resolve(request, (String) body.get("openid"));
         String bankCode = (String) body.get("bank_code");
         @SuppressWarnings("unchecked")
         Map<String, Object> progress = (Map<String, Object>) body.get("progress");
@@ -61,13 +66,14 @@ public class ExamController {
     }
 
     @GetMapping("/session")
-    public ApiResult<Map<String, Object>> getSession(@RequestParam String openid) throws Exception {
-        return ApiResult.ok(examCacheService.getSession(openid));
+    public ApiResult<Map<String, Object>> getSession(HttpServletRequest request,
+                                                    @RequestParam(required = false) String openid) throws Exception {
+        return ApiResult.ok(examCacheService.getSession(OpenidContext.resolve(request, openid)));
     }
 
     @PostMapping("/session")
-    public ApiResult<String> saveSession(@RequestBody Map<String, Object> body) throws Exception {
-        String openid = (String) body.get("openid");
+    public ApiResult<String> saveSession(HttpServletRequest request, @RequestBody Map<String, Object> body) throws Exception {
+        String openid = OpenidContext.resolve(request, (String) body.get("openid"));
         @SuppressWarnings("unchecked")
         Map<String, Object> session = (Map<String, Object>) body.get("session");
         if (openid == null || session == null) {
@@ -78,8 +84,9 @@ public class ExamController {
     }
 
     @DeleteMapping("/session")
-    public ApiResult<String> deleteSession(@RequestParam String openid) {
-        examCacheService.deleteSession(openid);
+    public ApiResult<String> deleteSession(HttpServletRequest request,
+                                           @RequestParam(required = false) String openid) {
+        examCacheService.deleteSession(OpenidContext.resolve(request, openid));
         return ApiResult.okMessage("删除成功");
     }
 }

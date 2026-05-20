@@ -1,11 +1,18 @@
 server:
   port: 8080
 
+exam:
+  jwt:
+    secret: ${JWT_SECRET:change-me-exam-jwt-secret-key-32bytes-min}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+
 spring:
   application:
     name: exam-gateway
   cloud:
     gateway:
+      default-filters:
+        - name: JwtAuth
       discovery:
         locator:
           enabled: false

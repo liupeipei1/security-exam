@@ -1,27 +1,149 @@
 version: '3.8'
 
-services:
-  # 后端 API 服务
-  backend:
-    build: ./backend
-    container_name: security-exam-backend
-    ports:
-      - "3001:3001"
-    environment:
-      DB_HOST: mysql
-      DB_USER: root
-      DB_PASSWORD: 123456
-      DB_NAME: exam-db
-      # 微信小程序配置
-      WECHAT_APPID: wxbbfc83572c7db218
-      WECHAT_APPSECRET: 58fa649790458708aa941492f5c15b66
-      # 微信H5授权回调地址
-      WECHAT_REDIRECT_URI: http://localhost:8080
-    networks:
-      - default
-      - code_default
-    restart: always
+# Spring Cloud 全栈一键部署
+# 启动: docker compose up -d --build
+# 网关: http://localhost:8080  前端: http://localhost:5173 (需 npm run dev 或 nginx 托管 dist)
 
-networks:
-  code_default:
-    external: true
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: exam-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: exam-db
+    volumes:
+      - exam-mysql-data:/var/lib/mysql
+      - ./backend/DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
+      - ./backend/DML/bank_config.sql:/docker-entrypoint-initdb.d/02-bank_config.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: exam-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - exam-redis-data:/data
+
+  exam-registry:
+    build:
+      context: ./backend-spring
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: exam-registry
+    container_name: exam-registry
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+
+  exam-gateway:
+    build:
+      context: ./backend-spring
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: exam-gateway
+    container_name: exam-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://exam-registry:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-change-me-exam-jwt-secret-key-32bytes-min}
+    depends_on:
+      exam-registry:
+        condition: service_started
+
+  exam-auth-service:
+    build:
+      context: ./backend-spring
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: exam-auth-service
+    container_name: exam-auth-service
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: mysql
+      DB_PASSWORD: 123456
+      REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://exam-registry:8761/eureka/
+      WECHAT_APPID: ${WECHAT_APPID:-}
+      WECHAT_APPSECRET: ${WECHAT_APPSECRET:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-exam-jwt-secret-key-32bytes-min}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      exam-registry:
+        condition: service_started
+
+  exam-user-service:
+    build:
+      context: ./backend-spring
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: exam-user-service
+    container_name: exam-user-service
+    environment:
+      SERVER_PORT: 8082
+      DB_HOST: mysql
+      DB_PASSWORD: 123456
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://exam-registry:8761/eureka/
+      WECHAT_APPID: ${WECHAT_APPID:-}
+      WECHAT_PAY_ENABLED: ${WECHAT_PAY_ENABLED:-false}
+      WECHAT_PAY_MCH_ID: ${WECHAT_PAY_MCH_ID:-}
+      WECHAT_PAY_API_KEY: ${WECHAT_PAY_API_KEY:-}
+      WECHAT_PAY_NOTIFY_URL: ${WECHAT_PAY_NOTIFY_URL:-http://localhost:8080/api/user/pay/notify}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      exam-registry:
+        condition: service_started
+
+  exam-question-service:
+    build:
+      context: ./backend-spring
+      dockerfile: docker/Dockerfile
+      args:
+        MODULE: exam-question-service
+    container_name: exam-question-service
+    environment:
+      SERVER_PORT: 8083
+      DB_HOST: mysql
+      DB_PASSWORD: 123456
+      REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://exam-registry:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      exam-registry:
+        condition: service_started
+      exam-user-service:
+        condition: service_started
+
+  exam-web:
+    image: nginx:alpine
+    container_name: exam-web
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - exam-gateway
+    profiles:
+      - with-web
+
+volumes:
+  exam-mysql-data:
+  exam-redis-data:

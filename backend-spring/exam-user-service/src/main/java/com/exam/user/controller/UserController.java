@@ -40,6 +40,10 @@ public class UserController {
         return vipService.checkVip(openid);
     }
 
+    /**
+     * 购买会员：生产环境请使用 POST /api/user/pay/create 调起微信支付。
+     * 本接口保留用于开发直连开通。
+     */
     @PostMapping("/buy-vip")
     public ResponseEntity<?> buyVip(@RequestBody Map<String, String> body) {
         String openid = body.get("openid");

@@ -4,6 +4,7 @@ import com.exam.auth.config.WeChatProperties;
 import com.exam.auth.entity.UserEntity;
 import com.exam.auth.repository.UserRepository;
 import com.exam.common.dto.UserInfoDto;
+import com.exam.common.security.JwtService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
@@ -26,13 +27,15 @@ public class WeChatAuthService {
 
     private final WeChatProperties weChatProperties;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, UserEntity> mockUsers = new ConcurrentHashMap<>();
 
-    public WeChatAuthService(WeChatProperties weChatProperties, UserRepository userRepository) {
+    public WeChatAuthService(WeChatProperties weChatProperties, UserRepository userRepository, JwtService jwtService) {
         this.weChatProperties = weChatProperties;
         this.userRepository = userRepository;
+        this.jwtService = jwtService;
         mockUsers.put("test_openid", mockUser("test_openid", "测试用户"));
         mockUsers.put("dev_openid", mockUser("dev_openid", "开发用户"));
     }
@@ -89,6 +92,7 @@ public class WeChatAuthService {
             dto.setIs_vip(vip);
             dto.setVip_expire(user.getVipExpire() != null ? user.getVipExpire().format(FMT) : null);
         }
+        dto.setToken(jwtService.generateToken(openid));
         return dto;
     }
 

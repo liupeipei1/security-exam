@@ -8,6 +8,7 @@ public class UserInfoDto {
     private String vip_expire;
     private String nickname;
     private String avatar;
+    private String token;
 
     public Long getId() {
         return id;
@@ -55,5 +56,13 @@ public class UserInfoDto {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }
