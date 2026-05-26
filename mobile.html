@@ -8,6 +8,77 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- 引入外部CSS样式 -->
     <link rel="stylesheet" href="css/style.css">
+    <style>
+            /* 备注区域样式 */
+            .note-section {
+                margin-top: 20px;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 10px;
+                border: 1px solid #e9ecef;
+            }
+
+            .note-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .note-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #333;
+            }
+
+            .note-input {
+                width: 100%;
+                padding: 12px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                font-size: 14px;
+                resize: vertical;
+                box-sizing: border-box;
+                font-family: inherit;
+            }
+
+            .note-input:focus {
+                outline: none;
+                border-color: #3498db;
+                box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+            }
+
+            .save-note-btn {
+                margin-top: 10px;
+                padding: 10px 20px;
+                background: linear-gradient(135deg, #3498db, #2980b9);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: background 0.3s;
+            }
+
+            .save-note-btn:hover {
+                background: linear-gradient(135deg, #2980b9, #2471a3);
+            }
+
+            .delete-note-btn {
+                padding: 6px 12px;
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: background 0.3s;
+            }
+
+            .delete-note-btn:hover {
+                background: #c0392b;
+            }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -128,6 +199,21 @@
                     <div v-if="showAnswer" class="answer-analysis">
                         <div class="analysis-title">答案解析</div>
                         <div class="analysis-content">{{ currentQuestion.analysis }}</div>
+                    </div>
+                    
+                    <!-- 备注区域 -->
+                    <div class="note-section">
+                        <div class="note-header">
+                            <span class="note-title">📝 我的笔记</span>
+                            <button v-if="currentNote" class="delete-note-btn" @click="deleteNote">删除</button>
+                        </div>
+                        <textarea 
+                            v-model="currentNote" 
+                            class="note-input" 
+                            placeholder="在这里添加你的学习笔记..."
+                            rows="3"
+                        ></textarea>
+                        <button class="save-note-btn" @click="saveNote">保存笔记</button>
                     </div>
                     
                     <!-- 操作按钮 -->

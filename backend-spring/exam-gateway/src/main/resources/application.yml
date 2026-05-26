@@ -35,7 +35,11 @@ spring:
         - id: question-service
           uri: lb://exam-question-service
           predicates:
-            - Path=/api/banks/**,/api/questions/**,/api/exam/**,/api/speech
+            - Path=/api/banks/**,/api/questions/**,/api/speech/**
+        - id: exam-service
+          uri: lb://exam-exam-service
+          predicates:
+            - Path=/api/exam/**
 
 eureka:
   client:

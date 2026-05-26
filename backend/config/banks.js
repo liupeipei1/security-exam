@@ -78,7 +78,40 @@ const defaultBankConfigs = [
     total_questions: 0,
     judgment_count: 0,
     single_count: 0,
-    multiple_count: 0
+    multiple_count: 0,
+    is_parent: true
+  },
+  {
+    bank_code: 'personal_finance',
+    bank_name: '个人理财（中级押题）',
+    bank_description: '2025年10月中级银行从业个人理财科目押题卷',
+    bank_desc_detail: '2025年10月中级银行从业资格考试个人理财科目押题卷（5套），含单选、多选及案例分析题。',
+    description: '2025年10月中级银行从业资格考试个人理财科目押题卷（5套），含单选、多选及案例分析题。',
+    table_name: 'bank_personal_finance',
+    enabled: true,
+    sort_order: 4,
+    icon: '💰',
+    total_questions: 0,
+    judgment_count: 0,
+    single_count: 0,
+    multiple_count: 0,
+    parent_code: 'banking_medium'
+  },
+  {
+    bank_code: 'banking_law',
+    bank_name: '法律法规（中级押题）',
+    bank_description: '2025年10月中级银行从业法律法规科目押题卷',
+    bank_desc_detail: '2025年10月中级银行从业资格考试银行业法律法规科目押题卷（5套），含单选、多选及案例分析题。',
+    description: '2025年10月中级银行从业资格考试银行业法律法规科目押题卷（5套），含单选、多选及案例分析题。',
+    table_name: 'bank_banking_law',
+    enabled: true,
+    sort_order: 5,
+    icon: '⚖️',
+    total_questions: 0,
+    judgment_count: 0,
+    single_count: 0,
+    multiple_count: 0,
+    parent_code: 'banking_medium'
   }
 ];
 
@@ -89,7 +122,9 @@ function getDefaultBankStats(bankCode) {
     'security_admin_4': { total_questions: 150, judgment_count: 30, single_count: 110, multiple_count: 10 },
     'ai_trainer_3': { total_questions: 900, judgment_count: 300, single_count: 300, multiple_count: 300 },
     'security_level3': { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 },
-    'banking_medium': { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 }
+    'banking_medium': { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 },
+    'personal_finance': { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 },
+    'banking_law': { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 }
   };
   return stats[bankCode] || { total_questions: 0, judgment_count: 0, single_count: 0, multiple_count: 0 };
 }

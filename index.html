@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>网络与信息安全管理员（三级）在线题库</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.3.13/dist/vue.global.js"></script>
+    <script src="js/config.js"></script>
+    <script>
+        // 调试：检查EXAM_CONFIG是否正确加载
+        console.log('=== EXAM_CONFIG Debug ===');
+        console.log('EXAM_CONFIG defined:', typeof EXAM_CONFIG !== 'undefined');
+        if (typeof EXAM_CONFIG !== 'undefined') {
+            console.log('EXAM_CONFIG.guides defined:', !!EXAM_CONFIG.guides);
+            if (EXAM_CONFIG.guides) {
+                console.log('EXAM_CONFIG.guides keys:', Object.keys(EXAM_CONFIG.guides));
+                console.log('security_level3 exists:', !!EXAM_CONFIG.guides['security_level3']);
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -333,6 +346,24 @@
         .submit-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .submit-single-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: #fff;
+            margin-top: 15px;
+        }
+
+        .submit-single-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
         }
 
         .reset-btn {
@@ -1398,9 +1429,20 @@
             <!-- 题库选择器 -->
             <div class="bank-selector">
                 <select v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
-                    <option v-for="bank in banks" :key="bank.bank_code" :value="bank.bank_code">
-                        {{ bank.icon }} {{ bank.bank_name }}
-                    </option>
+                    <template v-for="bank in banks" :key="bank.bank_code">
+                        <!-- 父级题库作为分组标题，不可选择 -->
+                        <option v-if="bank.is_parent" :value="" disabled>
+                            ─── {{ bank.icon }} {{ bank.bank_name }} ───
+                        </option>
+                        <!-- 子级题库，显示缩进 -->
+                        <option v-else-if="bank.parent_code" :value="bank.bank_code">
+                            ├─ {{ bank.icon }} {{ bank.bank_name }}
+                        </option>
+                        <!-- 普通题库 -->
+                        <option v-else :value="bank.bank_code">
+                            {{ bank.icon }} {{ bank.bank_name }}
+                        </option>
+                    </template>
                 </select>
             </div>
             
@@ -1589,6 +1631,15 @@
                                 <span class="option-text">{{ option }}</span>
                             </li>
                         </ul>
+
+                        <!-- 单个题目提交按钮 -->
+                        <button 
+                            v-if="!(examMode ? showResult : showAnswers[question.id])"
+                            class="submit-single-btn"
+                            @click="submitSingleQuestion(question.id)"
+                        >
+                            提交答案
+                        </button>
 
                         <div v-if="examMode ? showResult : showAnswers[question.id]" class="correct-answer">
                             <h4>✅ 正确答案</h4>
@@ -1785,33 +1836,27 @@
 
                     <div class="knowledge-card">
                         <h3>考试概述</h3>
-                        <p>网络与信息安全管理员（三级）考试分为理论知识考试和操作技能考核两部分。</p>
+                        <p>{{ currentGuide.overview }}</p>
                         <ul>
-                            <li><strong>理论知识考试</strong>：采用闭卷笔试或机考方式，满分100分，60分合格</li>
-                            <li><strong>操作技能考核</strong>：现场实际操作或模拟操作，满分100分，60分合格</li>
+                            <li v-for="(item, index) in currentGuide.examContent" :key="index">
+                                <strong>{{ item.title }}</strong>：{{ item.desc }}
+                            </li>
                         </ul>
                     </div>
 
                     <div class="knowledge-card">
                         <h3>考试内容</h3>
                         <ul>
-                            <li><strong>信息安全基础</strong>：信息安全概念、安全模型、安全框架</li>
-                            <li><strong>网络安全技术</strong>：网络协议、防火墙、入侵检测、VPN</li>
-                            <li><strong>操作系统安全</strong>：Windows、Linux安全配置</li>
-                            <li><strong>数据安全</strong>：数据分类、数据加密、数据备份</li>
-                            <li><strong>安全管理</strong>：安全策略、风险评估、安全审计</li>
-                            <li><strong>法律法规</strong>：网络安全法、个人信息保护法等</li>
+                            <li v-for="(item, index) in currentGuide.content" :key="index">
+                                <strong>{{ item.title }}</strong>：{{ item.desc }}
+                            </li>
                         </ul>
                     </div>
 
                     <div class="knowledge-card">
                         <h3>备考建议</h3>
                         <ul>
-                            <li>系统学习信息安全基础知识</li>
-                            <li>熟悉常见安全工具和技术</li>
-                            <li>多做模拟练习题</li>
-                            <li>关注最新安全动态和威胁趋势</li>
-                            <li>理解安全原理而非死记硬背</li>
+                            <li v-for="(tip, index) in currentGuide.tips" :key="index">{{ tip }}</li>
                         </ul>
                     </div>
                 </div>
@@ -1909,13 +1954,6 @@
     </div>
 
     <script>
-        // 考试配置
-        const EXAM_CONFIG = {
-            judgment: 40,
-            single: 140,
-            multiple: 10
-        };
-        
         // 章节信息
         const chapters = [
             { name: "全部题目", count: 0 }
@@ -1928,7 +1966,6 @@
         };
         
         // 暴露到全局window对象
-        window.EXAM_CONFIG = EXAM_CONFIG;
         window.chapters = chapters;
         window.WECHAT_CONFIG = WECHAT_CONFIG;
     </script>
@@ -2084,6 +2121,33 @@
                     return bank ? bank.bank_name : '';
                 });
 
+                // 获取当前题库对应的考试指南
+                const currentGuide = computed(() => {
+                    console.log('=== currentGuide computed ===');
+                    console.log('currentBank.value:', currentBank.value);
+                    
+                    // 使用 window.EXAM_CONFIG 访问全局配置
+                    const examConfig = window.EXAM_CONFIG;
+                    console.log('window.EXAM_CONFIG:', examConfig);
+                    
+                    if (examConfig && examConfig.guides) {
+                        console.log('guides keys:', Object.keys(examConfig.guides));
+                        console.log('guide found:', examConfig.guides[currentBank.value]);
+                        
+                        const guide = examConfig.guides[currentBank.value];
+                        if (guide) {
+                            return guide;
+                        }
+                    }
+                    // 默认返回网络与信息安全管理员（三级）的指南
+                    return {
+                        overview: '该题库暂无详细考试指南。',
+                        examContent: [{ title: '考试形式', desc: '机考' }],
+                        content: [{ title: '考试内容', desc: '请参考相关教材和考试大纲' }],
+                        tips: ['认真复习考试大纲', '多做练习题', '保持良好心态']
+                    };
+                });
+
                 // 加载题库列表
                 const loadBanks = async () => {
                     try {
@@ -2146,13 +2210,9 @@
                         const question = questions.value.find(q => q.id === parseInt(id));
                         if (!question || !question.answer) continue;
                         
-                        // 将用户选择的索引转换为答案标签
+                        // 将用户选择的索引转换为答案标签（统一使用字母格式）
                         const userAnswerLabels = answer.map(index => {
-                            if (question.type === 'judgment') {
-                                return index === 0 ? '正确' : '错误';
-                            } else {
-                                return getOptionLabel(index);
-                            }
+                            return getOptionLabel(index);
                         }).sort();
                         
                         const correctAnswerLabels = [...question.answer].sort();
@@ -2262,10 +2322,15 @@
                         }
                     }
                     
-                    // 背题模式下，选择后立即显示当前题目的答案
-                    if (!examMode.value) {
-                        showAnswers.value[questionId] = true;
-                    }
+                    // 背题模式下，需要点击"显示答案"按钮才显示答案，而不是选择后立即显示
+                    // if (!examMode.value) {
+                    //     showAnswers.value[questionId] = true;
+                    // }
+                };
+
+                // 提交单个题目答案，显示正确答案
+                const submitSingleQuestion = (questionId) => {
+                    showAnswers.value[questionId] = true;
                 };
 
                 const submitAnswers = () => {
@@ -2788,6 +2853,7 @@
                     banks,
                     currentBank,
                     currentBankName,
+                    currentGuide,
                     switchBank,
                     totalQuestions,
                     totalPages,
@@ -2802,6 +2868,7 @@
                     isCorrectOption,
                     formatAnswer,
                     selectOption,
+                    submitSingleQuestion,
                     submitAnswers,
                     goToPage,
                     resetAnswers,

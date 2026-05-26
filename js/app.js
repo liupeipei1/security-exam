@@ -57,7 +57,10 @@ function initApp() {
                 currentQuestionType: 'all',
                 loading: true,
                 chapters: [{ name: "全部题目", count: 0 }],
-                examConfig: typeof EXAM_CONFIG !== 'undefined' ? EXAM_CONFIG : { judgment: 40, single: 140, multiple: 10 }
+                examConfig: typeof EXAM_CONFIG !== 'undefined' ? EXAM_CONFIG : { judgment: 40, single: 140, multiple: 10 },
+                // 备注相关数据
+                currentNote: '',
+                notes: {} // 存储各题目的备注，key为question_id
             };
         },
         computed: {
@@ -215,6 +218,7 @@ function initApp() {
                     this.currentQuestionIndex++;
                     this.selectedOptions = [];
                     this.showAnswer = false;
+                    this.loadNote();
                 } else {
                     this.showResult = true;
                 }
@@ -224,6 +228,7 @@ function initApp() {
                     this.currentQuestionIndex--;
                     this.selectedOptions = [];
                     this.showAnswer = false;
+                    this.loadNote();
                 }
             },
             selectChapter(index) {
@@ -277,6 +282,97 @@ function initApp() {
                 this.currentQuestionIndex = 0;
                 this.selectedOptions = [];
                 this.showAnswer = false;
+            },
+            // 加载当前题目的备注
+            loadNote() {
+                const questionId = this.currentQuestion.id;
+                if (questionId) {
+                    // 先检查本地缓存
+                    if (this.notes[questionId] !== undefined) {
+                        this.currentNote = this.notes[questionId];
+                        return;
+                    }
+                    // 从后端加载
+                    fetch(`http://localhost:3001/api/notes?openid=test_openid&bank_code=security&question_id=${questionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.data && data.data.note) {
+                                this.currentNote = data.data.note;
+                                this.notes[questionId] = data.data.note;
+                            } else {
+                                this.currentNote = '';
+                                this.notes[questionId] = '';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('加载备注失败:', error);
+                            this.currentNote = '';
+                        });
+                }
+            },
+            // 保存备注
+            saveNote() {
+                const questionId = this.currentQuestion.id;
+                if (!questionId) return;
+                
+                fetch('http://localhost:3001/api/notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        openid: 'test_openid',
+                        bank_code: 'security',
+                        question_id: questionId,
+                        note: this.currentNote
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.notes[questionId] = this.currentNote;
+                        alert('备注保存成功');
+                    } else {
+                        alert('备注保存失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('保存备注失败:', error);
+                    alert('备注保存失败');
+                });
+            },
+            // 删除备注
+            deleteNote() {
+                const questionId = this.currentQuestion.id;
+                if (!questionId || !this.currentNote) return;
+                
+                if (!confirm('确定要删除这个备注吗？')) return;
+                
+                fetch('http://localhost:3001/api/notes', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        openid: 'test_openid',
+                        bank_code: 'security',
+                        question_id: questionId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.currentNote = '';
+                        this.notes[questionId] = '';
+                        alert('备注删除成功');
+                    } else {
+                        alert('备注删除失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('删除备注失败:', error);
+                    alert('备注删除失败');
+                });
             }
         }
     });

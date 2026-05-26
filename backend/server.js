@@ -1060,6 +1060,110 @@ app.post('/api/speech', async (req, res) => {
   });
 });
 
+// ==================== 题目备注相关接口 ====================
+
+// 获取题目备注
+app.get('/api/notes', async (req, res) => {
+  try {
+    const { openid, bank_code, question_id } = req.query;
+    
+    if (!openid || !bank_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    let sql = 'SELECT * FROM question_notes WHERE openid = ? AND bank_code = ?';
+    let params = [openid, bank_code];
+    
+    if (question_id) {
+      sql += ' AND question_id = ?';
+      params.push(question_id);
+    }
+    
+    const [rows] = await connection.execute(sql, params);
+    await connection.end();
+    
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('获取备注失败:', error);
+    res.status(500).json({ success: false, message: '获取备注失败' });
+  }
+});
+
+// 保存或更新题目备注
+app.post('/api/notes', async (req, res) => {
+  try {
+    const { openid, bank_code, question_id, note } = req.body;
+    
+    if (!openid || !bank_code || question_id === undefined) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 检查是否已存在备注
+    const [existing] = await connection.execute(
+      'SELECT id FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
+      [openid, bank_code, question_id]
+    );
+    
+    if (existing.length > 0) {
+      // 更新备注
+      if (note && note.trim()) {
+        await connection.execute(
+          'UPDATE question_notes SET note = ? WHERE openid = ? AND bank_code = ? AND question_id = ?',
+          [note, openid, bank_code, question_id]
+        );
+      } else {
+        // 如果备注为空，删除记录
+        await connection.execute(
+          'DELETE FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
+          [openid, bank_code, question_id]
+        );
+      }
+    } else {
+      // 插入新备注
+      if (note && note.trim()) {
+        await connection.execute(
+          'INSERT INTO question_notes (openid, bank_code, question_id, note) VALUES (?, ?, ?, ?)',
+          [openid, bank_code, question_id, note]
+        );
+      }
+    }
+    
+    await connection.end();
+    res.json({ success: true, message: '保存成功' });
+  } catch (error) {
+    console.error('保存备注失败:', error);
+    res.status(500).json({ success: false, message: '保存备注失败' });
+  }
+});
+
+// 删除题目备注
+app.delete('/api/notes', async (req, res) => {
+  try {
+    const { openid, bank_code, question_id } = req.query;
+    
+    if (!openid || !bank_code || question_id === undefined) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    await connection.execute(
+      'DELETE FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
+      [openid, bank_code, question_id]
+    );
+    
+    await connection.end();
+    res.json({ success: true, message: '删除成功' });
+  } catch (error) {
+    console.error('删除备注失败:', error);
+    res.status(500).json({ success: false, message: '删除备注失败' });
+  }
+});
+
 // 启动服务器
 function startServer() {
   app.listen(PORT, () => {
