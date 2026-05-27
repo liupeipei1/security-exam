@@ -1,4 +1,4 @@
-﻿        * {
+* {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -404,6 +404,26 @@
             font-size: 0.95rem;
         }
 
+        .explanation-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: vertical;
+            background: #fff;
+            color: #333;
+            font-family: inherit;
+        }
+
+        .explanation-input:focus {
+            outline: none;
+            border-color: #ff9800;
+            box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.1);
+        }
+
         .pagination {
             display: flex;
             justify-content: center;
@@ -789,6 +809,68 @@
 
         .knowledge-card li {
             margin-bottom: 8px;
+        }
+
+        .knowledge-card h2 {
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            text-align: center;
+        }
+
+        .question-type-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .question-type-table th,
+        .question-type-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .question-type-table th {
+            background-color: #4a90d9;
+            color: white;
+            font-weight: bold;
+        }
+
+        .question-type-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        .question-type-table tr:hover {
+            background-color: #e8f0fe;
+        }
+
+        .total-score {
+            text-align: right;
+            font-size: 1.1rem;
+            color: #4a90d9;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4a90d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
@@ -1379,4 +1461,4 @@
             font-size: 0.9rem;
             margin-top: 15px;
         }
-    </style>
+ 

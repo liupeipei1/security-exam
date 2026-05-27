@@ -10,6 +10,8 @@ export function useExamApp() {
                 const showResult = ref(false);
                 const finalScore = ref(0);
                 const userAnswers = ref({});
+                const questionNotes = ref({}); // 存储每个题目的备注，键为题目id
+                const questionExplanations = ref({}); // 存储每个题目的自定义解析，键为题目id
                 const examMode = ref(false); // 考试模式：true=考试模式，false=背题模式
                 
                 // 模拟考试相关变量
@@ -58,9 +60,20 @@ export function useExamApp() {
                 const questions = ref([]);
                 const loading = ref(true);
                 
+                // 知识要点数据
+                const knowledgePoints = ref([]);
+                const knowledgeLoading = ref(false);
+                
+                // 考试指南数据
+                const guideData = ref({});
+                const guideLoading = ref(false);
+                
                 // 从后端 API 加载题库数据
                 const loadQuestions = async (bankCode = null) => {
-                    const params = { bank_code: bankCode || currentBank.value || undefined }
+                    const params = { 
+                        bank_code: bankCode || currentBank.value || undefined,
+                        openid: currentUser.value?.openid || undefined
+                    }
                     try {
                         const data = await apiGet('/api/questions', params)
                             console.log('API返回数据:', data);
@@ -108,9 +121,59 @@ export function useExamApp() {
                 const initLoad = async () => {
                     checkLoginStatus();
                     await loadBanks();
+                    // 加载之前保存的备注（从数据库）
+                    await loadQuestionNotes();
                     // 题库列表加载完成后，根据登录状态加载题目
                     if (isLoggedIn.value) {
                         loadQuestions(currentBank.value);
+                    }
+                    // 加载知识要点（不需要登录）
+                    loadKnowledgePoints(currentBank.value);
+                };
+
+                // 加载知识要点
+                const loadKnowledgePoints = async (bankCode = null) => {
+                    const targetBankCode = bankCode || currentBank.value || undefined;
+                    console.log('loadKnowledgePoints called with bankCode:', bankCode, ', currentBank.value:', currentBank.value, ', targetBankCode:', targetBankCode);
+                    const params = { bank_code: targetBankCode };
+                    knowledgeLoading.value = true;
+                    try {
+                        const data = await apiGet('/api/knowledge', params);
+                        console.log('知识要点API返回数据:', data);
+                        if (data && data.success === true && Array.isArray(data.data)) {
+                            knowledgePoints.value = data.data;
+                            console.log('成功加载知识要点:', knowledgePoints.value.length, '条');
+                        } else {
+                            knowledgePoints.value = [];
+                        }
+                    } catch (error) {
+                        console.error('加载知识要点失败:', error);
+                        knowledgePoints.value = [];
+                    } finally {
+                        knowledgeLoading.value = false;
+                    }
+                };
+                
+                // 加载考试指南
+                const loadGuide = async (bankCode = null) => {
+                    const targetBankCode = bankCode || currentBank.value || undefined;
+                    console.log('loadGuide called with bankCode:', bankCode, ', currentBank.value:', currentBank.value, ', targetBankCode:', targetBankCode);
+                    const params = { bank_code: targetBankCode };
+                    guideLoading.value = true;
+                    try {
+                        const data = await apiGet('/api/guide', params);
+                        console.log('考试指南API返回数据:', data);
+                        if (data && data.success === true && data.data) {
+                            guideData.value = data.data;
+                            console.log('成功加载考试指南:', guideData.value.title);
+                        } else {
+                            guideData.value = {};
+                        }
+                    } catch (error) {
+                        console.error('加载考试指南失败:', error);
+                        guideData.value = {};
+                    } finally {
+                        guideLoading.value = false;
                     }
                 };
 
@@ -120,6 +183,9 @@ export function useExamApp() {
                     if (isLoggedIn.value) {
                         loadQuestions(bankCode);
                     }
+                    // 无论是否登录都加载知识要点和考试指南
+                    loadKnowledgePoints(bankCode);
+                    loadGuide(bankCode);
                 };
 
                 // 获取当前题库名称
@@ -209,9 +275,17 @@ export function useExamApp() {
                 });
 
                 // 监听题型切换，重置页码
-                watch(currentSection, () => {
+                watch(currentSection, (newSection) => {
                     currentPage.value = 1;
                     jumpPage.value = 1;
+                    // 如果切换到知识要点页面，加载知识要点数据
+                    if (newSection === 'knowledge') {
+                        loadKnowledgePoints();
+                    }
+                    // 如果切换到考试指南页面，加载考试指南数据
+                    if (newSection === 'guide') {
+                        loadGuide();
+                    }
                 });
 
                 // 方法
@@ -300,11 +374,134 @@ export function useExamApp() {
                             userAnswers.value[questionId].push(optionIndex);
                         }
                     }
+                    // 移除自动显示答案，改为点击提交按钮后显示
+                };
+
+                // 设置题目备注（持久化存储）
+                // 保存题目备注（存储到数据库，同时备份到localStorage）
+                const setQuestionNote = async (questionId, note) => {
+                    questionNotes.value[questionId] = note;
                     
-                    // 背题模式下，选择后立即显示当前题目的答案
-                    if (!examMode.value) {
-                        showAnswers.value[questionId] = true;
+                    // 始终备份到localStorage，确保刷新后能显示
+                    saveNotesToLocalStorage();
+                    
+                    // 如果用户已登录，同步到后端数据库
+                    if (currentUser.value?.openid && currentBank.value) {
+                        try {
+                            await apiPost('/api/notes', {
+                                openid: currentUser.value.openid,
+                                bank_code: currentBank.value,
+                                question_id: questionId,
+                                note: note
+                            });
+                        } catch (error) {
+                            console.error('保存备注到数据库失败:', error);
+                        }
                     }
+                };
+
+                // 获取题目备注
+                const getQuestionNote = (questionId) => {
+                    return questionNotes.value[questionId] || '';
+                };
+
+                // 设置题目自定义解析
+                const setQuestionExplanation = async (questionId, explanation) => {
+                    questionExplanations.value[questionId] = explanation;
+                    
+                    // 调用后端API保存解析
+                    if (currentBank.value) {
+                        try {
+                            await apiPost('/api/question/explanation', {
+                                bank_code: currentBank.value,
+                                question_id: questionId,
+                                explanation: explanation
+                            });
+                            console.log('解析保存成功');
+                        } catch (error) {
+                            console.error('保存解析失败:', error);
+                        }
+                    }
+                };
+
+                // 获取题目解析（优先自定义解析，否则使用默认解析）
+                const getQuestionExplanation = (question) => {
+                    if (questionExplanations.value[question.id]) {
+                        return questionExplanations.value[question.id];
+                    }
+                    return question.explanation || '暂无解析';
+                };
+
+                // 从后端加载备注（优先数据库，降级到localStorage）
+                const loadQuestionNotes = async () => {
+                    let loadedFromDB = false;
+                    
+                    if (currentUser.value?.openid && currentBank.value) {
+                        try {
+                            const data = await apiGet('/api/notes', {
+                                openid: currentUser.value.openid,
+                                bank_code: currentBank.value
+                            });
+                            if (data.success && data.data && data.data.length > 0) {
+                                const notesMap = {};
+                                data.data.forEach(item => {
+                                    notesMap[item.question_id] = item.note;
+                                });
+                                questionNotes.value = notesMap;
+                                loadedFromDB = true;
+                                // 同步到localStorage
+                                saveNotesToLocalStorage();
+                            }
+                        } catch (error) {
+                            console.error('从后端加载备注失败:', error);
+                        }
+                    }
+                    
+                    // 如果从数据库加载失败、未登录或数据库无数据，从localStorage加载
+                    if (!loadedFromDB) {
+                        loadNotesFromLocalStorage();
+                    }
+                };
+
+                // 保存备注到localStorage
+                const saveNotesToLocalStorage = () => {
+                    try {
+                        localStorage.setItem('questionNotes', JSON.stringify(questionNotes.value));
+                    } catch (error) {
+                        console.error('保存备注到localStorage失败:', error);
+                    }
+                };
+
+                // 从localStorage加载备注
+                const loadNotesFromLocalStorage = () => {
+                    try {
+                        const saved = localStorage.getItem('questionNotes');
+                        if (saved) {
+                            const savedNotes = JSON.parse(saved);
+                            // 合并本地存储的备注（不覆盖已加载的）
+                            questionNotes.value = { ...savedNotes, ...questionNotes.value };
+                        }
+                    } catch (error) {
+                        console.error('从localStorage加载备注失败:', error);
+                    }
+                };
+
+                // 单题提交方法
+                const submitSingleQuestion = (questionId) => {
+                    // 显示当前题目的答案
+                    // 使用展开运算符确保响应式更新
+                    showAnswers.value = { ...showAnswers.value, [questionId]: true };
+                };
+
+                // 重置单题答案方法
+                const resetSingleQuestion = (questionId) => {
+                    // 清除该题的答案选择
+                    if (userAnswers.value[questionId]) {
+                        delete userAnswers.value[questionId];
+                        userAnswers.value = { ...userAnswers.value };
+                    }
+                    // 隐藏答案
+                    showAnswers.value = { ...showAnswers.value, [questionId]: false };
                 };
 
                 const submitAnswers = () => {
@@ -778,6 +975,7 @@ export function useExamApp() {
                 const resetAnswers = () => {
                     userAnswers.value = {};
                     showAnswers.value = {}; // 清空所有题目的答案显示状态
+                    questionNotes.value = {}; // 清空所有题目的备注
                 };
 
                 const closeResult = () => {
@@ -814,6 +1012,12 @@ export function useExamApp() {
                     formatAnswer,
                     selectOption,
                     submitAnswers,
+                    submitSingleQuestion,
+                    resetSingleQuestion,
+                    setQuestionNote,
+                    getQuestionNote,
+                    setQuestionExplanation,
+                    getQuestionExplanation,
                     goToPage,
                     resetAnswers,
                     closeResult,
@@ -852,6 +1056,12 @@ export function useExamApp() {
                     handleQrCodeLogin,
                     cleanupQrCodeLogin,
                     showUserMenu,
-                    examMode
+                    examMode,
+                    // 知识要点相关
+                    knowledgePoints,
+                    knowledgeLoading,
+                    // 考试指南相关
+                    guideData,
+                    guideLoading
                 };
 }

@@ -6,7 +6,7 @@
             
             <!-- 题库选择器 -->
             <div class="bank-selector">
-                <select v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
+                <select id="bank-select" v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
                     <option v-for="bank in banks" :key="bank.bank_code" :value="bank.bank_code">
                         {{ bank.icon }} {{ bank.bank_name }}
                     </option>
@@ -206,7 +206,42 @@
 
                         <div v-if="examMode ? showResult : showAnswers[question.id]" class="answer-explanation">
                             <h4>💡 解析</h4>
-                            <p>{{ question.explanation }}</p>
+                            <textarea 
+                                class="explanation-input"
+                                :value="getQuestionExplanation(question)"
+                                @input="setQuestionExplanation(question.id, $event.target.value)"
+                                placeholder="在此输入解析内容..."
+                            ></textarea>
+                        </div>
+
+                        <!-- 备注输入框 -->
+                        <div class="question-note">
+                            <label :for="'note-' + currentPage + '-' + question.id" class="note-label">📝 备注记录</label>
+                            <textarea 
+                                :id="'note-' + currentPage + '-' + question.id"
+                                class="note-input"
+                                :value="getQuestionNote(question.id)"
+                                @input="setQuestionNote(question.id, $event.target.value)"
+                                placeholder="在此输入您的备注，方便后续复习..."
+                            ></textarea>
+                        </div>
+
+                        <!-- 单题提交按钮 -->
+                        <div class="question-actions">
+                            <button 
+                                class="submit-single-btn" 
+                                :class="{ 'submitted': showAnswers[question.id] }"
+                                @click="submitSingleQuestion(question.id)"
+                            >
+                                {{ showAnswers[question.id] ? '✓ 已提交' : '提交答案' }}
+                            </button>
+                            <button 
+                                v-if="showAnswers[question.id]"
+                                class="reset-single-btn"
+                                @click="resetSingleQuestion(question.id)"
+                            >
+                                🔄 重置
+                            </button>
                         </div>
                     </div>
 
@@ -229,7 +264,7 @@
                             {{ showAnswers ? '隐藏答案' : '显示答案' }}
                         </button>
                         
-                        <button class="submit-btn" @click="submitAnswers">提交答案</button>
+                        <button class="submit-btn" @click="submitAnswers">提交全部答案</button>
                         <button class="reset-btn" @click="resetAnswers">重置答题</button>
                     </div>
 
@@ -244,6 +279,7 @@
                         <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
                         <div class="jump-box">
                             <input 
+                                id="jump-page-input"
                                 type="number" 
                                 v-model.number="jumpPage"
                                 min="1" 
@@ -328,62 +364,28 @@
                         <div class="quiz-title">📖 知识要点</div>
                     </div>
 
-                    <div class="knowledge-card">
-                        <h3>1. 信息安全基础概念</h3>
-                        <p>信息安全是指保护信息系统的硬件、软件及相关数据，使其不受到偶然的或者恶意的原因而遭到破坏、更改、泄露，保证信息系统能够连续、可靠、正常地运行。</p>
-                        <ul>
-                            <li><strong>保密性</strong>：确保信息不被未授权的个人、实体或过程访问或披露</li>
-                            <li><strong>完整性</strong>：保护信息的准确性和完整性，防止未经授权的修改</li>
-                            <li><strong>可用性</strong>：确保授权用户在需要时能够访问所需的信息</li>
-                            <li><strong>可控性</strong>：对信息的传播及内容具有控制能力</li>
-                            <li><strong>不可否认性</strong>：确保信息的发送者和接收者无法否认其行为</li>
-                        </ul>
+                    <!-- 加载状态 -->
+                    <div v-if="knowledgeLoading" class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>加载中...</p>
                     </div>
 
-                    <div class="knowledge-card">
-                        <h3>2. 网络安全威胁类型</h3>
-                        <p>网络安全威胁是指对网络系统造成危害的各种潜在因素，主要包括以下类型：</p>
-                        <ul>
-                            <li><strong>恶意软件</strong>：病毒、蠕虫、木马、勒索软件等</li>
-                            <li><strong>网络攻击</strong>：DDoS攻击、SQL注入、跨站脚本攻击(XSS)等</li>
-                            <li><strong>社会工程学</strong>：钓鱼攻击、 pretexting、肩窥等</li>
-                            <li><strong>内部威胁</strong>：员工误操作、恶意内部人员</li>
-                            <li><strong>物理攻击</strong>：设备盗窃、未授权访问机房等</li>
-                        </ul>
-                    </div>
+                    <!-- 知识要点列表 -->
+                    <template v-else>
+                        <div 
+                            v-for="(point, index) in knowledgePoints" 
+                            :key="point.id" 
+                            class="knowledge-card"
+                        >
+                            <h3>{{ point.title }}</h3>
+                            <div v-html="point.content"></div>
+                        </div>
 
-                    <div class="knowledge-card">
-                        <h3>3. 访问控制技术</h3>
-                        <p>访问控制是信息安全的重要组成部分，用于限制对系统资源的访问。</p>
-                        <ul>
-                            <li><strong>自主访问控制(DAC)</strong>：资源所有者决定谁可以访问</li>
-                            <li><strong>强制访问控制(MAC)</strong>：基于安全标签的强制性控制</li>
-                            <li><strong>基于角色的访问控制(RBAC)</strong>：根据角色分配权限</li>
-                            <li><strong>最小权限原则</strong>：只授予完成工作所需的最小权限</li>
-                        </ul>
-                    </div>
-
-                    <div class="knowledge-card">
-                        <h3>4. 加密技术基础</h3>
-                        <p>加密技术是保护数据安全的核心手段，分为对称加密和非对称加密。</p>
-                        <ul>
-                            <li><strong>对称加密</strong>：加密和解密使用相同密钥，如AES、DES</li>
-                            <li><strong>非对称加密</strong>：使用公钥和私钥配对，如RSA、ECC</li>
-                            <li><strong>哈希函数</strong>：生成固定长度的消息摘要，如MD5、SHA-256</li>
-                            <li><strong>数字签名</strong>：用于验证数据完整性和身份认证</li>
-                        </ul>
-                    </div>
-
-                    <div class="knowledge-card">
-                        <h3>5. 安全管理体系</h3>
-                        <p>信息安全管理体系(ISMS)是组织整体管理体系的一部分，基于业务风险方法建立、实施、运行、监视、评审、维护和改进信息安全。</p>
-                        <ul>
-                            <li><strong>ISO 27001</strong>：信息安全管理体系国际标准</li>
-                            <li><strong>风险评估</strong>：识别、分析和评价信息安全风险</li>
-                            <li><strong>安全策略</strong>：组织信息安全的方针和原则</li>
-                            <li><strong>安全审计</strong>：定期检查安全措施的有效性</li>
-                        </ul>
-                    </div>
+                        <!-- 无数据提示 -->
+                        <div v-if="knowledgePoints.length === 0" class="empty-state">
+                            <p>暂无知识要点</p>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- 考试指南 -->
@@ -392,37 +394,67 @@
                         <div class="quiz-title">📋 考试指南</div>
                     </div>
 
-                    <div class="knowledge-card">
-                        <h3>考试概述</h3>
-                        <p>网络与信息安全管理员（三级）考试分为理论知识考试和操作技能考核两部分。</p>
-                        <ul>
-                            <li><strong>理论知识考试</strong>：采用闭卷笔试或机考方式，满分100分，60分合格</li>
-                            <li><strong>操作技能考核</strong>：现场实际操作或模拟操作，满分100分，60分合格</li>
-                        </ul>
+                    <div v-if="guideLoading" class="loading-container">
+                        <span class="loading-spinner"></span>
+                        <p>加载中...</p>
                     </div>
 
-                    <div class="knowledge-card">
-                        <h3>考试内容</h3>
-                        <ul>
-                            <li><strong>信息安全基础</strong>：信息安全概念、安全模型、安全框架</li>
-                            <li><strong>网络安全技术</strong>：网络协议、防火墙、入侵检测、VPN</li>
-                            <li><strong>操作系统安全</strong>：Windows、Linux安全配置</li>
-                            <li><strong>数据安全</strong>：数据分类、数据加密、数据备份</li>
-                            <li><strong>安全管理</strong>：安全策略、风险评估、安全审计</li>
-                            <li><strong>法律法规</strong>：网络安全法、个人信息保护法等</li>
-                        </ul>
-                    </div>
+                    <template v-else>
+                        <div v-if="guideData.title" class="knowledge-card">
+                            <h2>{{ guideData.title }}</h2>
+                        </div>
 
-                    <div class="knowledge-card">
-                        <h3>备考建议</h3>
-                        <ul>
-                            <li>系统学习信息安全基础知识</li>
-                            <li>熟悉常见安全工具和技术</li>
-                            <li>多做模拟练习题</li>
-                            <li>关注最新安全动态和威胁趋势</li>
-                            <li>理解安全原理而非死记硬背</li>
-                        </ul>
-                    </div>
+                        <div v-if="guideData.examOverview" class="knowledge-card">
+                            <h3>📝 考试概述</h3>
+                            <p>{{ guideData.examOverview }}</p>
+                        </div>
+
+                        <div v-if="guideData.examContent && guideData.examContent.length > 0" class="knowledge-card">
+                            <h3>📚 考试内容</h3>
+                            <ul>
+                                <li v-for="(item, index) in guideData.examContent" :key="index">
+                                    {{ item }}
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div v-if="guideData.questionTypeDistribution && guideData.questionTypeDistribution.length > 0" class="knowledge-card">
+                            <h3>📊 题型分布</h3>
+                            <table class="question-type-table">
+                                <thead>
+                                    <tr>
+                                        <th>题型</th>
+                                        <th>题数</th>
+                                        <th>分值</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in guideData.questionTypeDistribution" :key="index">
+                                        <td>{{ item.type }}</td>
+                                        <td>{{ item.count }}题</td>
+                                        <td>{{ item.score }}分</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="total-score">
+                                <strong>总分：</strong>
+                                {{ guideData.questionTypeDistribution.reduce((sum, item) => sum + item.score, 0) }}分
+                            </div>
+                        </div>
+
+                        <div v-if="guideData.preparationTips && guideData.preparationTips.length > 0" class="knowledge-card">
+                            <h3>💡 备考建议</h3>
+                            <ul>
+                                <li v-for="(tip, index) in guideData.preparationTips" :key="index">
+                                    {{ tip }}
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div v-if="!guideData.title" class="knowledge-card">
+                            <p>暂无考试指南信息</p>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -553,6 +585,12 @@ const {
   formatAnswer,
   selectOption,
   submitAnswers,
+  submitSingleQuestion,
+  resetSingleQuestion,
+  setQuestionNote,
+  getQuestionNote,
+  setQuestionExplanation,
+  getQuestionExplanation,
   goToPage,
   resetAnswers,
   closeResult,
@@ -588,6 +626,10 @@ const {
   handleQrCodeLogin,
   cleanupQrCodeLogin,
   showUserMenu,
-  examMode
+  examMode,
+  knowledgePoints,
+  knowledgeLoading,
+  guideData,
+  guideLoading
 } = useExamApp()
 </script>

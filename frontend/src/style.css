@@ -8,3 +8,72 @@ body {
   background: #f5f7fb;
   color: #1a1a2e;
 }
+
+/* 题目备注样式 */
+.question-note {
+  margin-top: 15px;
+}
+
+.note-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a6a8a;
+  margin-bottom: 8px;
+}
+
+.note-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 16px;
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.1);
+}
+
+.note-input::placeholder {
+  color: #a0aec0;
+}
+
+/* 单题提交按钮样式 */
+.question-actions {
+  margin-top: 15px;
+}
+
+.submit-single-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%);
+  color: #ffffff;
+}
+
+.submit-single-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3d7fc4 0%, #2d6ba8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 144, 217, 0.3);
+}
+
+.submit-single-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-single-btn:disabled {
+  background: #c0c0c0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}

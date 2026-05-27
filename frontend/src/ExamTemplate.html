@@ -1,11 +1,11 @@
-﻿    <div class="container" id="app">
+<div class="container" id="app">
         <div class="header">
             <h1>📚 {{ currentBankName }}</h1>
             <p>理论知识在线复习题库</p>
             
             <!-- 题库选择器 -->
             <div class="bank-selector">
-                <select v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
+                <select id="template-bank-select" v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
                     <option v-for="bank in banks" :key="bank.bank_code" :value="bank.bank_code">
                         {{ bank.icon }} {{ bank.bank_name }}
                     </option>
@@ -243,6 +243,7 @@
                         <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
                         <div class="jump-box">
                             <input 
+                                id="template-jump-page-input"
                                 type="number" 
                                 v-model.number="jumpPage"
                                 min="1" 
