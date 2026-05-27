@@ -35,7 +35,7 @@ spring:
         - id: question-service
           uri: lb://exam-question-service
           predicates:
-            - Path=/api/banks/**,/api/questions/**,/api/speech/**
+            - Path=/api/banks/**,/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/notes/**,/api/speech/**
         - id: exam-service
           uri: lb://exam-exam-service
           predicates:

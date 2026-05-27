@@ -36,6 +36,7 @@ export function useExamApp() {
                 const showLoginModal = ref(false);
                 const loginLoading = ref(false);
                 const loginError = ref('');
+                const showVipModal = ref(false); // 是否显示VIP开通弹窗
                 const showQrCodeLogin = ref(false); // 是否显示扫码登录界面
                 const qrCodeUrl = ref(''); // 二维码图片URL
                 const qrCodeTimer = ref(null); // 轮询计时器
@@ -68,6 +69,41 @@ export function useExamApp() {
                 const guideData = ref({});
                 const guideLoading = ref(false);
                 
+                // 统一处理API错误响应
+                const handleApiError = (data, defaultMessage = '操作失败') => {
+                    if (!data) {
+                        return { handled: true, message: defaultMessage };
+                    }
+                    
+                    // 处理网络错误
+                    if (data.code === 'NETWORK_ERROR') {
+                        return { handled: true, message: '网络连接失败，请检查网络' };
+                    }
+                    
+                    // 处理未授权（登录过期）
+                    if (data.code === 'UNAUTHORIZED' || data.message?.includes('请先登录')) {
+                        localStorage.removeItem('user');
+                        isLoggedIn.value = false;
+                        currentUser.value = { id: null, openid: null };
+                        showLoginModal.value = true;
+                        loginError.value = data.message || '登录已过期，请重新登录';
+                        return { handled: true, message: '登录已过期' };
+                    }
+                    
+                    // 处理VIP权限不足
+                    if (data.needVip || data.code === 'NEED_VIP' || data.message?.includes('VIP') || data.message?.includes('会员')) {
+                        showVipModal.value = true;
+                        return { handled: true, message: '需要VIP权限' };
+                    }
+                    
+                    // 处理服务器错误
+                    if (data.code === 'SERVER_ERROR') {
+                        return { handled: true, message: '服务器内部错误，请稍后重试' };
+                    }
+                    
+                    return { handled: false, message: data.message || defaultMessage };
+                };
+
                 // 从后端 API 加载题库数据
                 const loadQuestions = async (bankCode = null) => {
                     const params = { 
@@ -81,19 +117,11 @@ export function useExamApp() {
                             if (data && data.success === true && Array.isArray(data.data)) {
                                 questions.value = data.data;
                                 console.log('成功加载题目数量:', questions.value.length);
-                            } else if (data && data.success === false && data.message) {
-                                // 如果需要登录，显示登录弹窗
-                                console.warn('加载题库数据失败:', data.message);
+                            } else if (data && data.success === false) {
+                                // 使用统一错误处理
+                                const errorResult = handleApiError(data, '加载题库数据失败');
+                                console.warn('加载题库数据失败:', errorResult.message);
                                 questions.value = [];
-                                if (data.message === '请先登录') {
-                                    // 清除无效的登录状态
-                                    localStorage.removeItem('user');
-                                    isLoggedIn.value = false;
-                                    currentUser.value = { id: null, openid: null };
-                                    // 显示登录弹窗
-                                    showLoginModal.value = true;
-                                    loginError.value = '请先登录以访问题库';
-                                }
                             } else if (Array.isArray(data)) {
                                 // 兼容旧版直接返回数组的格式
                                 questions.value = data;
@@ -1046,6 +1074,7 @@ export function useExamApp() {
                     showLoginModal,
                     loginLoading,
                     loginError,
+                    showVipModal,
                     login,
                     logout,
                     handleWechatLogin,

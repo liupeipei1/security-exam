@@ -14,8 +14,9 @@ services:
       MYSQL_DATABASE: exam-db
     volumes:
       - exam-mysql-data:/var/lib/mysql
-      - ./backend/DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
-      - ./backend/DML/bank_config.sql:/docker-entrypoint-initdb.d/02-bank_config.sql:ro
+      - ./DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
+      - ./DML/bank_config.sql:/docker-entrypoint-initdb.d/02-bank_config.sql:ro
+      - ./DML/knowledge_points.sql:/docker-entrypoint-initdb.d/03-knowledge_points.sql:ro
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]

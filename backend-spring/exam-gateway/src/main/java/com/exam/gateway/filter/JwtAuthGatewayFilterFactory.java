@@ -29,12 +29,17 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
             "/api/banks/**",
             "/api/questions/types",
             "/api/questions/count",
-            "/api/user/pay/notify"
+            "/api/user/pay/notify",
+            "/api/knowledge",
+            "/api/knowledge/**",
+            "/api/guide",
+            "/api/guide/**"
     );
 
     private static final List<String> VIP_PATH_PREFIXES = List.of(
             "/api/questions",
-            "/api/exam"
+            "/api/exam",
+            "/api/question"
     );
 
     private final JwtService jwtService;

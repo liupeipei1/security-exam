@@ -1,5 +1,5 @@
 const { API_BASE } = require('../../utils/config.js')
-const { request } = require('../../utils/request.js')
+const { apiGet, apiPost } = require('../../utils/request.js')
 
 Page({
   data: {
@@ -106,15 +106,11 @@ Page({
       return
     }
     
-    request({
-      url: '/api/user/vip-status',
-      method: 'GET',
-      timeout: 30000,
-      data: { openid: userInfo.openid },
-      success: function(res) {
-        console.log('VIP状态查询成功:', res.data)
-        if (res.data.success) {
-          const vipData = res.data.data
+    apiGet('/api/user/vip-status', { openid: userInfo.openid })
+      .then(res => {
+        console.log('VIP状态查询成功:', res)
+        if (res.success) {
+          const vipData = res.data
           wx.setStorageSync('isVip', vipData.is_vip)
           wx.setStorageSync('vipEndTime', vipData.vip_expire)
           
@@ -125,12 +121,11 @@ Page({
           console.log('设置 isVip 为:', vipData.is_vip)
         }
         that.loadBanks()
-      },
-      fail: function(err) {
+      })
+      .catch(err => {
         console.error('VIP状态查询失败:', err)
         that.loadQuestions()
-      }
-    })
+      })
   },
 
   // 微信登录
@@ -143,18 +138,14 @@ Page({
       success: function(res) {
         if (res.code) {
           // 发送code到后端获取openid和用户信息
-          request({
-            url: '/api/auth/login',
-            method: 'POST',
-            timeout: 30000,
-            data: { code: res.code, loginType: 'mini' },
-            success: function(response) {
+          apiPost('/api/auth/login', { code: res.code, loginType: 'mini' })
+            .then(response => {
               wx.hideLoading()
               
-              console.log('登录响应数据:', response.data);
+              console.log('登录响应数据:', response);
               
-              if (response.data.success) {
-                const userData = response.data.data
+              if (response.success) {
+                const userData = response.data
                 console.log('用户数据:', userData);
                 
                 // 保存用户信息到本地缓存
@@ -190,20 +181,19 @@ Page({
                 that.loadBanks()
               } else {
                 wx.showToast({
-                  title: response.data.message || '登录失败',
+                  title: response.message || '登录失败',
                   icon: 'none'
                 })
               }
-            },
-            fail: function(err) {
+            })
+            .catch(err => {
               wx.hideLoading()
               console.error('登录请求失败', err)
               wx.showToast({
                 title: '网络请求失败',
                 icon: 'none'
               })
-            }
-          })
+            })
         } else {
           wx.hideLoading()
           wx.showToast({
@@ -226,14 +216,11 @@ Page({
   // 加载题库列表
   loadBanks: function() {
     const that = this
-    request({
-      url: '/api/banks',
-      method: 'GET',
-      timeout: 30000,
-      success: function(res) {
-        console.log('加载题库列表成功:', res.data)
-        if (res.data.success && res.data.data && res.data.data.length > 0) {
-          const banks = res.data.data
+    apiGet('/api/banks')
+      .then(res => {
+        console.log('加载题库列表成功:', res)
+        if (res.success && res.data && res.data.length > 0) {
+          const banks = res.data
           // 默认选择第一个题库
           const defaultBank = banks.find(b => b.is_default) || banks[0]
           that.setData({
@@ -245,11 +232,10 @@ Page({
             that.loadQuestions()
           }
         }
-      },
-      fail: function(err) {
+      })
+      .catch(err => {
         console.error('加载题库列表失败:', err)
-      }
-    })
+      })
   },
 
   // 切换题库
@@ -303,19 +289,16 @@ Page({
     }
     
     const bankCode = this.data.currentBank ? this.data.currentBank.bank_code : null
+    const openid = this.data.userInfo ? this.data.userInfo.openid : null
     
-    request({
-      url: '/api/questions',
-      method: 'GET',
-      timeout: 30000,
-      data: { bank_code: bankCode },
-      success: function(res) {
-        console.log('加载题目成功，res.data:', res.data)
-        if (res.data.success) {
-          console.log('原始数据长度:', res.data.data.length)
-          console.log('原始数据第一条:', res.data.data[0])
+    apiGet('/api/questions', { openid: openid, bank_code: bankCode })
+      .then(res => {
+        console.log('加载题目成功，res:', res)
+        if (res.success) {
+          console.log('原始数据长度:', res.data.length)
+          console.log('原始数据第一条:', res.data[0])
           
-          const questions = res.data.data.map(q => ({
+          const questions = res.data.map(q => ({
             id: q.id,
             question: q.question,
             options: q.options || [q.option_a, q.option_b, q.option_c, q.option_d].filter(o => o && o.trim()),
@@ -360,21 +343,20 @@ Page({
           })
         } else {
           wx.showToast({
-            title: res.data.message || '加载失败',
+            title: res.message || '加载失败',
             icon: 'none'
           })
           that.setData({ loading: false })
         }
-      },
-      fail: function(err) {
+      })
+      .catch(err => {
         console.error('加载题目失败', err)
         wx.showToast({
           title: '加载失败',
           icon: 'none'
         })
         that.setData({ loading: false })
-      }
-    })
+      })
   },
 
   // 生成考试题目
@@ -977,21 +959,17 @@ Page({
     
     wx.showLoading({ title: '支付中...' })
     
-    request({
-      url: '/api/user/pay/create',
-      method: 'POST',
-      timeout: 30000,
-      data: {
-        openid: that.data.userInfo?.openid,
-        package_type: selectedPackage
-      },
-      success: function(res) {
+    apiPost('/api/user/pay/create', {
+      openid: that.data.userInfo?.openid,
+      package_type: selectedPackage
+    })
+      .then(res => {
         wx.hideLoading()
-        if (!res.data.success) {
-          wx.showToast({ title: res.data.message || '支付失败', icon: 'none' })
+        if (!res.success) {
+          wx.showToast({ title: res.message || '支付失败', icon: 'none' })
           return
         }
-        const payData = res.data.data
+        const payData = res.data
         if (payData.mock) {
           that.applyVipSuccess(payData.vip_expire)
           wx.showToast({ title: payData.message || '开通成功', icon: 'success' })
@@ -1012,13 +990,12 @@ Page({
             wx.showToast({ title: '支付已取消', icon: 'none' })
           }
         })
-      },
-      fail: function(err) {
+      })
+      .catch(err => {
         wx.hideLoading()
         console.error('支付请求失败', err)
         wx.showToast({ title: '支付失败', icon: 'none' })
-      }
-    })
+      })
   },
 
   // 退出登录
