@@ -79,4 +79,21 @@ public class QuestionService {
         }
         return tableName;
     }
+
+    /**
+     * 保存题目解析
+     * @param bankCode 题库代码
+     * @param questionId 题目ID
+     * @param explanation 解析内容
+     * @return 是否更新成功
+     */
+    public boolean saveExplanation(String bankCode, Long questionId, String explanation) {
+        String table = validateTable(bankService.resolveTableName(bankCode));
+        int updated = jdbcTemplate.update(
+                "UPDATE " + table + " SET analysis = ? WHERE id = ?",
+                explanation != null ? explanation : "",
+                questionId
+        );
+        return updated > 0;
+    }
 }

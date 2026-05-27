@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/questions")
+@RequestMapping({"/api/questions", "/api/question"})
 public class QuestionController {
 
     private final QuestionService questionService;
@@ -74,5 +74,38 @@ public class QuestionController {
     @GetMapping("/count")
     public ApiResult<Map<String, Object>> count(@RequestParam(name = "bank_code", required = false) String bankCode) {
         return ApiResult.ok(questionService.countStats(bankCode));
+    }
+
+    /**
+     * 保存题目解析
+     * POST /api/question/explanation
+     */
+    @PostMapping("/explanation")
+    public ApiResult<Void> saveExplanation(
+            @RequestBody Map<String, Object> body) {
+        System.out.println("========== /api/questions/explanation 接口被调用 ==========");
+        
+        String bankCode = (String) body.get("bank_code");
+        Object questionIdObj = body.get("question_id");
+        String explanation = (String) body.get("explanation");
+        
+        if (bankCode == null || bankCode.isEmpty() || questionIdObj == null) {
+            return ApiResult.fail("缺少必要参数");
+        }
+        
+        Long questionId;
+        if (questionIdObj instanceof Number) {
+            questionId = ((Number) questionIdObj).longValue();
+        } else {
+            questionId = Long.parseLong(questionIdObj.toString());
+        }
+        
+        boolean success = questionService.saveExplanation(bankCode, questionId, explanation);
+        
+        if (success) {
+            return ApiResult.okMessage("保存成功");
+        } else {
+            return ApiResult.fail("题目不存在");
+        }
     }
 }
