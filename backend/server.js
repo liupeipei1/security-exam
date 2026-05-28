@@ -3,8 +3,8 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const axios = require('axios'); // 引入gtts模块，用于语音合成
 
-// 导入题库配置管理
-const { getAllBanks, getBankByCode, getDefaultBank } = require('./config/banks');
+// 导入考试配置管理
+const { getAllExams, getExamByCode, getDefaultExam } = require('./config/exams');
 
 // 导入Redis缓存服务
 const {
@@ -62,12 +62,21 @@ const mockUsers = {
 
 // 会员验证中间件
 async function checkVipStatus(openid) {
-  console.log('checkVipStatus called with openid:', openid);
+  console.log('========== checkVipStatus 被调用 ==========');
+  console.log('接收到的 openid:', JSON.stringify(openid));
+  console.log('openid 类型:', typeof openid);
+  console.log('openid 长度:', openid ? openid.length : 0);
+  
   if (!openid) {
+    console.log('openid 为空，返回未登录');
     return { is_vip: false, message: '请先登录' };
   }
   
   // 测试账号直接通过VIP验证
+  console.log('测试账号列表:', ['test_openid', 'dev_openid', 'o0lS55o_tDbDXQ2rg-Y_XvLikI_U']);
+  console.log('是否匹配 test_openid:', openid === 'test_openid');
+  console.log('是否匹配 dev_openid:', openid === 'dev_openid');
+  
   if (openid === 'test_openid' || openid === 'dev_openid' || openid === 'o0lS55o_tDbDXQ2rg-Y_XvLikI_U') {
     console.log('测试账号通过VIP验证');
     return { is_vip: true, message: '测试账号' };
@@ -101,7 +110,7 @@ async function checkVipStatus(openid) {
 
 // 获取随机题目（需要会员）
 app.get('/api/questions/random', async (req, res) => {
-  const { openid, bank_code } = req.query;
+  const { openid, exam_code } = req.query;
   const vipStatus = await checkVipStatus(openid);
   
   if (!vipStatus.is_vip) {
@@ -115,9 +124,9 @@ app.get('/api/questions/random', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} ORDER BY RAND() LIMIT 1`
@@ -200,8 +209,9 @@ function parseArrayString(str) {
 app.get('/api/questions', async (req, res) => {
   try {
     console.log('========== /api/questions 接口被调用 ==========');
-    const { openid, bank_code } = req.query;
-    console.log('请求参数 openid:', openid, ', bank_code:', bank_code);
+    const { openid, exam_code } = req.query;
+    console.log('请求参数 openid:', openid, ', exam_code:', exam_code);
+    console.log('openid类型:', typeof openid);
     
     const vipStatus = await checkVipStatus(openid);
     console.log('VIP状态:', JSON.stringify(vipStatus));
@@ -220,11 +230,11 @@ app.get('/api/questions', async (req, res) => {
     const connection = await mysql.createConnection(dbConfig);
     console.log('数据库连接成功');
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    // 使用题库表名，如果没有则使用默认表名 security_exam_3
-    const tableName = (bank && bank.table_name) || 'security_exam_3';
-    console.log('使用题库:', bank_code || '默认题库', ', 表名:', tableName);
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    // 使用考试表名，如果没有则使用默认表名 security_exam_3
+    const tableName = (exam && exam.table_name) || 'security_exam_3';
+    console.log('使用考试:', exam_code || '默认考试', ', 表名:', tableName);
     
     [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
     console.log(`查询到 ${rows.length} 条题目`);
@@ -271,10 +281,41 @@ app.get('/api/questions', async (req, res) => {
         })
         .join('');
       
+      // 类型转换：将中文类型转换为英文类型
+      const typeMap = {
+        '单选题': 'single',
+        '多选题': 'multiple',
+        '判断题': 'judgment',
+        '单选': 'single',
+        '多选': 'multiple',
+        '判断': 'judgment'
+      };
+      
+      // 获取标准化类型
+      let normalizedType = typeMap[row.type] || row.type;
+      
+      // 强制规则：如果答案有多个选项，一定是多选题
+      if (answerArray && answerArray.length > 1) {
+        normalizedType = 'multiple';
+      }
+      // 强制规则：如果选项数量 >= 5，通常是多选题（有E选项）
+      else if (optionsArray.length >= 5) {
+        normalizedType = 'multiple';
+      }
+      // 强制规则：只有AB两个选项的是判断题
+      else if (optionsArray.length === 2) {
+        normalizedType = 'judgment';
+      }
+      // 如果类型仍无法确定，默认为单选题
+      else if (!normalizedType || normalizedType === '') {
+        normalizedType = 'single';
+      }
+      
       return {
         ...row,
         options: optionsArray,
         answer: answer,
+        type: normalizedType,
         explanation: row.analysis || row.explanation || ''
       };
     });
@@ -295,7 +336,7 @@ app.get('/api/questions', async (req, res) => {
 
 // 根据类型获取题目列表（需要会员）
 app.get('/api/questions/type/:type', async (req, res) => {
-  const { openid, bank_code } = req.query;
+  const { openid, exam_code } = req.query;
   const questionType = req.params.type;
   const vipStatus = await checkVipStatus(openid);
   
@@ -310,9 +351,9 @@ app.get('/api/questions/type/:type', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} WHERE type = ?`,
@@ -335,7 +376,7 @@ app.get('/api/questions/type/:type', async (req, res) => {
 
 // 获取随机题目（指定数量，需要会员）
 app.get('/api/questions/random/:count', async (req, res) => {
-  const { openid, bank_code } = req.query;
+  const { openid, exam_code } = req.query;
   const count = parseInt(req.params.count) || 10;
   const vipStatus = await checkVipStatus(openid);
   
@@ -350,9 +391,9 @@ app.get('/api/questions/random/:count', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} ORDER BY RAND() LIMIT ?`,
@@ -373,48 +414,191 @@ app.get('/api/questions/random/:count', async (req, res) => {
   }
 });
 
-// 获取题库列表（免费）
-app.get('/api/banks', async (req, res) => {
+// 获取考试配置列表（免费）
+app.get('/api/exams', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
-    const banks = await getAllBanks(connection);
+    const exams = await getAllExams(connection);
     await connection.end();
-    res.json({ success: true, data: banks });
+    res.json({ success: true, data: exams });
   } catch (error) {
-    console.error('获取题库列表失败:', error);
+    console.error('获取考试配置列表失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
 
-// 获取题库详情（免费）
-app.get('/api/banks/:bankCode', async (req, res) => {
-  const { bankCode } = req.params;
+// 获取考试配置详情（免费）
+app.get('/api/exams/:examCode', async (req, res) => {
+  const { examCode } = req.params;
   try {
     const connection = await mysql.createConnection(dbConfig);
-    const bank = await getBankByCode(connection, bankCode);
+    const exam = await getExamByCode(connection, examCode);
     await connection.end();
     
-    if (bank) {
-      res.json({ success: true, data: bank });
+    if (exam) {
+      res.json({ success: true, data: exam });
     } else {
-      res.status(404).json({ success: false, message: '题库不存在' });
+      res.status(404).json({ success: false, message: '考试配置不存在' });
     }
   } catch (error) {
-    console.error('获取题库详情失败:', error);
+    console.error('获取考试配置详情失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// 新增考试配置（管理接口）
+app.post('/api/exams', async (req, res) => {
+  const { 
+    exam_code, 
+    exam_name, 
+    exam_description, 
+    exam_desc_detail, 
+    description, 
+    icon, 
+    table_name, 
+    total_questions = 0, 
+    judgment_count = 0, 
+    single_count = 0, 
+    multiple_count = 0, 
+    enabled = 1, 
+    sort_order = 0 
+  } = req.body;
+  
+  // 验证必填字段
+  if (!exam_code || !exam_name || !table_name) {
+    return res.status(400).json({ success: false, message: '缺少必填字段：exam_code、exam_name、table_name' });
+  }
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 检查exam_code是否已存在
+    const [existing] = await connection.execute(
+      'SELECT id FROM exam_config WHERE exam_code = ?',
+      [exam_code]
+    );
+    
+    if (existing.length > 0) {
+      await connection.end();
+      return res.status(400).json({ success: false, message: '考试代码已存在' });
+    }
+    
+    // 插入新考试配置
+    const [result] = await connection.execute(
+      `INSERT INTO exam_config 
+        (exam_code, exam_name, exam_description, exam_desc_detail, icon, table_name, 
+         total_questions, judgment_count, single_count, multiple_count, enabled, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [exam_code, exam_name, exam_description, exam_desc_detail, icon, table_name,
+       total_questions, judgment_count, single_count, multiple_count, enabled, sort_order]
+    );
+    
+    await connection.end();
+    res.json({ success: true, data: { id: result.insertId, exam_code }, message: '考试配置添加成功' });
+  } catch (error) {
+    console.error('添加考试配置失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// 更新考试配置（管理接口）
+app.put('/api/exams/:examCode', async (req, res) => {
+  const { examCode } = req.params;
+  const { 
+    exam_name, 
+    exam_description, 
+    exam_desc_detail, 
+    description, 
+    icon, 
+    table_name, 
+    total_questions, 
+    judgment_count, 
+    single_count, 
+    multiple_count, 
+    enabled, 
+    sort_order 
+  } = req.body;
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 构建更新语句和参数
+    const updates = [];
+    const params = [];
+    
+    if (exam_name !== undefined) { updates.push('exam_name = ?'); params.push(exam_name); }
+    if (exam_description !== undefined) { updates.push('exam_description = ?'); params.push(exam_description); }
+    if (exam_desc_detail !== undefined) { updates.push('exam_desc_detail = ?'); params.push(exam_desc_detail); }
+    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+    if (icon !== undefined) { updates.push('icon = ?'); params.push(icon); }
+    if (table_name !== undefined) { updates.push('table_name = ?'); params.push(table_name); }
+    if (total_questions !== undefined) { updates.push('total_questions = ?'); params.push(total_questions); }
+    if (judgment_count !== undefined) { updates.push('judgment_count = ?'); params.push(judgment_count); }
+    if (single_count !== undefined) { updates.push('single_count = ?'); params.push(single_count); }
+    if (multiple_count !== undefined) { updates.push('multiple_count = ?'); params.push(multiple_count); }
+    if (enabled !== undefined) { updates.push('enabled = ?'); params.push(enabled); }
+    if (sort_order !== undefined) { updates.push('sort_order = ?'); params.push(sort_order); }
+    
+    if (updates.length === 0) {
+      await connection.end();
+      return res.status(400).json({ success: false, message: '没有需要更新的字段' });
+    }
+    
+    params.push(examCode);
+    
+    const [result] = await connection.execute(
+      `UPDATE exam_config SET ${updates.join(', ')} WHERE exam_code = ?`,
+      params
+    );
+    
+    await connection.end();
+    
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: '考试配置更新成功' });
+    } else {
+      res.status(404).json({ success: false, message: '考试不存在' });
+    }
+  } catch (error) {
+    console.error('更新考试配置失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
+// 删除考试配置（管理接口）
+app.delete('/api/exams/:examCode', async (req, res) => {
+  const { examCode } = req.params;
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    const [result] = await connection.execute(
+      'DELETE FROM exam_config WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    await connection.end();
+    
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: '考试配置删除成功' });
+    } else {
+      res.status(404).json({ success: false, message: '考试配置不存在' });
+    }
+  } catch (error) {
+    console.error('删除考试配置失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
 
 // 获取题目类型列表（免费）
 app.get('/api/questions/types', async (req, res) => {
-  const { bank_code } = req.query;
+  const { exam_code } = req.query;
   
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     const [rows] = await connection.execute(
       `SELECT DISTINCT type FROM ${tableName} WHERE type IS NOT NULL`
@@ -429,14 +613,14 @@ app.get('/api/questions/types', async (req, res) => {
 
 // 获取题目数量统计（免费）
 app.get('/api/questions/count', async (req, res) => {
-  const { bank_code } = req.query;
+  const { exam_code } = req.query;
   
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取题库配置
-    const bank = bank_code ? await getBankByCode(connection, bank_code) : getDefaultBank();
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     const [total] = await connection.execute(
       `SELECT COUNT(*) as total FROM ${tableName}`
@@ -450,7 +634,7 @@ app.get('/api/questions/count', async (req, res) => {
       data: {
         total: total[0].total,
         types: types,
-        bank_code: bank_code || 'default'
+        exam_code: exam_code || 'default'
       }
     });
   } catch (error) {
@@ -647,6 +831,18 @@ app.get('/api/user/vip-status', async (req, res) => {
     return res.status(400).json({ message: '缺少openid参数' });
   }
   
+  // 测试账号直接通过VIP验证
+  if (openid === 'test_openid' || openid === 'dev_openid' || openid === 'o0lS55o_tDbDXQ2rg-Y_XvLikI_U') {
+    console.log('测试账号通过VIP验证');
+    return res.json({
+      success: true,
+      data: {
+        is_vip: true,
+        vip_expire: '2099-12-31 23:59:59'
+      }
+    });
+  }
+  
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [users] = await connection.execute(
@@ -679,6 +875,88 @@ app.get('/api/user/vip-status', async (req, res) => {
 });
 
 // 购买会员
+// 统一下单接口（小程序支付）
+app.post('/api/user/pay/create', async (req, res) => {
+  const { openid, package_type } = req.body;
+  
+  console.log('========== /api/user/pay/create 接口被调用 ==========');
+  console.log('请求参数:', req.body);
+  
+  if (!openid || !package_type) {
+    return res.status(400).json({ success: false, message: '缺少参数' });
+  }
+  
+  // 套餐配置
+  const packages = {
+    monthly: { days: 30, price: 9.9 },
+    quarterly: { days: 90, price: 25 },
+    yearly: { days: 365, price: 88 }
+  };
+  
+  const pkg = packages[package_type];
+  if (!pkg) {
+    return res.status(400).json({ success: false, message: '无效的套餐类型' });
+  }
+  
+  // 开发模式：直接开通VIP，不调用微信支付
+  console.log('开发模式：直接开通VIP');
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 查询用户当前会员到期时间
+    const [users] = await connection.execute(
+      'SELECT vip_expire FROM users WHERE openid = ?',
+      [openid]
+    );
+    
+    let newExpire;
+    
+    if (users.length > 0 && users[0].vip_expire && new Date(users[0].vip_expire) > new Date()) {
+      // 如果会员未过期，延长有效期
+      const expireDate = new Date(users[0].vip_expire);
+      expireDate.setDate(expireDate.getDate() + pkg.days);
+      newExpire = expireDate;
+    } else {
+      // 否则从当前时间开始计算
+      newExpire = new Date();
+      newExpire.setDate(newExpire.getDate() + pkg.days);
+    }
+    
+    // 更新会员状态
+    if (users.length > 0) {
+      await connection.execute(
+        'UPDATE users SET is_vip = ?, vip_expire = ? WHERE openid = ?',
+        [true, newExpire.toISOString().slice(0, 19).replace('T', ' '), openid]
+      );
+    }
+    
+    await connection.end();
+    
+    // 返回模拟的支付参数（开发模式）
+    res.json({
+      success: true,
+      data: {
+        // 模拟微信支付参数
+        timeStamp: Date.now().toString(),
+        nonceStr: Math.random().toString(36).substr(2, 15),
+        package: 'prepay_id=mock_prepay_id',
+        signType: 'MD5',
+        paySign: 'mock_pay_sign',
+        // VIP信息
+        is_vip: true,
+        vip_expire: newExpire.toISOString(),
+        package_type,
+        days: pkg.days
+      },
+      message: '开发模式：已直接开通VIP'
+    });
+  } catch (error) {
+    console.error('创建支付订单失败:', error);
+    res.status(500).json({ success: false, message: '创建订单失败' });
+  }
+});
+
 app.post('/api/user/buy-vip', async (req, res) => {
   const { openid, package_type } = req.body;
   
@@ -965,17 +1243,17 @@ app.delete('/api/exam/records', async (req, res) => {
  * 获取用户答题进度
  * GET /api/exam/progress
  * @param {string} openid - 用户openid
- * @param {string} bank_code - 题库代码（可选）
+ * @param {string} exam_code - 考试代码（可选）
  */
 app.get('/api/exam/progress', async (req, res) => {
-  const { openid, bank_code } = req.query;
+  const { openid, exam_code } = req.query;
   
   if (!openid) {
     return res.status(400).json({ success: false, message: '缺少openid参数' });
   }
   
   try {
-    const progress = await getUserProgress(openid, bank_code || 'default');
+    const progress = await getUserProgress(openid, exam_code || 'default');
     res.json({ success: true, data: progress });
   } catch (error) {
     console.error('获取答题进度失败:', error);
@@ -987,18 +1265,18 @@ app.get('/api/exam/progress', async (req, res) => {
  * 保存用户答题进度
  * POST /api/exam/progress
  * @param {string} openid - 用户openid
- * @param {string} bank_code - 题库代码
+ * @param {string} exam_code - 考试代码
  * @param {object} progress - 进度数据
  */
 app.post('/api/exam/progress', async (req, res) => {
-  const { openid, bank_code, progress } = req.body;
+  const { openid, exam_code, progress } = req.body;
   
   if (!openid || !progress) {
     return res.status(400).json({ success: false, message: '缺少必要参数' });
   }
   
   try {
-    const result = await saveUserProgress(openid, bank_code || 'default', progress);
+    const result = await saveUserProgress(openid, exam_code || 'default', progress);
     if (result) {
       res.json({ success: true, message: '保存成功' });
     } else {
@@ -1109,16 +1387,16 @@ app.post('/api/speech', async (req, res) => {
 // 获取题目备注
 app.get('/api/notes', async (req, res) => {
   try {
-    const { openid, bank_code, question_id } = req.query;
+    const { openid, exam_code, question_id } = req.query;
     
-    if (!openid || !bank_code) {
+    if (!openid || !exam_code) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
-    let sql = 'SELECT * FROM question_notes WHERE openid = ? AND bank_code = ?';
-    let params = [openid, bank_code];
+    let sql = 'SELECT * FROM question_notes WHERE openid = ? AND exam_code = ?';
+    let params = [openid, exam_code];
     
     if (question_id) {
       sql += ' AND question_id = ?';
@@ -1138,9 +1416,9 @@ app.get('/api/notes', async (req, res) => {
 // 保存或更新题目备注
 app.post('/api/notes', async (req, res) => {
   try {
-    const { openid, bank_code, question_id, note } = req.body;
+    const { openid, exam_code, question_id, note } = req.body;
     
-    if (!openid || !bank_code || question_id === undefined) {
+    if (!openid || !exam_code || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
@@ -1148,30 +1426,30 @@ app.post('/api/notes', async (req, res) => {
     
     // 检查是否已存在备注
     const [existing] = await connection.execute(
-      'SELECT id FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
-      [openid, bank_code, question_id]
+      'SELECT id FROM question_notes WHERE openid = ? AND exam_code = ? AND question_id = ?',
+      [openid, exam_code, question_id]
     );
     
     if (existing.length > 0) {
       // 更新备注
       if (note && note.trim()) {
         await connection.execute(
-          'UPDATE question_notes SET note = ? WHERE openid = ? AND bank_code = ? AND question_id = ?',
-          [note, openid, bank_code, question_id]
+          'UPDATE question_notes SET note = ? WHERE openid = ? AND exam_code = ? AND question_id = ?',
+          [note, openid, exam_code, question_id]
         );
       } else {
         // 如果备注为空，删除记录
         await connection.execute(
-          'DELETE FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
-          [openid, bank_code, question_id]
+          'DELETE FROM question_notes WHERE openid = ? AND exam_code = ? AND question_id = ?',
+          [openid, exam_code, question_id]
         );
       }
     } else {
       // 插入新备注
       if (note && note.trim()) {
         await connection.execute(
-          'INSERT INTO question_notes (openid, bank_code, question_id, note) VALUES (?, ?, ?, ?)',
-          [openid, bank_code, question_id, note]
+          'INSERT INTO question_notes (openid, exam_code, question_id, note) VALUES (?, ?, ?, ?)',
+          [openid, exam_code, question_id, note]
         );
       }
     }
@@ -1187,17 +1465,17 @@ app.post('/api/notes', async (req, res) => {
 // 删除题目备注
 app.delete('/api/notes', async (req, res) => {
   try {
-    const { openid, bank_code, question_id } = req.query;
+    const { openid, exam_code, question_id } = req.query;
     
-    if (!openid || !bank_code || question_id === undefined) {
+    if (!openid || !exam_code || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
     await connection.execute(
-      'DELETE FROM question_notes WHERE openid = ? AND bank_code = ? AND question_id = ?',
-      [openid, bank_code, question_id]
+      'DELETE FROM question_notes WHERE openid = ? AND exam_code = ? AND question_id = ?',
+      [openid, exam_code, question_id]
     );
     
     await connection.end();
@@ -1218,13 +1496,13 @@ async function initKnowledgeTable() {
     const createTableSql = `
       CREATE TABLE IF NOT EXISTS knowledge_points (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        bank_code VARCHAR(50) NOT NULL COMMENT '所属题库代码',
+        exam_code VARCHAR(50) NOT NULL COMMENT '所属考试代码',
         title VARCHAR(200) NOT NULL COMMENT '知识要点标题',
         content TEXT COMMENT '知识要点内容（支持HTML）',
         sort_order INT DEFAULT 0 COMMENT '排序顺序',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_bank_code (bank_code)
+        INDEX idx_exam_code (exam_code)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识要点表'
     `;
     
@@ -1236,7 +1514,7 @@ async function initKnowledgeTable() {
     if (existing[0].count === 0) {
       // 插入初始数据
       const insertSql = `
-        INSERT INTO knowledge_points (bank_code, title, content, sort_order) VALUES
+        INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES
         ('security_level3', '1. 信息安全基础概念', '信息安全是指保护信息系统的硬件、软件及相关数据，使其不受到偶然的或者恶意的原因而遭到破坏、更改、泄露，保证信息系统能够连续、可靠、正常地运行。<ul><li><strong>保密性</strong>：确保信息不被未授权的个人、实体或过程访问或披露</li><li><strong>完整性</strong>：保护信息的准确性和完整性，防止未经授权的修改</li><li><strong>可用性</strong>：确保授权用户在需要时能够访问所需的信息</li><li><strong>可控性</strong>：对信息的传播及内容具有控制能力</li><li><strong>不可否认性</strong>：确保信息的发送者和接收者无法否认其行为</li></ul>', 1),
         ('security_level3', '2. 网络安全威胁类型', '网络安全威胁是指对网络系统造成危害的各种潜在因素，主要包括以下类型：<ul><li><strong>恶意软件</strong>：病毒、蠕虫、木马、勒索软件等</li><li><strong>网络攻击</strong>：DDoS攻击、SQL注入、跨站脚本攻击(XSS)等</li><li><strong>社会工程学</strong>：钓鱼攻击、 pretexting、肩窥等</li><li><strong>内部威胁</strong>：员工误操作、恶意内部人员</li><li><strong>物理攻击</strong>：设备盗窃、未授权访问机房等</li></ul>', 2),
         ('security_level3', '3. 访问控制技术', '访问控制是信息安全的重要组成部分，用于限制对系统资源的访问。<ul><li><strong>自主访问控制(DAC)</strong>：资源所有者决定谁可以访问</li><li><strong>强制访问控制(MAC)</strong>：基于安全标签的强制性控制</li><li><strong>基于角色的访问控制(RBAC)</strong>：根据角色分配权限</li><li><strong>最小权限原则</strong>：只授予完成工作所需的最小权限</li></ul>', 3),
@@ -1288,13 +1566,13 @@ const EXAM_GUIDES = {
       '个人理财业务创新：互联网金融、移动金融、智能理财'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 90, score: 90 },
-      { type: '多选题', count: 40, score: 80 },
-      { type: '判断题', count: 15, score: 15 },
-      { type: '案例分析题', count: 3, score: 15 }
-    ],
-    preparationTips: [
-      '系统学习个人理财业务基础知识',
+       { type: '单选题', count: 90, score: 40 },
+       { type: '多选题', count: 40, score: 35 },
+       { type: '判断题', count: 15, score: 15 },
+       { type: '案例分析题', count: 3, score: 10 }
+     ],
+     preparationTips: [
+       '系统学习个人理财业务基础知识',
       '熟悉相关法律法规和监管要求',
       '掌握理财产品的特点和风险特征',
       '多做练习题，熟悉考试题型',
@@ -1315,42 +1593,65 @@ const EXAM_GUIDES = {
       '银行业从业人员职业操守：职业道德、行为规范、从业准则'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 90, score: 90 },
-      { type: '多选题', count: 40, score: 80 },
-      { type: '判断题', count: 15, score: 15 }
+       { type: '单选题', count: 90, score: 43.24 },
+       { type: '多选题', count: 40, score: 43.24 },
+       { type: '判断题', count: 15, score: 13.52 }
+     ],
+     preparationTips: [
+       '系统学习银行业法律法规体系',
+       '理解金融监管的基本原则',
+       '掌握主要银行业务的操作规范',
+       '关注最新监管政策变化',
+       '结合实际案例理解法律条文',
+       '通过模拟考试检验学习效果'
+     ]
+   },
+   'security_admin_3': {
+    title: '网络与信息安全管理员（三级）理论知识',
+    examOverview: '网络与信息安全管理员（三级）理论知识考试采用闭卷机考方式，考核时间为90分钟，满分100分，60分及格。共计190道题目。',
+    examContent: [
+      '【信息安全基础】信息安全概念、安全模型、安全框架',
+      '【信息安全技术】信息安全协议、防火墙、入侵检测、VPN',
+      '【网络安全技术】网络协议、防火墙、入侵检测、VPN',
+      '【操作系统安全】Windows、Linux安全配置',
+      '【数据安全】数据分类、数据加密、数据备份',
+      '【安全管理】安全策略、风险评估、安全审计',
+      '【法律法规】网络安全法、个人信息保护法等'
     ],
+    questionTypeDistribution: '判断题：40题，每题0.5分，共20分\n单选题：140题，每题0.5分，共70分\n多选题：10题，每题1分，共10分\n合计：190题，总分100分',
     preparationTips: [
-      '系统学习银行业法律法规体系',
-      '理解金融监管的基本原则',
-      '掌握主要银行业务的操作规范',
-      '关注最新监管政策变化',
-      '结合实际案例理解法律条文',
-      '通过模拟考试检验学习效果'
+      '【学习建议】系统学习信息安全基础知识',
+      '【技能提升】熟悉常见安全工具和技术',
+      '【练习方法】多做模拟练习题',
+      '【知识更新】关注最新安全动态和威胁趋势',
+      '【学习技巧】理解安全原理而非死记硬背'
     ]
   },
-  'security_admin_3': {
-    title: '网络与信息安全管理员（三级）',
-    examOverview: '网络与信息安全管理员（三级）考试分为理论知识考试和操作技能考核两部分。',
+  'security_admin_3_practice': {
+    title: '网络与信息安全管理员（三级）操作技能',
+    examOverview: '网络与信息安全管理员（三级）操作技能考核采用现场操作方式，考核时间为120分钟，满分100分，60分及格。考核项目分为三大模块，共计考核6道实操题。',
     examContent: [
-      '信息安全基础：信息安全概念、安全模型、安全框架',
-      '信息安全技术：信息安全协议、防火墙、入侵检测、VPN',
-      '网络安全技术：网络协议、防火墙、入侵检测、VPN',
-      '操作系统安全：Windows、Linux安全配置',
-      '数据安全：数据分类、数据加密、数据备份',
-      '安全管理：安全策略、风险评估、安全审计',
-      '法律法规：网络安全法、个人信息保护法等'
+      '【项目一：网络与信息安全防护】',
+      '1. 网络安全防护（必考）：考核网络设备配置、防火墙规则设置等技能',
+      '2. 系统安全防护（抽考）：考核操作系统安全配置、漏洞修复等技能',
+      '3. 应用安全防护：考核应用系统安全加固、访问控制等技能',
+      '【项目二：网络与信息安全管理】',
+      '1. 网络安全管理（必考）：考核安全策略制定、日志审计等技能',
+      '2. 系统安全管理（抽考）：考核系统安全监控、权限管理等技能',
+      '3. 应用安全管理：考核应用安全审计、数据保护等技能',
+      '【项目三：网络与信息安全处置】',
+      '1. 网络安全事件监控和处置（必考）：考核安全事件识别、应急响应等技能',
+      '2. 系统安全事件监控和处置（抽考）：考核系统安全事件处理、恢复等技能',
+      '3. 应用安全事件监控和处置：考核应用安全事件分析、处置等技能'
     ],
-    questionTypeDistribution: [
-      { type: '单选题', count: 140, score: 140 },
-      { type: '判断题', count: 40, score: 40 },
-      { type: '多选题', count: 10, score: 20 }
-    ],
+    questionTypeDistribution: '【考核项目及分值分布】\n项目一：网络与信息安全防护（共60分）\n  - 网络安全防护：20分钟，20分，从5道题库中抽取1题\n  - 系统安全防护：20分钟，20分，从5道题库中抽取1题\n  - 应用安全防护：20分钟，20分，从5道题库中抽取1题\n\n项目二：网络与信息安全管理（共30分）\n  - 网络安全管理：20分钟，15分，从5道题库中抽取1题\n  - 系统安全管理/应用安全管理（抽考其一）：20分钟，15分，从5道题库中抽取1题\n\n项目三：网络与信息安全处置（共10分）\n  - 网络安全事件监控和处置：20分钟，10分，从5道题库中抽取1题\n\n【总计】考核时长120分钟，总分100分，共考核6题，题库总量45题',
     preparationTips: [
-      '系统学习信息安全基础知识',
-      '熟悉常见安全工具和技术',
-      '多做模拟练习题',
-      '关注最新安全动态和威胁趋势',
-      '理解安全原理而非死记硬背'
+      '【实操准备】熟悉主流操作系统（Windows/Linux）的安全配置',
+      '【工具掌握】掌握常见安全工具的使用方法',
+      '【实践经验】积累实际安全运维经验',
+      '【流程规范】熟悉安全事件处置流程',
+      '【模拟练习】多进行实操模拟训练',
+      '【安全意识】强化安全操作规范意识'
     ]
   },
   'security_admin_4': {
@@ -1366,19 +1667,19 @@ const EXAM_GUIDES = {
       '法律法规：网络安全法、个人信息保护法等'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 110, score: 110 },
-      { type: '判断题', count: 30, score: 30 },
-      { type: '多选题', count: 10, score: 20 }
-    ],
-    preparationTips: [
-      '系统学习信息安全基础知识',
-      '熟悉常见安全工具和技术',
-      '多做模拟练习题',
-      '关注最新安全动态和威胁趋势',
-      '理解安全原理而非死记硬背'
-    ]
-  },
-  'ai_trainer_3': {
+        { type: '单选题', count: 110, score: 73.33 },
+        { type: '判断题', count: 30, score: 20 },
+        { type: '多选题', count: 10, score: 6.67 }
+      ],
+     preparationTips: [
+       '系统学习信息安全基础知识',
+       '熟悉常见安全工具和技术',
+       '多做模拟练习题',
+       '关注最新安全动态和威胁趋势',
+       '理解安全原理而非死记硬背'
+     ]
+   },
+   'ai_trainer_3': {
     title: '人工智能训练师（三级）',
     examOverview: '人工智能训练师（三级）考试分为理论知识考试和操作技能考核两部分，主要考察考生对人工智能基础、数据标注、模型训练等知识的掌握程度。',
     examContent: [
@@ -1390,9 +1691,9 @@ const EXAM_GUIDES = {
       '职业道德：职业操守、数据伦理、社会责任'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 300, score: 300 },
-      { type: '判断题', count: 300, score: 300 },
-      { type: '多选题', count: 300, score: 600 }
+      { type: '单选题', count: 300, score: 25 },
+      { type: '判断题', count: 300, score: 25 },
+      { type: '多选题', count: 300, score: 50 }
     ],
     preparationTips: [
       '系统学习人工智能基础知识',
@@ -1465,11 +1766,11 @@ const EXAM_GUIDES = {
       '理财规划实务'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 40, score: 20, detail: '每题0.5分' },
-      { type: '多选题', count: 20, score: 20, detail: '每题1分' },
-      { type: '单项规划题', count: 25, score: 30, detail: '共30分' },
-      { type: '综合案例题', count: 20, score: 30, detail: '共30分' }
-    ],
+       { type: '单选题', count: 40, score: 28.57, detail: '每题0.71分' },
+       { type: '多选题', count: 20, score: 28.57, detail: '每题1.43分' },
+       { type: '单项规划题', count: 15, score: 21.43, detail: '共21.43分' },
+       { type: '案例分析题', count: 3, score: 21.43, detail: '共21.43分' }
+     ],
     preparationTips: [
       '掌握个人理财基本理论和方法',
       '熟悉各类理财产品特点',
@@ -1491,11 +1792,11 @@ const EXAM_GUIDES = {
       '个人贷款发展趋势'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 60, score: 30, detail: '每题0.5分' },
-      { type: '多选题', count: 20, score: 20, detail: '每题2分' },
-      { type: '判断题', count: 10, score: 10, detail: '每题1分' },
-      { type: '综合案例题', count: 5, score: 20, detail: '共20分' }
-    ],
+        { type: '单选题', count: 60, score: 37.5, detail: '每题0.63分' },
+        { type: '多选题', count: 20, score: 25, detail: '每题1.25分' },
+        { type: '判断题', count: 10, score: 12.5, detail: '每题1.25分' },
+        { type: '综合案例题', count: 5, score: 25, detail: '共25分' }
+      ],
     preparationTips: [
       '掌握个人贷款基本概念和分类',
       '熟悉贷款业务流程',
@@ -1568,10 +1869,11 @@ const EXAM_GUIDES = {
       '银行业监管'
     ],
     questionTypeDistribution: [
-      { type: '单选题', count: 80, score: 40, detail: '每题0.5分' },
-      { type: '多选题', count: 20, score: 30, detail: '每题1.5分' },
-      { type: '判断题', count: 30, score: 30, detail: '每题1分' }
-    ],
+       { type: '单选题', count: 80, score: 33.33, detail: '每题0.42分' },
+       { type: '多选题', count: 20, score: 16.67, detail: '每题0.83分' },
+       { type: '单项规划题', count: 25, score: 25, detail: '共25分' },
+       { type: '综合案例题', count: 20, score: 25, detail: '共25分' }
+     ],
     preparationTips: [
       '掌握商业银行经营管理理论',
       '熟悉银行内部控制体系',
@@ -1586,28 +1888,58 @@ const EXAM_GUIDES = {
 // 获取考试指南API
 app.get('/api/guide', async (req, res) => {
   console.log('========== /api/guide 接口被调用 ==========');
-  console.log('请求参数 bank_code:', req.query.bank_code);
+  console.log('请求参数 exam_code:', req.query.exam_code);
   try {
-    const { bank_code } = req.query;
+    const { exam_code } = req.query;
     
-    if (!bank_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数 bank_code' });
+    if (!exam_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
     }
     
-    // 根据bank_code获取对应的考试指南
-    const guide = EXAM_GUIDES[bank_code];
+    // 首先从数据库查询考试指南
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      'SELECT * FROM exam_guide WHERE exam_code = ?',
+      [exam_code]
+    );
+    await connection.end();
     
-    if (guide) {
-      console.log('查询到考试指南:', guide.title);
-      res.json({ success: true, data: guide });
+    if (rows.length > 0) {
+      const guide = rows[0];
+      // 将JSON字符串解析为对象
+      const parsedGuide = {
+        exam_code: guide.exam_code,
+        title: guide.title,
+        exam_overview: guide.exam_overview,
+        exam_content: guide.exam_content ? JSON.parse(guide.exam_content) : [],
+        question_type_distribution: guide.question_type_distribution ? JSON.parse(guide.question_type_distribution) : [],
+        preparation_tips: guide.preparation_tips ? JSON.parse(guide.preparation_tips) : [],
+        created_at: guide.created_at,
+        updated_at: guide.updated_at
+      };
+      console.log('从数据库查询到考试指南:', guide.title);
+      res.json({ success: true, data: parsedGuide });
     } else {
-      // 如果没有找到对应指南，返回默认指南（网络与信息安全管理员三级）
-      console.log('未找到对应指南，返回默认指南');
-      res.json({ success: true, data: EXAM_GUIDES['security_admin_3'] });
+      // 如果数据库中没有找到，从常量中获取
+      const guide = EXAM_GUIDES[exam_code];
+      if (guide) {
+        console.log('从常量查询到考试指南:', guide.title);
+        res.json({ success: true, data: guide });
+      } else {
+        // 如果没有找到对应指南，返回默认指南（网络与信息安全管理员三级）
+        console.log('未找到对应指南，返回默认指南');
+        res.json({ success: true, data: EXAM_GUIDES['security_admin_3'] });
+      }
     }
   } catch (error) {
     console.error('获取考试指南失败:', error);
-    res.status(500).json({ success: false, message: '获取考试指南失败' });
+    // 如果数据库查询失败，尝试从常量中获取
+    try {
+      const guide = EXAM_GUIDES[exam_code] || EXAM_GUIDES['security_admin_3'];
+      res.json({ success: true, data: guide });
+    } catch (e) {
+      res.status(500).json({ success: false, message: '获取考试指南失败' });
+    }
   }
 });
 
@@ -1617,17 +1949,17 @@ app.get('/api/guide', async (req, res) => {
 app.post('/api/question/explanation', async (req, res) => {
   console.log('========== /api/question/explanation 接口被调用 ==========');
   try {
-    const { bank_code, question_id, explanation } = req.body;
+    const { exam_code, question_id, explanation } = req.body;
     
-    if (!bank_code || question_id === undefined) {
+    if (!exam_code || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
     // 获取对应的表名
-    const bank = await getBankByCode(connection, bank_code);
-    const tableName = bank ? bank.table_name : 'security_exam_3';
+    const exam = await getExamByCode(connection, exam_code);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
     
     // 更新题目解析（使用analysis字段存储）
     const [result] = await connection.execute(
@@ -1651,19 +1983,19 @@ app.post('/api/question/explanation', async (req, res) => {
 // 获取知识要点API
 app.get('/api/knowledge', async (req, res) => {
   console.log('========== /api/knowledge 接口被调用 ==========');
-  console.log('请求参数 bank_code:', req.query.bank_code);
+  console.log('请求参数 exam_code:', req.query.exam_code);
   try {
-    const { bank_code } = req.query;
+    const { exam_code } = req.query;
     
-    if (!bank_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数 bank_code' });
+    if (!exam_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
     const [rows] = await connection.execute(
-      'SELECT id, title, content FROM knowledge_points WHERE bank_code = ? ORDER BY sort_order',
-      [bank_code]
+      'SELECT id, title, content FROM knowledge_points WHERE exam_code = ? ORDER BY sort_order',
+      [exam_code]
     );
     
     await connection.end();
@@ -1676,9 +2008,227 @@ app.get('/api/knowledge', async (req, res) => {
   }
 });
 
+// 初始化收藏表
+async function initFavoritesTable() {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS favorites (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        openid VARCHAR(100) NOT NULL,
+        exam_code VARCHAR(50) NOT NULL,
+        question_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_favorite (openid, exam_code, question_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+    await connection.end();
+    console.log('收藏表初始化完成');
+  } catch (error) {
+    console.error('初始化收藏表失败:', error);
+  }
+}
+
+// 添加收藏
+app.post('/api/favorites/add', async (req, res) => {
+  console.log('========== /api/favorites/add 接口被调用 ==========');
+  try {
+    const { openid, exam_code, question_id } = req.body;
+    
+    if (!openid || !exam_code || question_id === undefined) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    try {
+      await connection.execute(
+        'INSERT INTO favorites (openid, exam_code, question_id) VALUES (?, ?, ?)',
+        [openid, exam_code, question_id]
+      );
+      await connection.end();
+      res.json({ success: true, message: '收藏成功' });
+    } catch (error) {
+      await connection.end();
+      // 如果是唯一键冲突，说明已经收藏过
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.json({ success: true, message: '已经收藏过' });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('添加收藏失败:', error);
+    res.status(500).json({ success: false, message: '添加收藏失败' });
+  }
+});
+
+// 取消收藏
+app.post('/api/favorites/remove', async (req, res) => {
+  console.log('========== /api/favorites/remove 接口被调用 ==========');
+  try {
+    const { openid, exam_code, question_id } = req.body;
+    
+    if (!openid || !exam_code || question_id === undefined) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    const [result] = await connection.execute(
+      'DELETE FROM favorites WHERE openid = ? AND exam_code = ? AND question_id = ?',
+      [openid, exam_code, question_id]
+    );
+    await connection.end();
+    
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: '取消收藏成功' });
+    } else {
+      res.json({ success: true, message: '未找到收藏记录' });
+    }
+  } catch (error) {
+    console.error('取消收藏失败:', error);
+    res.status(500).json({ success: false, message: '取消收藏失败' });
+  }
+});
+
+// 获取收藏列表
+app.get('/api/favorites', async (req, res) => {
+  console.log('========== /api/favorites 接口被调用 ==========');
+  try {
+    const { openid, exam_code } = req.query;
+    
+    if (!openid) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 openid' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    let query = `
+      SELECT f.*, q.* 
+      FROM favorites f
+      JOIN `;
+    
+    // 根据exam_code获取对应的考试表名
+    let tableName = 'security_exam_3';
+    if (exam_code) {
+      const exam = await getExamByCode(connection, exam_code);
+      if (exam) {
+        tableName = exam.table_name;
+      }
+    }
+    
+    query += `${tableName} q ON f.question_id = q.id 
+      WHERE f.openid = ?`;
+    
+    const params = [openid];
+    
+    if (exam_code) {
+      query += ' AND f.exam_code = ?';
+      params.push(exam_code);
+    }
+    
+    query += ' ORDER BY f.created_at DESC';
+    
+    const [rows] = await connection.execute(query, params);
+    await connection.end();
+    
+    // 处理题目数据
+    const processedData = rows.map(row => {
+      const options = parseArrayString(row.options);
+      const answerArray = parseArrayString(row.answer);
+      
+      let optionsArray;
+      let optionsObject = null;
+      if (Array.isArray(options)) {
+        optionsArray = options;
+      } else if (typeof options === 'object' && options !== null) {
+        optionsObject = options;
+        optionsArray = Object.values(options);
+      } else {
+        optionsArray = [];
+      }
+      
+      const answer = answerArray
+        .map(answerText => {
+          if (/^[A-Ea-e]$/.test(answerText)) {
+            return answerText.toUpperCase();
+          }
+          let index = optionsArray.indexOf(answerText);
+          if (index === -1 && optionsObject) {
+            const key = Object.keys(optionsObject).find(k => k === answerText || optionsObject[k] === answerText);
+            if (key) {
+              index = optionsArray.indexOf(optionsObject[key]);
+            }
+          }
+          return index >= 0 ? String.fromCharCode(65 + index) : '';
+        })
+        .join('');
+      
+      const typeMap = {
+        '单选题': 'single',
+        '多选题': 'multiple',
+        '判断题': 'judgment',
+        '单选': 'single',
+        '多选': 'multiple',
+        '判断': 'judgment'
+      };
+      
+      let normalizedType = typeMap[row.type] || row.type;
+      
+      if (answerArray && answerArray.length > 1) {
+        normalizedType = 'multiple';
+      } else if (optionsArray.length >= 5) {
+        normalizedType = 'multiple';
+      } else if (optionsArray.length === 2) {
+        normalizedType = 'judgment';
+      } else if (!normalizedType || normalizedType === '') {
+        normalizedType = 'single';
+      }
+      
+      return {
+        ...row,
+        options: optionsArray,
+        answer: answer,
+        type: normalizedType,
+        explanation: row.analysis || row.explanation || '',
+        is_favorite: true
+      };
+    });
+    
+    res.json({ success: true, data: processedData });
+  } catch (error) {
+    console.error('获取收藏列表失败:', error);
+    res.status(500).json({ success: false, message: '获取收藏列表失败' });
+  }
+});
+
+// 检查题目是否已收藏
+app.get('/api/favorites/check', async (req, res) => {
+  console.log('========== /api/favorites/check 接口被调用 ==========');
+  try {
+    const { openid, exam_code, question_id } = req.query;
+    
+    if (!openid || !exam_code || question_id === undefined) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      'SELECT id FROM favorites WHERE openid = ? AND exam_code = ? AND question_id = ?',
+      [openid, exam_code, question_id]
+    );
+    await connection.end();
+    
+    res.json({ success: true, data: { is_favorite: rows.length > 0 } });
+  } catch (error) {
+    console.error('检查收藏状态失败:', error);
+    res.status(500).json({ success: false, message: '检查收藏状态失败' });
+  }
+});
+
 // 启动服务器
 async function startServer() {
   await initKnowledgeTable();
+  await initFavoritesTable();
   app.listen(PORT, () => {
     console.log(`服务器运行在 http://localhost:${PORT}`);
   });

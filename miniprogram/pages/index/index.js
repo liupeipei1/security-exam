@@ -1,5 +1,5 @@
 const { API_BASE } = require('../../utils/config.js')
-const { apiGet, apiPost } = require('../../utils/request.js')
+const { apiGet, apiPost, addFavorite, removeFavorite, getFavorites, checkFavorite } = require('../../utils/request.js')
 
 Page({
   data: {
@@ -52,7 +52,12 @@ Page({
     // 题库配置
     banks: [],
     currentBank: null,
-    showBankSelector: false
+    showBankSelector: false,
+    // 收藏相关
+    favorites: [],
+    showFavoritesModal: false,
+    favoritesLoading: false,
+    currentFavoriteIds: []
   },
 
   onLoad: function (options) {
@@ -114,13 +119,17 @@ Page({
           wx.setStorageSync('isVip', vipData.is_vip)
           wx.setStorageSync('vipEndTime', vipData.vip_expire)
           
+          // 使用setData回调确保数据更新完成后再加载题库
           that.setData({
             isVip: vipData.is_vip,
             vipEndTime: vipData.vip_expire
+          }, function() {
+            console.log('设置 isVip 为:', vipData.is_vip)
+            that.loadBanks()
           })
-          console.log('设置 isVip 为:', vipData.is_vip)
+        } else {
+          that.loadBanks()
         }
-        that.loadBanks()
       })
       .catch(err => {
         console.error('VIP状态查询失败:', err)
@@ -154,6 +163,12 @@ Page({
                   openid: userData.openid,
                   nickname: userData.nickname,
                   avatar: userData.avatar,
+                  token: userData.token
+                })
+                // 同时保存到'user' key，供request.js获取token使用
+                wx.setStorageSync('user', {
+                  id: userData.id,
+                  openid: userData.openid,
                   token: userData.token
                 })
                 wx.setStorageSync('isVip', userData.is_vip)
@@ -216,6 +231,7 @@ Page({
   // 加载题库列表
   loadBanks: function() {
     const that = this
+    console.log('loadBanks 被调用，isVip:', that.data.isVip, 'userInfo:', !!that.data.userInfo)
     apiGet('/api/banks')
       .then(res => {
         console.log('加载题库列表成功:', res)
@@ -228,8 +244,12 @@ Page({
             currentBank: defaultBank
           })
           // 如果已经是会员，加载对应题库的题目
+          console.log('准备检查是否加载题目，isVip:', that.data.isVip, 'userInfo:', !!that.data.userInfo)
           if (that.data.isVip && that.data.userInfo) {
+            console.log('条件满足，调用 loadQuestions')
             that.loadQuestions()
+          } else {
+            console.log('条件不满足，不调用 loadQuestions')
           }
         }
       })
@@ -835,15 +855,18 @@ Page({
 
   // 获取各题型数量
   get judgmentCount() {
-    return this.data.allQuestions.filter(q => q.type === 'judgment').length
+    const questions = this.data.allQuestions || []
+    return questions.filter(q => q && q.type === 'judgment').length
   },
 
   get singleCount() {
-    return this.data.allQuestions.filter(q => q.type === 'single').length
+    const questions = this.data.allQuestions || []
+    return questions.filter(q => q && q.type === 'single').length
   },
 
   get multipleCount() {
-    return this.data.allQuestions.filter(q => q.type === 'multiple').length
+    const questions = this.data.allQuestions || []
+    return questions.filter(q => q && q.type === 'multiple').length
   },
 
   // 显示统计
@@ -1030,5 +1053,169 @@ Page({
     const day = String(date.getDate()).padStart(2, '0')
     
     return `${year}-${month}-${day}`
+  },
+
+  // 检查当前题目是否已收藏
+  isCurrentQuestionFavorited: function() {
+    const { currentQuestion, currentFavoriteIds } = this.data
+    return currentQuestion && currentFavoriteIds.includes(currentQuestion.id)
+  },
+
+  // 切换收藏状态
+  toggleFavorite: function() {
+    const that = this
+    const { userInfo, currentBank, currentQuestion, currentFavoriteIds } = this.data
+    
+    if (!userInfo || !userInfo.openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    
+    if (!currentQuestion || !currentQuestion.id) {
+      wx.showToast({ title: '题目数据异常', icon: 'none' })
+      return
+    }
+    
+    const isFavorited = currentFavoriteIds.includes(currentQuestion.id)
+    
+    if (isFavorited) {
+      // 取消收藏
+      removeFavorite(userInfo.openid, currentBank?.bank_code, currentQuestion.id)
+        .then(res => {
+          if (res.success) {
+            const newFavoriteIds = currentFavoriteIds.filter(id => id !== currentQuestion.id)
+            that.setData({ currentFavoriteIds: newFavoriteIds })
+            wx.showToast({ title: '已取消收藏', icon: 'success' })
+          } else {
+            wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+          }
+        })
+        .catch(err => {
+          wx.showToast({ title: '操作失败', icon: 'none' })
+        })
+    } else {
+      // 添加收藏
+      addFavorite(userInfo.openid, currentBank?.bank_code, currentQuestion.id)
+        .then(res => {
+          if (res.success) {
+            const newFavoriteIds = [...currentFavoriteIds, currentQuestion.id]
+            that.setData({ currentFavoriteIds: newFavoriteIds })
+            wx.showToast({ title: '收藏成功', icon: 'success' })
+          } else {
+            wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+          }
+        })
+        .catch(err => {
+          wx.showToast({ title: '操作失败', icon: 'none' })
+        })
+    }
+  },
+
+  // 加载收藏列表
+  loadFavorites: function() {
+    const that = this
+    const { userInfo, currentBank } = this.data
+    
+    if (!userInfo || !userInfo.openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    
+    that.setData({ favoritesLoading: true })
+    
+    getFavorites(userInfo.openid, currentBank?.bank_code)
+      .then(res => {
+        that.setData({ favoritesLoading: false })
+        if (res.success) {
+          const favorites = res.data.map(q => ({
+            id: q.id,
+            question: q.question,
+            options: q.options || [q.option_a, q.option_b, q.option_c, q.option_d].filter(o => o && o.trim()),
+            answer: q.answer,
+            analysis: q.analysis || q.explanation || '暂无解析',
+            type: q.type || q.question_type || 'single'
+          }))
+          that.setData({ favorites })
+        } else {
+          wx.showToast({ title: res.message || '加载失败', icon: 'none' })
+        }
+      })
+      .catch(err => {
+        that.setData({ favoritesLoading: false })
+        wx.showToast({ title: '加载失败', icon: 'none' })
+      })
+  },
+
+  // 显示收藏列表弹窗
+  showFavorites: function() {
+    this.loadFavorites()
+    this.setData({ showFavoritesModal: true })
+  },
+
+  // 关闭收藏弹窗
+  closeFavoritesModal: function() {
+    this.setData({ showFavoritesModal: false })
+  },
+
+  // 从收藏中移除题目
+  removeFromFavorites: function(e) {
+    const that = this
+    const questionId = e.currentTarget.dataset.questionId
+    const { userInfo, currentBank, currentFavoriteIds, favorites } = this.data
+    
+    if (!userInfo || !userInfo.openid) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    
+    wx.showModal({
+      title: '确认移除',
+      content: '确定要从收藏中移除这道题吗？',
+      success: function(res) {
+        if (res.confirm) {
+          removeFavorite(userInfo.openid, currentBank?.bank_code, questionId)
+            .then(res => {
+              if (res.success) {
+                const newFavoriteIds = currentFavoriteIds.filter(id => id !== questionId)
+                const newFavorites = favorites.filter(f => f.id !== questionId)
+                that.setData({ 
+                  currentFavoriteIds: newFavoriteIds,
+                  favorites: newFavorites 
+                })
+                wx.showToast({ title: '已移除', icon: 'success' })
+              } else {
+                wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+              }
+            })
+            .catch(err => {
+              wx.showToast({ title: '操作失败', icon: 'none' })
+            })
+        }
+      }
+    })
+  },
+
+  // 查看收藏题目详情
+  viewFavoriteQuestion: function(e) {
+    const questionId = e.currentTarget.dataset.questionId
+    const { favorites, currentQuestionIndex, currentQuestions } = this.data
+    
+    const question = favorites.find(f => f.id === questionId)
+    if (question) {
+      // 在当前题目列表中查找对应题目并定位
+      const index = currentQuestions.findIndex(q => q.id === questionId)
+      if (index !== -1) {
+        this.setData({ 
+          currentQuestionIndex: index,
+          currentQuestionData: currentQuestions[index],
+          showFavoritesModal: false,
+          selectedOptions: [],
+          selectedFlags: {},
+          showAnswer: false
+        })
+      } else {
+        wx.showToast({ title: '该题目不在当前题库中', icon: 'none' })
+      }
+    }
   }
 })

@@ -78,11 +78,11 @@
                     <div v-if="!examStarted" class="exam-start-panel">
                         <h2>📝 模拟考试说明</h2>
                         <div class="exam-info-list">
-                            <p>📌 考试时长：90分钟</p>
-                            <p>📌 题目数量：共190题</p>
-                            <p>   - 判断题：40题</p>
-                            <p>   - 单选题：140题</p>
-                            <p>   - 多选题：10题</p>
+                            <p>📌 考试时长：{{ currentBankConfig.exam_duration }}分钟</p>
+                            <p>📌 题目数量：共{{ currentBankConfig.total_questions }}题</p>
+                            <p v-if="currentBankConfig.judgment_count > 0">   - 判断题：{{ currentBankConfig.judgment_count }}题</p>
+                            <p v-if="currentBankConfig.single_count > 0">   - 单选题：{{ currentBankConfig.single_count }}题</p>
+                            <p v-if="currentBankConfig.multiple_count > 0">   - 多选题：{{ currentBankConfig.multiple_count }}题</p>
                             <p>📌 题型随机排列，每题作答后不可修改</p>
                             <p>📌 时间结束自动提交</p>
                         </div>
@@ -179,6 +179,14 @@
                                 {{ getTypeLabel(question.type) }}
                             </span>
                             <span class="question-number">第 {{ getQuestionIndex(question.id) }} 题</span>
+                            <button 
+                                class="favorite-btn"
+                                :class="{ 'favorited': isQuestionFavorite(question.id) }"
+                                @click.stop="toggleFavorite(question.id)"
+                                title="收藏题目"
+                            >
+                                {{ isQuestionFavorite(question.id) ? '❤️' : '🤍' }}
+                            </button>
                         </div>
                         <div class="question-text">{{ question.question }}</div>
                         
@@ -216,14 +224,42 @@
 
                         <!-- 备注输入框 -->
                         <div class="question-note">
-                            <label :for="'note-' + currentPage + '-' + question.id" class="note-label">📝 备注记录</label>
-                            <textarea 
-                                :id="'note-' + currentPage + '-' + question.id"
-                                class="note-input"
-                                :value="getQuestionNote(question.id)"
-                                @input="setQuestionNote(question.id, $event.target.value)"
-                                placeholder="在此输入您的备注，方便后续复习..."
-                            ></textarea>
+                            <label class="note-label">📝 备注记录</label>
+                            <div class="note-wrapper">
+                                <div class="note-toolbar">
+                                    <button 
+                                        type="button" 
+                                        title="插入图片"
+                                        @click="insertImage(question.id)"
+                                    >
+                                        📷
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        title="清空备注"
+                                        @click="clearNote(question.id)"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                                <div 
+                                    :id="'note-' + currentPage + '-' + question.id"
+                                    class="note-content"
+                                    contenteditable="true"
+                                    data-placeholder="在此输入您的备注，支持文字和图片，方便后续复习..."
+                                    @input="onNoteInput(question.id, $event)"
+                                    @paste="onNotePaste($event)"
+                                    v-html="getQuestionNote(question.id)"
+                                ></div>
+                                <input 
+                                    type="file" 
+                                    :id="'image-upload-' + question.id"
+                                    class="image-upload-input"
+                                    accept="image/*"
+                                    style="display: none;"
+                                    @change="handleImageUpload(question.id, $event)"
+                                />
+                            </div>
                         </div>
 
                         <!-- 单题提交按钮 -->
@@ -418,27 +454,32 @@
                             </ul>
                         </div>
 
-                        <div v-if="guideData.questionTypeDistribution && guideData.questionTypeDistribution.length > 0" class="knowledge-card">
+                        <div v-if="guideData.questionTypeDistribution" class="knowledge-card">
                             <h3>📊 题型分布</h3>
-                            <table class="question-type-table">
-                                <thead>
-                                    <tr>
-                                        <th>题型</th>
-                                        <th>题数</th>
-                                        <th>分值</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="(item, index) in guideData.questionTypeDistribution" :key="index">
-                                        <td>{{ item.type }}</td>
-                                        <td>{{ item.count }}题</td>
-                                        <td>{{ item.score }}分</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div class="total-score">
-                                <strong>总分：</strong>
-                                {{ guideData.questionTypeDistribution.reduce((sum, item) => sum + item.score, 0) }}分
+                            <div v-if="Array.isArray(guideData.questionTypeDistribution)">
+                                <table class="question-type-table">
+                                    <thead>
+                                        <tr>
+                                            <th>题型</th>
+                                            <th>题数</th>
+                                            <th>分值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(item, index) in guideData.questionTypeDistribution" :key="index">
+                                            <td>{{ item.type }}</td>
+                                            <td>{{ item.count }}题</td>
+                                            <td>{{ item.score }}分</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="total-score">
+                                    <strong>总分：</strong>
+                                    {{ guideData.questionTypeDistribution.reduce((sum, item) => sum + item.score, 0) }}分
+                                </div>
+                            </div>
+                            <div v-else>
+                                <p>{{ guideData.questionTypeDistribution }}</p>
                             </div>
                         </div>
 
@@ -453,6 +494,89 @@
 
                         <div v-if="!guideData.title" class="knowledge-card">
                             <p>暂无考试指南信息</p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 我的收藏 -->
+                <div v-if="currentSection === 'favorites'" class="favorites-section">
+                    <div class="quiz-header">
+                        <div class="quiz-title">❤️ 我的收藏</div>
+                    </div>
+
+                    <!-- 未登录提示 -->
+                    <div v-if="!isLoggedIn" class="empty-state">
+                        <div class="empty-icon">🔒</div>
+                        <p>请先登录以查看收藏</p>
+                        <button @click="showLoginModal = true" class="start-btn">
+                            去登录
+                        </button>
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div v-else-if="favoritesLoading" class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+
+                    <!-- 收藏列表 -->
+                    <template v-else>
+                        <div v-if="favoritesQuestions.length === 0" class="empty-state">
+                            <div class="empty-icon">📭</div>
+                            <p>暂无收藏题目</p>
+                            <button @click="currentSection = 'judgment'" class="start-btn">
+                                开始收藏
+                            </button>
+                        </div>
+
+                        <div v-else class="favorites-list">
+                            <div 
+                                v-for="(question, index) in favoritesQuestions" 
+                                :key="question.id" 
+                                class="question-card"
+                            >
+                                <div class="question-header">
+                                    <span 
+                                        class="question-type" 
+                                        :class="question.type"
+                                    >
+                                        {{ getTypeLabel(question.type) }}
+                                    </span>
+                                    <span class="question-number">第 {{ index + 1 }} 题</span>
+                                    <button 
+                                        class="favorite-btn favorited"
+                                        @click.stop="toggleFavorite(question.id)"
+                                        title="取消收藏"
+                                    >
+                                        ❤️
+                                    </button>
+                                </div>
+                                <div class="question-text">{{ question.question }}</div>
+                                
+                                <ul class="options-list">
+                                    <li 
+                                        v-for="(option, optIndex) in question.options" 
+                                        :key="optIndex"
+                                        class="option-item"
+                                        :class="{ 
+                                            correct: isCorrectOption(question.id, optIndex)
+                                        }"
+                                    >
+                                        <span class="option-label">{{ getOptionLabel(optIndex) }}</span>
+                                        <span class="option-text">{{ option }}</span>
+                                    </li>
+                                </ul>
+
+                                <div class="correct-answer">
+                                    <h4>✅ 正确答案</h4>
+                                    <p>{{ formatAnswer(question) }}</p>
+                                </div>
+
+                                <div class="answer-explanation">
+                                    <h4>💡 解析</h4>
+                                    <p>{{ question.explanation || '暂无解析' }}</p>
+                                </div>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -589,6 +713,11 @@ const {
   resetSingleQuestion,
   setQuestionNote,
   getQuestionNote,
+  onNoteInput,
+  insertImage,
+  handleImageUpload,
+  onNotePaste,
+  clearNote,
   setQuestionExplanation,
   getQuestionExplanation,
   goToPage,
@@ -627,9 +756,16 @@ const {
   cleanupQrCodeLogin,
   showUserMenu,
   examMode,
+  currentBankConfig,
   knowledgePoints,
   knowledgeLoading,
   guideData,
-  guideLoading
+  guideLoading,
+  // 收藏相关
+  favoritesQuestions,
+  favoritesLoading,
+  showFavoritesModal,
+  isQuestionFavorite,
+  toggleFavorite
 } = useExamApp()
 </script>

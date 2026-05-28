@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { apiGet, apiPost, getStoredUser, setStoredUser, clearStoredUser } from '../api/client.js'
+import { apiGet, apiPost, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
 export function useExamApp() {
                 const showUserMenu = ref(false)
@@ -46,6 +46,7 @@ export function useExamApp() {
                     { id: 'single', name: '单选题', icon: '⭕' },
                     { id: 'multiple', name: '多选题', icon: '☑️' },
                     { id: 'exam', name: '模拟考试', icon: '🎯' },
+                    { id: 'favorites', name: '我的收藏', icon: '❤️' },
                     { id: 'history', name: '答题记录', icon: '📊' },
                     { id: 'knowledge', name: '知识要点', icon: '📖' },
                     { id: 'guide', name: '考试指南', icon: '📋' }
@@ -220,6 +221,27 @@ export function useExamApp() {
                 const currentBankName = computed(() => {
                     const bank = banks.value.find(b => b.bank_code === currentBank.value);
                     return bank ? bank.bank_name : '';
+                });
+
+                // 获取当前题库的考试配置
+                const currentBankConfig = computed(() => {
+                    const bank = banks.value.find(b => b.bank_code === currentBank.value);
+                    if (!bank) {
+                        return {
+                            total_questions: 0,
+                            judgment_count: 0,
+                            single_count: 0,
+                            multiple_count: 0,
+                            exam_duration: 90 // 默认90分钟
+                        };
+                    }
+                    return {
+                        total_questions: bank.total_questions || 0,
+                        judgment_count: bank.judgment_count || 0,
+                        single_count: bank.single_count || 0,
+                        multiple_count: bank.multiple_count || 0,
+                        exam_duration: bank.exam_duration || 90 // 默认90分钟
+                    };
                 });
 
                 // 加载题库列表
@@ -431,6 +453,82 @@ export function useExamApp() {
                 // 获取题目备注
                 const getQuestionNote = (questionId) => {
                     return questionNotes.value[questionId] || '';
+                };
+
+                // 富文本备注输入处理
+                const onNoteInput = (questionId, event) => {
+                    const content = event.target.innerHTML;
+                    setQuestionNote(questionId, content);
+                };
+
+                // 触发图片上传
+                const insertImage = (questionId) => {
+                    const input = document.getElementById(`image-upload-${questionId}`);
+                    if (input) {
+                        input.click();
+                    }
+                };
+
+                // 处理图片上传
+                const handleImageUpload = async (questionId, event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const noteContent = document.getElementById(`note-${currentPage.value}-${questionId}`);
+                        if (noteContent) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'note-image';
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            noteContent.appendChild(img);
+                            setQuestionNote(questionId, noteContent.innerHTML);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+
+                    // 重置input
+                    event.target.value = '';
+                };
+
+                // 处理粘贴事件（支持截图粘贴）
+                const onNotePaste = (event) => {
+                    const items = event.clipboardData?.items;
+                    if (!items) return;
+
+                    for (const item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            event.preventDefault();
+                            const file = item.getAsFile();
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const range = window.getSelection()?.getRangeAt(0);
+                                    if (range) {
+                                        const img = document.createElement('img');
+                                        img.src = e.target.result;
+                                        img.className = 'note-image';
+                                        img.style.maxWidth = '100%';
+                                        img.style.height = 'auto';
+                                        range.deleteContents();
+                                        range.insertNode(img);
+                                    }
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }
+                    }
+                };
+
+                // 清空备注
+                const clearNote = (questionId) => {
+                    const noteContent = document.getElementById(`note-${currentPage.value}-${questionId}`);
+                    if (noteContent) {
+                        noteContent.innerHTML = '';
+                        setQuestionNote(questionId, '');
+                    }
                 };
 
                 // 设置题目自定义解析
@@ -1000,6 +1098,85 @@ export function useExamApp() {
                     }
                 };
 
+                // 收藏相关功能
+                const favoriteQuestionIds = ref([]); // 存储已收藏的题目ID
+                const favoritesLoading = ref(false); // 收藏加载状态
+                const favoritesQuestions = ref([]); // 收藏的题目列表
+                const showFavoritesModal = ref(false); // 是否显示收藏列表弹窗
+
+                // 添加收藏
+                const addQuestionFavorite = async (questionId) => {
+                    if (!isLoggedIn.value || !currentUser.value.openid) {
+                        showLoginModal.value = true;
+                        return { success: false, message: '请先登录' };
+                    }
+                    
+                    const result = await addFavorite(currentUser.value.openid, currentBank.value, questionId);
+                    if (result.success) {
+                        if (!favoriteQuestionIds.value.includes(questionId)) {
+                            favoriteQuestionIds.value.push(questionId);
+                        }
+                    }
+                    return result;
+                };
+
+                // 取消收藏
+                const removeQuestionFavorite = async (questionId) => {
+                    if (!isLoggedIn.value || !currentUser.value.openid) {
+                        showLoginModal.value = true;
+                        return { success: false, message: '请先登录' };
+                    }
+                    
+                    const result = await removeFavorite(currentUser.value.openid, currentBank.value, questionId);
+                    if (result.success) {
+                        const index = favoriteQuestionIds.value.indexOf(questionId);
+                        if (index > -1) {
+                            favoriteQuestionIds.value.splice(index, 1);
+                        }
+                    }
+                    return result;
+                };
+
+                // 切换收藏状态
+                const toggleFavorite = async (questionId) => {
+                    if (isQuestionFavorite(questionId)) {
+                        return await removeQuestionFavorite(questionId);
+                    } else {
+                        return await addQuestionFavorite(questionId);
+                    }
+                };
+
+                // 检查题目是否已收藏
+                const isQuestionFavorite = (questionId) => {
+                    return favoriteQuestionIds.value.includes(questionId);
+                };
+
+                // 加载收藏列表
+                const loadFavorites = async () => {
+                    if (!isLoggedIn.value || !currentUser.value.openid) {
+                        return;
+                    }
+                    
+                    favoritesLoading.value = true;
+                    const result = await getFavorites(currentUser.value.openid, currentBank.value);
+                    if (result.success) {
+                        favoritesQuestions.value = result.data;
+                        favoriteQuestionIds.value = result.data.map(q => q.id);
+                    }
+                    favoritesLoading.value = false;
+                };
+
+                // 打开收藏列表弹窗
+                const openFavoritesModal = async () => {
+                    await loadFavorites();
+                    showFavoritesModal.value = true;
+                };
+
+                // 关闭收藏列表弹窗
+                const closeFavoritesModal = () => {
+                    showFavoritesModal.value = false;
+                };
+
                 const resetAnswers = () => {
                     userAnswers.value = {};
                     showAnswers.value = {}; // 清空所有题目的答案显示状态
@@ -1025,6 +1202,7 @@ export function useExamApp() {
                     banks,
                     currentBank,
                     currentBankName,
+                    currentBankConfig,
                     switchBank,
                     totalQuestions,
                     totalPages,
@@ -1044,6 +1222,11 @@ export function useExamApp() {
                     resetSingleQuestion,
                     setQuestionNote,
                     getQuestionNote,
+                    onNoteInput,
+                    insertImage,
+                    handleImageUpload,
+                    onNotePaste,
+                    clearNote,
                     setQuestionExplanation,
                     getQuestionExplanation,
                     goToPage,
@@ -1091,6 +1274,18 @@ export function useExamApp() {
                     knowledgeLoading,
                     // 考试指南相关
                     guideData,
-                    guideLoading
+                    guideLoading,
+                    // 收藏相关
+                    favoriteQuestionIds,
+                    favoritesLoading,
+                    favoritesQuestions,
+                    showFavoritesModal,
+                    addQuestionFavorite,
+                    removeQuestionFavorite,
+                    toggleFavorite,
+                    isQuestionFavorite,
+                    loadFavorites,
+                    openFavoritesModal,
+                    closeFavoritesModal
                 };
 }

@@ -16,7 +16,7 @@ services:
     volumes:
       - exam-mysql-data:/var/lib/mysql
       - ./DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
-      - ./DML/bank_config.sql:/docker-entrypoint-initdb.d/02-bank_config.sql:ro
+      - ./DML/exam_config.sql:/docker-entrypoint-initdb.d/02-exam_config.sql:ro
       - ./DML/knowledge_points.sql:/docker-entrypoint-initdb.d/03-knowledge_points.sql:ro
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:

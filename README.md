@@ -22,7 +22,7 @@
 
 ## 经典版（Node.js）
 
-一个基于 **HTML + Vue.js + Node.js + MySQL** 的实现，包含判断题、单选题、多选题练习和模拟考试功能。
+一个基于 **Vue.js + Node.js + MySQL** 的实现，包含判断题、单选题、多选题练习和模拟考试功能。
 
 ## 🎯 功能特点
 
@@ -33,13 +33,13 @@
 - ✅ **答题记录** - 记录答题历史和正确率统计
 - ✅ **知识要点** - 查看安全知识总结
 - ✅ **后端API** - 支持从MySQL数据库获取题目数据
-- ✅ **离线模式** - 支持本地JSON文件作为备用数据源
+- ✅ **多题库支持** - 支持网络安全、银行从业等多个题库
 
 ## 🛠️ 技术栈
 
 | 层次 | 技术 | 说明 |
 |------|------|------|
-| 前端 | HTML5 + Vue.js 2.x | 单页面应用 |
+| 前端 | Vue 3 + Vite | 现代前端框架 |
 | 后端 | Node.js + Express | RESTful API |
 | 数据库 | MySQL 8.0 | 题库数据存储 |
 | 容器 | Docker + Docker Compose | 一键部署 |
@@ -49,24 +49,10 @@
 
 ### 环境要求
 
-- Docker Desktop（用于运行后端服务）
-- Python 3.x 或 Node.js（用于启动前端静态服务器）
+- Docker Desktop（用于运行数据库和后端服务）
+- Node.js 18+（用于前端开发）
 
-### 一键启动（推荐）
-
-```bash
-# 进入项目目录
-cd security-exam
-
-# 运行启动脚本（Windows）
-start.bat
-
-# 或手动执行
-docker-compose up -d
-python -m http.server 8000
-```
-
-### 手动启动步骤
+### 启动步骤
 
 **1. 启动后端服务（Docker）**
 
@@ -84,13 +70,14 @@ docker-compose down
 **2. 启动前端服务**
 
 ```bash
-# 方式一：使用 Python（推荐）
-python -m http.server 8000
+# 进入前端目录
+cd frontend
 
-# 方式二：使用 Node.js
-npx http-server -p 8000
+# 安装依赖（首次运行）
+npm install
 
-# 方式三：使用 VS Code Live Server 插件
+# 启动开发服务器
+npm run dev
 ```
 
 ### 访问地址
@@ -102,9 +89,19 @@ npx http-server -p 8000
 
 ## 🔌 API 接口
 
+### 获取考试题库列表
+```
+GET http://localhost:3001/api/exams
+```
+
 ### 获取所有题目
 ```
 GET http://localhost:3001/api/questions
+```
+
+### 获取指定题库题目
+```
+GET http://localhost:3001/api/questions/exam/{examCode}
 ```
 
 ### 获取随机题目
@@ -132,39 +129,64 @@ GET http://localhost:3001/api/health
 
 ```
 security-exam/
-├── index.html          # 主应用页面（桌面端）
-├── mobile.html         # 移动端页面
-├── questions.json      # 题库数据（离线备用）
+├── .env.example        # 环境变量示例
+├── .gitignore          # Git忽略配置
+├── README.md           # 项目说明文档
 ├── start.bat           # Windows 一键启动脚本
+├── start-spring.bat    # Spring Cloud 启动脚本
 ├── docker-compose.yml  # Docker Compose 配置
-├── css/
-│   └── style.css       # 样式文件
-├── js/
-│   ├── app.js          # 主应用逻辑
-│   ├── config.js       # 配置文件
-│   └── utils/          # 工具函数
-├── backend/            # 后端服务
+├── docker-compose.spring.yml  # Spring Cloud Docker配置
+├── DML/                # 数据库初始化脚本
+│   ├── ai_trainer_3.sql       # AI训练师三级题库
+│   ├── banking_law.sql        # 银行从业法律法规题库
+│   ├── exam_config.sql        # 题库配置表
+│   ├── exam_guide.sql         # 考试指南
+│   ├── knowledge_points.sql   # 知识要点
+│   ├── personal_finance.sql   # 个人理财题库
+│   ├── security_exam_3.sql    # 网络安全三级题库
+│   └── user.sql               # 用户表
+├── backend/            # Node.js 后端服务（仅供对照）
 │   ├── server.js       # Node.js 服务器
 │   ├── package.json    # 后端依赖
-│   └── Dockerfile      # 后端镜像配置
-└── miniprogram/        # 微信小程序模板
-    ├── app.js
-    ├── app.json
-    └── pages/
-        └── index/
+│   ├── package-lock.json
+│   ├── Dockerfile      # 后端镜像配置
+│   └── config/         # 配置文件
+├── backend-spring/     # Spring Cloud 后端（推荐）
+│   ├── exam-gateway/   # API网关
+│   ├── exam-auth-service/   # 认证服务
+│   ├── exam-user-service/   # 用户服务
+│   ├── exam-question-service/ # 题库服务
+│   └── exam-registry/  # Eureka注册中心
+├── frontend/           # Vue 3 前端应用
+│   ├── index.html      # 入口HTML
+│   ├── package.json    # 前端依赖
+│   ├── vite.config.js  # Vite配置
+│   ├── nginx.conf      # Nginx配置
+│   ├── .env.development # 开发环境变量
+│   ├── dist/           # 构建产物
+│   └── src/            # 源代码
+│       ├── App.vue     # 主应用组件
+│       ├── main.js     # 入口文件
+│       └── ...         # 其他组件和工具
+├── miniprogram/        # 微信小程序
+│   ├── app.js          # 小程序入口
+│   ├── app.json        # 小程序配置
+│   ├── app.wxss        # 全局样式
+│   └── pages/          # 页面目录
+└── 文档题库/           # 题库文档（原始资料）
+    ├── 个人理财/
+    ├── 法律法规/
+    ├── 网络安全-3级/
+    └── 训练师-3级/
 ```
 
 ## 📊 数据源说明
 
-系统支持双重数据源，自动降级：
+系统使用 MySQL 数据库作为主要数据源：
 
-1. **优先尝试 API 获取**（后端运行时）
-   - 请求地址：`http://localhost:3001/api/questions`
-   - 数据来源：MySQL 数据库
-
-2. **自动降级本地 JSON**（后端关闭时）
-   - 文件路径：`/questions.json`
-   - 作为离线备用方案
+1. **数据库初始化**：Docker Compose 启动时自动执行 `DML/` 目录下的 SQL 脚本
+2. **题库配置**：`exam_config` 表存储题库元信息
+3. **题目数据**：各题库表存储具体题目
 
 ## 🐳 Docker 配置说明
 
@@ -190,33 +212,31 @@ security-exam/
 ### 方案一：本地开发
 
 ```bash
-# 启动完整服务
+# 启动后端服务
+cd security-exam
 docker-compose up -d
-python -m http.server 8000
+
+# 启动前端开发服务器
+cd frontend
+npm install
+npm run dev
 ```
 
-### 方案二：GitHub Pages（纯前端）
+### 方案二：生产构建
 
 ```bash
-# 仅部署前端文件（使用本地JSON数据）
-git add .
-git commit -m "Deploy to GitHub Pages"
-git push origin main
+# 构建前端
+cd frontend
+npm run build
+
+# 使用 nginx 部署 dist 目录
 ```
-
-### 方案三：Vercel / Netlify（全栈）
-
-需配置环境变量：
-- `DB_HOST`: MySQL 数据库地址
-- `DB_USER`: 数据库用户名
-- `DB_PASSWORD`: 数据库密码
-- `DB_NAME`: 数据库名称
 
 ---
 
 ## 🌐 公网访问方案（跨网络访问）
 
-### 方案四：云服务器部署（推荐）
+### 方案三：云服务器部署（推荐）
 
 **步骤 1：购买云服务器**
 
@@ -289,7 +309,7 @@ sudo ufw enable
 
 ---
 
-### 方案五：内网穿透（临时测试）
+### 方案四：内网穿透（临时测试）
 
 适用于没有云服务器的情况，临时分享给外网用户测试。
 
@@ -304,7 +324,6 @@ sudo ufw enable
 
 # 3. 认证（Windows）
 ngrok config add-authtoken 你的authtoken
-ngrok config add-authtoken 3DRDzNioSmlH7BSqYO2O3lMR7Jb_4UsXyLCokJFVaM7tKtg7H
 
 # 4. 启动穿透（前端）
 ngrok http 8000
@@ -319,13 +338,9 @@ Forwarding  https://scary-lung-scabby.ngrok-free.dev/ -> http://localhost:8000
 Forwarding  https://def456.ngrok.io -> http://localhost:3001
 ```
 
-**方式 2：使用 FRP（自建穿透）**
-
-需要有一台公网服务器。
-
 ---
 
-### 方案六：配置域名（专业部署）
+### 方案五：配置域名（专业部署）
 
 **步骤 1：购买域名**
 
@@ -358,7 +373,7 @@ server {
     server_name exam.yourdomain.com;
 
     location / {
-        root /var/www/security-exam;
+        root /var/www/security-exam/frontend/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -393,33 +408,7 @@ sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx -d exam.yourdomain.com -d api.exam.yourdomain.com
 ```
 
-**步骤 5：更新前端配置**
-
-修改 `js/app.js` 中的 API 地址：
-```javascript
-// 将 localhost:3001 改为你的域名
-const API_URL = 'https://api.exam.yourdomain.com/api/questions';
-```
-
 ---
-
-## 🔄 前端API地址动态配置
-
-为了支持多环境部署，可以修改前端代码实现动态配置：
-
-```javascript
-// js/app.js - 修改API地址配置
-const getApiUrl = () => {
-  // 生产环境（域名）
-  if (window.location.hostname.includes('yourdomain.com')) {
-    return 'https://api.exam.yourdomain.com/api/questions';
-  }
-  // 本地开发
-  return 'http://localhost:3001/api/questions';
-};
-```
-
-这样前端会自动根据访问域名选择对应的API地址。
 
 ## 📱 微信小程序配置
 
@@ -442,8 +431,7 @@ const getApiUrl = () => {
 1. **首次启动**：首次运行 `docker-compose up -d` 会下载镜像，请耐心等待
 2. **数据初始化**：数据库表和题库数据会自动创建
 3. **端口占用**：确保 3001 和 8000 端口未被占用
-4. **离线模式**：关闭后端后，前端会自动使用本地 JSON 数据
-5. **LocalStorage**：答题记录保存在浏览器本地，清除缓存会丢失
+4. **LocalStorage**：答题记录保存在浏览器本地，清除缓存会丢失
 
 ## 📄 License
 
@@ -457,7 +445,7 @@ MIT License
 
 1. **API 无法访问**：检查 Docker 容器是否运行，端口是否正确
 2. **页面显示空白**：检查前端服务器是否启动，端口是否被占用
-3. **题库加载失败**：确认 `questions.json` 文件存在且格式正确
+3. **题库加载失败**：确认数据库服务正常运行，`exam_config` 表存在数据
 4. **Docker 启动失败**：检查 Docker Desktop 是否已启动
 
 ---

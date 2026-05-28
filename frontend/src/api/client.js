@@ -136,4 +136,26 @@ export function clearStoredUser() {
   localStorage.removeItem('user')
 }
 
+// 收藏相关API
+
+export async function addFavorite(openid, bank_code, question_id) {
+  return apiPost('/api/favorites/add', { openid, bank_code, question_id })
+}
+
+export async function removeFavorite(openid, bank_code, question_id) {
+  return apiPost('/api/favorites/remove', { openid, bank_code, question_id })
+}
+
+export async function getFavorites(openid, bank_code = null) {
+  const params = { openid }
+  if (bank_code) {
+    params.bank_code = bank_code
+  }
+  return apiGet('/api/favorites', params)
+}
+
+export async function checkFavorite(openid, bank_code, question_id) {
+  return apiGet('/api/favorites/check', { openid, bank_code, question_id })
+}
+
 export { API_BASE }

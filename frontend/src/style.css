@@ -22,27 +22,78 @@ body {
   margin-bottom: 8px;
 }
 
-.note-input {
-  width: 100%;
-  min-height: 80px;
-  padding: 12px 16px;
+.note-wrapper {
+  position: relative;
   border: 1px solid #e0e6ed;
   border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  resize: vertical;
   background: #ffffff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.note-input:focus {
+.note-wrapper:focus-within {
   outline: none;
   border-color: #4a90d9;
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.1);
 }
 
-.note-input::placeholder {
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f2f5;
+  gap: 8px;
+}
+
+.note-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s ease;
+}
+
+.note-toolbar button:hover {
+  background: #f0f2f5;
+}
+
+.note-toolbar button:active {
+  background: #e0e6ed;
+}
+
+.note-content {
+  min-height: 100px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-content:empty:before {
+  content: attr(data-placeholder);
   color: #a0aec0;
+  pointer-events: none;
+}
+
+.note-image {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.note-content:empty:before {
+  content: attr(data-placeholder);
+  color: #a0aec0;
+  pointer-events: none;
 }
 
 /* 单题提交按钮样式 */
@@ -76,4 +127,34 @@ body {
   background: #c0c0c0;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* 收藏按钮样式 */
+.favorite-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.favorite-btn:hover {
+  background: rgba(255, 182, 193, 0.3);
+  transform: scale(1.1);
+}
+
+.favorite-btn:active {
+  transform: scale(0.95);
+}
+
+.favorite-btn.favorited {
+  animation: pulse 0.3s ease;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }

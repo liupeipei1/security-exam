@@ -113,9 +113,9 @@ async function deleteExamRecords(openid) {
  */
 
 // 缓存题目列表
-async function cacheQuestions(bankCode, questions) {
+async function cacheQuestions(examCode, questions) {
   const client = await getRedisClient();
-  const key = `exam:questions:${bankCode}`;
+  const key = `exam:questions:${examCode}`;
   
   try {
     await client.set(key, JSON.stringify(questions), {
@@ -129,9 +129,9 @@ async function cacheQuestions(bankCode, questions) {
 }
 
 // 获取缓存的题目列表
-async function getCachedQuestions(bankCode) {
+async function getCachedQuestions(examCode) {
   const client = await getRedisClient();
-  const key = `exam:questions:${bankCode}`;
+  const key = `exam:questions:${examCode}`;
   
   try {
     const questions = await client.get(key);
@@ -143,9 +143,9 @@ async function getCachedQuestions(bankCode) {
 }
 
 // 清除题目缓存
-async function clearQuestionCache(bankCode) {
+async function clearQuestionCache(examCode) {
   const client = await getRedisClient();
-  const key = `exam:questions:${bankCode}`;
+  const key = `exam:questions:${examCode}`;
   
   try {
     await client.del(key);
@@ -161,9 +161,9 @@ async function clearQuestionCache(bankCode) {
  */
 
 // 保存用户答题进度
-async function saveUserProgress(openid, bankCode, progress) {
+async function saveUserProgress(openid, examCode, progress) {
   const client = await getRedisClient();
-  const key = `exam:progress:${openid}:${bankCode}`;
+  const key = `exam:progress:${openid}:${examCode}`;
   
   try {
     await client.set(key, JSON.stringify({
@@ -180,9 +180,9 @@ async function saveUserProgress(openid, bankCode, progress) {
 }
 
 // 获取用户答题进度
-async function getUserProgress(openid, bankCode) {
+async function getUserProgress(openid, examCode) {
   const client = await getRedisClient();
-  const key = `exam:progress:${openid}:${bankCode}`;
+  const key = `exam:progress:${openid}:${examCode}`;
   
   try {
     const progress = await client.get(key);

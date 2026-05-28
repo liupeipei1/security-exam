@@ -69,7 +69,6 @@ public class BankService {
         List<Map<String, Object>> list = new ArrayList<>();
         list.add(bank("security_level3", "网络与信息安全管理员三级", "security_exam_3", "🔒", 1, 190, 40, 140, 10));
         list.add(bank("ai_trainer_3", "人工智能训练师三级", "bank_ai_trainer_3", "🤖", 2, 900, 300, 300, 300));
-        list.add(bank("banking_medium", "银行从业资格中级", "bank_banking_medium", "🏦", 3, 0, 0, 0, 0));
         return list;
     }
 

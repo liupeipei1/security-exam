@@ -159,6 +159,38 @@ function clearStoredUser() {
   wx.removeStorageSync('user')
 }
 
+// 收藏相关API
+function addFavorite(openid, bankCode, questionId) {
+  return apiPost('/api/favorites/add', {
+    openid,
+    bank_code: bankCode,
+    question_id: questionId
+  })
+}
+
+function removeFavorite(openid, bankCode, questionId) {
+  return apiPost('/api/favorites/remove', {
+    openid,
+    bank_code: bankCode,
+    question_id: questionId
+  })
+}
+
+function getFavorites(openid, bankCode) {
+  return apiGet('/api/favorites', {
+    openid,
+    bank_code: bankCode
+  })
+}
+
+function checkFavorite(openid, bankCode, questionId) {
+  return apiGet('/api/favorites/check', {
+    openid,
+    bank_code: bankCode,
+    question_id: questionId
+  })
+}
+
 module.exports = {
   apiGet,
   apiPost,
@@ -166,5 +198,9 @@ module.exports = {
   getStoredUser,
   setStoredUser,
   clearStoredUser,
-  API_BASE
+  API_BASE,
+  addFavorite,
+  removeFavorite,
+  getFavorites,
+  checkFavorite
 }
