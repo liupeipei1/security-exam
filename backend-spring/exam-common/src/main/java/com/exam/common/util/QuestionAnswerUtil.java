@@ -73,7 +73,7 @@ public final class QuestionAnswerUtil {
     public static Map<String, Object> processQuestionRow(Map<String, Object> row) {
         Object optionsRaw = row.get("options");
         List<String> optionsArray;
-        Map<String, String> optionsObject = null;
+        Map<String, String> optionsObject;
 
         if (optionsRaw instanceof Map<?, ?> map) {
             optionsObject = new LinkedHashMap<>();
@@ -82,6 +82,7 @@ public final class QuestionAnswerUtil {
             }
             optionsArray = new ArrayList<>(optionsObject.values());
         } else {
+            optionsObject = null;
             optionsArray = parseArrayString(optionsRaw);
         }
 

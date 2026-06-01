@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { apiGet, apiPost, apiPut, apiDelete, apiUploadImage, apiUploadImageBase64, apiGetImages, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
+import { apiGet, apiPost, apiPut, apiDelete, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
 export function useExamApp() {
                 const showUserMenu = ref(false)
@@ -79,6 +79,66 @@ export function useExamApp() {
                     examTips: []
                 });
                 const guideSaved = ref(false);
+                
+                // 备考备注数据
+                const guideNotes = ref(null);
+                
+                // 加载备考备注
+                const loadGuideNotes = async () => {
+                    try {
+                        if (!currentUser.value.openid || !currentExam.value) return;
+                        
+                        const data = await apiGet('/api/guide/notes', {
+                            openid: currentUser.value.openid,
+                            exam_code: currentExam.value
+                        });
+                        
+                        if (data && data.success === true) {
+                            // API返回的数据结构是 {success: true, data: {...}}
+                            guideNotes.value = data.data.data || data.data;
+                        }
+                    } catch (error) {
+                        console.error('加载备考备注失败:', error);
+                    }
+                };
+                
+                // 保存备考备注
+                const saveGuideNotes = async (content, images) => {
+                    try {
+                        if (!currentUser.value.openid || !currentExam.value) return;
+                        
+                        const data = await apiPost('/api/guide/notes', {
+                            openid: currentUser.value.openid,
+                            exam_code: currentExam.value,
+                            content: content || '',
+                            images: images || []
+                        });
+                        
+                        if (data && data.success === true) {
+                            await loadGuideNotes();
+                        }
+                    } catch (error) {
+                        console.error('保存备考备注失败:', error);
+                    }
+                };
+                
+                // 清空备考备注
+                const clearGuideNotes = async () => {
+                    try {
+                        if (!currentUser.value.openid || !currentExam.value) return;
+                        
+                        const data = await apiDelete('/api/guide/notes', {
+                            openid: currentUser.value.openid,
+                            exam_code: currentExam.value
+                        });
+                        
+                        if (data && data.success === true) {
+                            guideNotes.value = null;
+                        }
+                    } catch (error) {
+                        console.error('清空备考备注失败:', error);
+                    }
+                };
                 
                 // 初始化编辑表单
                 const initGuideForm = () => {
@@ -166,60 +226,6 @@ export function useExamApp() {
                 // 删除题型
                 const removeQuestionType = (index) => {
                     guideForm.value.questionTypeDistribution.splice(index, 1);
-                };
-                
-                // 图片上传
-                const uploadImage = async (file) => {
-                    const result = await apiUploadImage(file);
-                    if (result.success) {
-                        return result.data.url;
-                    } else {
-                        console.error('图片上传失败:', result.message);
-                        return null;
-                    }
-                };
-                
-                // 粘贴上传图片（支持从剪贴板复制的图片）
-                const pasteUploadImage = async (base64Data, filename = null) => {
-                    // 如果没有提供文件名，生成一个随机文件名
-                    if (!filename) {
-                        const timestamp = Date.now();
-                        const extension = base64Data.startsWith('data:image/png') ? 'png' : 
-                                         base64Data.startsWith('data:image/jpeg') ? 'jpg' : 'png';
-                        filename = `paste_${timestamp}.${extension}`;
-                    }
-                    const result = await apiUploadImageBase64(base64Data, filename);
-                    if (result.success) {
-                        return result.data;
-                    } else {
-                        console.error('图片粘贴上传失败:', result.message);
-                        return null;
-                    }
-                };
-                
-                // 获取已存储的图片列表
-                const storedImages = ref([]);
-                
-                const fetchStoredImages = async () => {
-                    const result = await apiGetImages();
-                    if (result.success) {
-                        storedImages.value = result.data;
-                    } else {
-                        console.error('获取图片列表失败:', result.message);
-                    }
-                };
-                
-                // 删除已存储的图片
-                const deleteStoredImage = async (imageId) => {
-                    const result = await apiDelete(`/api/images/${imageId}`);
-                    if (result.success) {
-                        // 从本地列表中移除
-                        storedImages.value = storedImages.value.filter(img => img.id !== imageId);
-                        return true;
-                    } else {
-                        console.error('删除图片失败:', result.message);
-                        return false;
-                    }
                 };
                 
                 // 统一处理API错误响应
@@ -310,6 +316,8 @@ export function useExamApp() {
                     }
                     // 加载知识要点（不需要登录）
                     loadKnowledgePoints(currentExam.value);
+                    // 加载考试指南（不需要登录）
+                    loadGuide(currentExam.value);
                 };
 
                 // 加载知识要点
@@ -375,24 +383,41 @@ export function useExamApp() {
                     return exam ? exam.exam_name : '';
                 });
 
-                // 获取当前题库的考试配置
+                // 获取当前题库的考试配置（优先从考试指南获取）
                 const currentExamConfig = computed(() => {
                     const exam = exams.value.find(e => e.exam_code === currentExam.value);
-                    if (!exam) {
-                        return {
-                            total_questions: 0,
-                            judgment_count: 0,
-                            single_count: 0,
-                            multiple_count: 0,
-                            exam_duration: 90 // 默认90分钟
-                        };
+                    
+                    // 优先从考试指南获取题型分布
+                    let judgment_count = 40;
+                    let single_count = 140;
+                    let multiple_count = 10;
+                    
+                    if (guideData.value && guideData.value.questionTypeDistribution && Array.isArray(guideData.value.questionTypeDistribution)) {
+                        guideData.value.questionTypeDistribution.forEach(item => {
+                            if (item.type === '判断题') {
+                                judgment_count = item.count || judgment_count;
+                            } else if (item.type === '单选题') {
+                                single_count = item.count || single_count;
+                            } else if (item.type === '多选题') {
+                                multiple_count = item.count || multiple_count;
+                            }
+                        });
+                    } else if (exam) {
+                        // 如果没有考试指南，使用题库配置
+                        judgment_count = exam.judgment_count || judgment_count;
+                        single_count = exam.single_count || single_count;
+                        multiple_count = exam.multiple_count || multiple_count;
                     }
+                    
+                    const total_questions = judgment_count + single_count + multiple_count;
+                    const exam_duration = exam ? (exam.exam_duration || 90) : 90;
+                    
                     return {
-                        total_questions: exam.total_questions || 0,
-                        judgment_count: exam.judgment_count || 0,
-                        single_count: exam.single_count || 0,
-                        multiple_count: exam.multiple_count || 0,
-                        exam_duration: exam.exam_duration || 90 // 默认90分钟
+                        total_questions,
+                        judgment_count,
+                        single_count,
+                        multiple_count,
+                        exam_duration
                     };
                 });
 
@@ -819,16 +844,35 @@ export function useExamApp() {
                     localStorage.setItem('quizHistory', JSON.stringify(history));
                 };
 
-                // 模拟考试 - 生成试卷（40个判断题、140个单选题、10个多选题）
+                // 模拟考试 - 生成试卷（从考试指南获取题型分布）
                 const generateExamPaper = () => {
                     const judgmentQuestions = questions.value.filter(q => q.type === 'judgment');
                     const singleQuestions = questions.value.filter(q => q.type === 'single');
                     const multipleQuestions = questions.value.filter(q => q.type === 'multiple');
                     
+                    // 从考试指南获取题型分布，如果没有则使用默认值
+                    let judgmentCount = 40;
+                    let singleCount = 140;
+                    let multipleCount = 10;
+                    
+                    if (guideData.value && guideData.value.questionTypeDistribution && Array.isArray(guideData.value.questionTypeDistribution)) {
+                        guideData.value.questionTypeDistribution.forEach(item => {
+                            if (item.type === '判断题') {
+                                judgmentCount = item.count || 40;
+                            } else if (item.type === '单选题') {
+                                singleCount = item.count || 140;
+                            } else if (item.type === '多选题') {
+                                multipleCount = item.count || 10;
+                            }
+                        });
+                    }
+                    
+                    console.log('模拟考试题目数量配置:', { judgmentCount, singleCount, multipleCount });
+                    
                     // 随机抽取题目，按判断题、单选题、多选题顺序排列
-                    const shuffledJudgment = shuffleArray([...judgmentQuestions]).slice(0, 40);
-                    const shuffledSingle = shuffleArray([...singleQuestions]).slice(0, 140);
-                    const shuffledMultiple = shuffleArray([...multipleQuestions]).slice(0, 10);
+                    const shuffledJudgment = shuffleArray([...judgmentQuestions]).slice(0, judgmentCount);
+                    const shuffledSingle = shuffleArray([...singleQuestions]).slice(0, singleCount);
+                    const shuffledMultiple = shuffleArray([...multipleQuestions]).slice(0, multipleCount);
                     
                     // 按顺序合并：判断题 -> 单选题 -> 多选题
                     examQuestions.value = [...shuffledJudgment, ...shuffledSingle, ...shuffledMultiple];
@@ -1441,11 +1485,11 @@ export function useExamApp() {
                     removeExamContent,
                     addQuestionType,
                     removeQuestionType,
-                    uploadImage,
-                    pasteUploadImage,
-                    storedImages,
-                    fetchStoredImages,
-                    deleteStoredImage,
+                    // 备考备注相关
+                    guideNotes,
+                    loadGuideNotes,
+                    saveGuideNotes,
+                    clearGuideNotes,
                     // 收藏相关
                     favoriteQuestionIds,
                     favoritesLoading,
