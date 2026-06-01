@@ -1495,7 +1495,7 @@ app.get('/api/guide', async (req, res) => {
   console.log('========== /api/guide 接口被调用 ==========');
   console.log('请求参数 exam_code:', req.query.exam_code);
   try {
-    const { exam_code } = req.query;
+    let { exam_code } = req.query;
     
     if (!exam_code) {
       return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
@@ -1503,7 +1503,16 @@ app.get('/api/guide', async (req, res) => {
     
     // 首先从数据库查询考试指南
     const connection = await mysql.createConnection(dbConfig);
-    const [rows] = await connection.execute(
+    
+    // 先查询考试配置，获取正确的 exam_code（处理别名情况）
+    const exam = await getExamByCode(connection, exam_code);
+    if (exam) {
+      // 使用配置中的 exam_code 查询指南
+      exam_code = exam.exam_code;
+      console.log('解析后的 exam_code:', exam_code);
+    }
+    
+    let [rows] = await connection.execute(
       'SELECT * FROM exam_guide WHERE exam_code = ?',
       [exam_code]
     );
@@ -1511,14 +1520,25 @@ app.get('/api/guide', async (req, res) => {
     
     if (rows.length > 0) {
       const guide = rows[0];
-      // 将JSON字符串解析为对象
+      // 将JSON字符串解析为对象，添加错误处理
+      const parseJsonField = (field) => {
+        if (!field) return [];
+        try {
+          return JSON.parse(field);
+        } catch (e) {
+          // 如果不是有效的JSON，直接返回原始字符串
+          console.warn(`字段解析JSON失败，返回原始字符串: ${field.substring(0, 50)}...`);
+          return field;
+        }
+      };
+      
       const parsedGuide = {
         exam_code: guide.exam_code,
         title: guide.title,
         exam_overview: guide.exam_overview,
-        exam_content: guide.exam_content ? JSON.parse(guide.exam_content) : [],
-        question_type_distribution: guide.question_type_distribution ? JSON.parse(guide.question_type_distribution) : [],
-        preparation_tips: guide.preparation_tips ? JSON.parse(guide.preparation_tips) : [],
+        exam_content: parseJsonField(guide.exam_content),
+        question_type_distribution: parseJsonField(guide.question_type_distribution),
+        preparation_tips: parseJsonField(guide.preparation_tips),
         created_at: guide.created_at,
         updated_at: guide.updated_at
       };
