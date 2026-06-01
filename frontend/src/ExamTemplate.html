@@ -1,13 +1,13 @@
 <div class="container" id="app">
         <div class="header">
-            <h1>📚 {{ currentBankName }}</h1>
+            <h1>📚 {{ currentExamName }}</h1>
             <p>理论知识在线复习题库</p>
             
             <!-- 题库选择器 -->
             <div class="bank-selector">
-                <select id="template-bank-select" v-model="currentBank" @change="switchBank(currentBank)" class="bank-select">
-                    <option v-for="bank in banks" :key="bank.bank_code" :value="bank.bank_code">
-                        {{ bank.icon }} {{ bank.bank_name }}
+                <select id="template-bank-select" v-model="currentExam" @change="switchExam(currentExam)" class="bank-select">
+                    <option v-for="exam in exams" :key="exam.exam_code" :value="exam.exam_code">
+                        {{ exam.icon }} {{ exam.exam_name }}
                     </option>
                 </select>
             </div>

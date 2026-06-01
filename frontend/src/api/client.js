@@ -103,6 +103,26 @@ export async function apiPost(path, body) {
   }
 }
 
+export async function apiPut(path, body) {
+  const url = `${API_BASE}${path}`
+  
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    })
+    return handleResponse(res)
+  } catch (error) {
+    console.error('API请求失败:', error)
+    return {
+      code: 'NETWORK_ERROR',
+      success: false,
+      message: '网络连接失败'
+    }
+  }
+}
+
 export async function apiDelete(path, params = {}) {
   const qs = new URLSearchParams(params).toString()
   const url = `${API_BASE}${path}${qs ? `?${qs}` : ''}`
@@ -138,24 +158,24 @@ export function clearStoredUser() {
 
 // 收藏相关API
 
-export async function addFavorite(openid, bank_code, question_id) {
-  return apiPost('/api/favorites/add', { openid, bank_code, question_id })
+export async function addFavorite(openid, exam_code, question_id) {
+  return apiPost('/api/favorites/add', { openid, exam_code, question_id })
 }
 
-export async function removeFavorite(openid, bank_code, question_id) {
-  return apiPost('/api/favorites/remove', { openid, bank_code, question_id })
+export async function removeFavorite(openid, exam_code, question_id) {
+  return apiPost('/api/favorites/remove', { openid, exam_code, question_id })
 }
 
-export async function getFavorites(openid, bank_code = null) {
+export async function getFavorites(openid, exam_code = null) {
   const params = { openid }
-  if (bank_code) {
-    params.bank_code = bank_code
+  if (exam_code) {
+    params.exam_code = exam_code
   }
   return apiGet('/api/favorites', params)
 }
 
-export async function checkFavorite(openid, bank_code, question_id) {
-  return apiGet('/api/favorites/check', { openid, bank_code, question_id })
+export async function checkFavorite(openid, exam_code, question_id) {
+  return apiGet('/api/favorites/check', { openid, exam_code, question_id })
 }
 
 export { API_BASE }

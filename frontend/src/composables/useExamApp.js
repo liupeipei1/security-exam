@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { apiGet, apiPost, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
+import { apiGet, apiPost, apiPut, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
 export function useExamApp() {
                 const showUserMenu = ref(false)
@@ -53,10 +53,10 @@ export function useExamApp() {
                 ];
 
                 // 题库列表（从后端获取）
-                const banks = ref([]);
+                const exams = ref([]);
                 
                 // 当前选中的题库
-                const currentBank = ref('');
+                const currentExam = ref('');
 
                 // 题库数据
                 const questions = ref([]);
@@ -69,6 +69,104 @@ export function useExamApp() {
                 // 考试指南数据
                 const guideData = ref({});
                 const guideLoading = ref(false);
+                // 考试指南编辑相关
+                const guideEditing = ref(false);
+                const guideForm = ref({
+                    examOverview: '',
+                    examContent: [],
+                    questionTypeDistribution: [],
+                    preparationTips: [],
+                    examTips: []
+                });
+                const guideSaved = ref(false);
+                
+                // 初始化编辑表单
+                const initGuideForm = () => {
+                    guideForm.value = {
+                        examOverview: guideData.value.examOverview || '',
+                        examContent: guideData.value.examContent ? [...guideData.value.examContent] : [],
+                        questionTypeDistribution: guideData.value.questionTypeDistribution 
+                            ? JSON.parse(JSON.stringify(guideData.value.questionTypeDistribution)) 
+                            : [],
+                        preparationTips: guideData.value.preparationTips ? [...guideData.value.preparationTips] : [],
+                        examTips: guideData.value.examTips ? [...guideData.value.examTips] : []
+                    };
+                };
+                
+                // 保存考试指南
+                const saveGuide = async () => {
+                    try {
+                        const data = await apiPut('/api/guide', {
+                            exam_code: currentExam.value,
+                            ...guideForm.value
+                        });
+                        
+                        if (data && data.success === true) {
+                            guideSaved.value = true;
+                            guideEditing.value = false;
+                            // 重新加载指南数据
+                            await loadGuide(currentExam.value);
+                            // 3秒后隐藏保存成功提示
+                            setTimeout(() => {
+                                guideSaved.value = false;
+                            }, 3000);
+                        } else {
+                            alert(data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        console.error('保存考试指南失败:', error);
+                        alert('保存失败');
+                    }
+                };
+                
+                // 取消编辑
+                const cancelEdit = () => {
+                    guideEditing.value = false;
+                };
+                
+                // 添加备考建议
+                const addTip = () => {
+                    guideForm.value.preparationTips.push('');
+                };
+                
+                // 删除备考建议
+                const removeTip = (index) => {
+                    guideForm.value.preparationTips.splice(index, 1);
+                };
+                
+                // 添加通关秘诀
+                const addExamTip = () => {
+                    guideForm.value.examTips.push('');
+                };
+                
+                // 删除通关秘诀
+                const removeExamTip = (index) => {
+                    guideForm.value.examTips.splice(index, 1);
+                };
+                
+                // 添加考试内容
+                const addExamContent = () => {
+                    guideForm.value.examContent.push('');
+                };
+                
+                // 删除考试内容
+                const removeExamContent = (index) => {
+                    guideForm.value.examContent.splice(index, 1);
+                };
+                
+                // 添加题型
+                const addQuestionType = () => {
+                    guideForm.value.questionTypeDistribution.push({
+                        type: '',
+                        count: 0,
+                        score: 0
+                    });
+                };
+                
+                // 删除题型
+                const removeQuestionType = (index) => {
+                    guideForm.value.questionTypeDistribution.splice(index, 1);
+                };
                 
                 // 统一处理API错误响应
                 const handleApiError = (data, defaultMessage = '操作失败') => {
@@ -106,9 +204,9 @@ export function useExamApp() {
                 };
 
                 // 从后端 API 加载题库数据
-                const loadQuestions = async (bankCode = null) => {
+                const loadQuestions = async (examCode = null) => {
                     const params = { 
-                        bank_code: bankCode || currentBank.value || undefined,
+                        exam_code: examCode || currentExam.value || undefined,
                         openid: currentUser.value?.openid || undefined
                     }
                     try {
@@ -149,22 +247,22 @@ export function useExamApp() {
                 // 初始化加载（先加载题库列表，再加载题目）
                 const initLoad = async () => {
                     checkLoginStatus();
-                    await loadBanks();
+                    await loadExams();
                     // 加载之前保存的备注（从数据库）
                     await loadQuestionNotes();
                     // 题库列表加载完成后，根据登录状态加载题目
                     if (isLoggedIn.value) {
-                        loadQuestions(currentBank.value);
+                        loadQuestions(currentExam.value);
                     }
                     // 加载知识要点（不需要登录）
-                    loadKnowledgePoints(currentBank.value);
+                    loadKnowledgePoints(currentExam.value);
                 };
 
                 // 加载知识要点
-                const loadKnowledgePoints = async (bankCode = null) => {
-                    const targetBankCode = bankCode || currentBank.value || undefined;
-                    console.log('loadKnowledgePoints called with bankCode:', bankCode, ', currentBank.value:', currentBank.value, ', targetBankCode:', targetBankCode);
-                    const params = { bank_code: targetBankCode };
+                const loadKnowledgePoints = async (examCode = null) => {
+                    const targetExamCode = examCode || currentExam.value || undefined;
+                    console.log('loadKnowledgePoints called with examCode:', examCode, ', currentExam.value:', currentExam.value, ', targetExamCode:', targetExamCode);
+                    const params = { exam_code: targetExamCode };
                     knowledgeLoading.value = true;
                     try {
                         const data = await apiGet('/api/knowledge', params);
@@ -184,10 +282,10 @@ export function useExamApp() {
                 };
                 
                 // 加载考试指南
-                const loadGuide = async (bankCode = null) => {
-                    const targetBankCode = bankCode || currentBank.value || undefined;
-                    console.log('loadGuide called with bankCode:', bankCode, ', currentBank.value:', currentBank.value, ', targetBankCode:', targetBankCode);
-                    const params = { bank_code: targetBankCode };
+                const loadGuide = async (examCode = null) => {
+                    const targetExamCode = examCode || currentExam.value || undefined;
+                    console.log('loadGuide called with examCode:', examCode, ', currentExam.value:', currentExam.value, ', targetExamCode:', targetExamCode);
+                    const params = { exam_code: targetExamCode };
                     guideLoading.value = true;
                     try {
                         const data = await apiGet('/api/guide', params);
@@ -207,26 +305,26 @@ export function useExamApp() {
                 };
 
                 // 切换题库
-                const switchBank = (bankCode) => {
-                    currentBank.value = bankCode;
+                const switchExam = (examCode) => {
+                    currentExam.value = examCode;
                     if (isLoggedIn.value) {
-                        loadQuestions(bankCode);
+                        loadQuestions(examCode);
                     }
                     // 无论是否登录都加载知识要点和考试指南
-                    loadKnowledgePoints(bankCode);
-                    loadGuide(bankCode);
+                    loadKnowledgePoints(examCode);
+                    loadGuide(examCode);
                 };
 
                 // 获取当前题库名称
-                const currentBankName = computed(() => {
-                    const bank = banks.value.find(b => b.bank_code === currentBank.value);
-                    return bank ? bank.bank_name : '';
+                const currentExamName = computed(() => {
+                    const exam = exams.value.find(e => e.exam_code === currentExam.value);
+                    return exam ? exam.exam_name : '';
                 });
 
                 // 获取当前题库的考试配置
-                const currentBankConfig = computed(() => {
-                    const bank = banks.value.find(b => b.bank_code === currentBank.value);
-                    if (!bank) {
+                const currentExamConfig = computed(() => {
+                    const exam = exams.value.find(e => e.exam_code === currentExam.value);
+                    if (!exam) {
                         return {
                             total_questions: 0,
                             judgment_count: 0,
@@ -236,25 +334,25 @@ export function useExamApp() {
                         };
                     }
                     return {
-                        total_questions: bank.total_questions || 0,
-                        judgment_count: bank.judgment_count || 0,
-                        single_count: bank.single_count || 0,
-                        multiple_count: bank.multiple_count || 0,
-                        exam_duration: bank.exam_duration || 90 // 默认90分钟
+                        total_questions: exam.total_questions || 0,
+                        judgment_count: exam.judgment_count || 0,
+                        single_count: exam.single_count || 0,
+                        multiple_count: exam.multiple_count || 0,
+                        exam_duration: exam.exam_duration || 90 // 默认90分钟
                     };
                 });
 
                 // 加载题库列表
-                const loadBanks = async () => {
+                const loadExams = async () => {
                     try {
-                        const data = await apiGet('/api/banks');
+                        const data = await apiGet('/api/exams');
                         if (data && data.success === true && Array.isArray(data.data)) {
-                            banks.value = data.data;
+                            exams.value = data.data;
                             // 设置默认选中第一个题库
-                            if (banks.value.length > 0 && !currentBank.value) {
-                                currentBank.value = banks.value[0].bank_code;
+                            if (exams.value.length > 0 && !currentExam.value) {
+                                currentExam.value = exams.value[0].exam_code;
                             }
-                            console.log('成功加载题库列表:', banks.value.length, '个题库');
+                            console.log('成功加载题库列表:', exams.value.length, '个题库');
                         }
                     } catch (error) {
                         console.error('加载题库列表失败:', error);
@@ -436,11 +534,11 @@ export function useExamApp() {
                     saveNotesToLocalStorage();
                     
                     // 如果用户已登录，同步到后端数据库
-                    if (currentUser.value?.openid && currentBank.value) {
+                    if (currentUser.value?.openid && currentExam.value) {
                         try {
                             await apiPost('/api/notes', {
                                 openid: currentUser.value.openid,
-                                bank_code: currentBank.value,
+                                exam_code: currentExam.value,
                                 question_id: questionId,
                                 note: note
                             });
@@ -536,10 +634,10 @@ export function useExamApp() {
                     questionExplanations.value[questionId] = explanation;
                     
                     // 调用后端API保存解析
-                    if (currentBank.value) {
+                    if (currentExam.value) {
                         try {
                             await apiPost('/api/question/explanation', {
-                                bank_code: currentBank.value,
+                                exam_code: currentExam.value,
                                 question_id: questionId,
                                 explanation: explanation
                             });
@@ -562,11 +660,11 @@ export function useExamApp() {
                 const loadQuestionNotes = async () => {
                     let loadedFromDB = false;
                     
-                    if (currentUser.value?.openid && currentBank.value) {
+                    if (currentUser.value?.openid && currentExam.value) {
                         try {
                             const data = await apiGet('/api/notes', {
                                 openid: currentUser.value.openid,
-                                bank_code: currentBank.value
+                                exam_code: currentExam.value
                             });
                             if (data.success && data.data && data.data.length > 0) {
                                 const notesMap = {};
@@ -1045,7 +1143,7 @@ export function useExamApp() {
                             isLoggedIn.value = true;
                             showLoginModal.value = false;
                             setStoredUser(data.data);
-                            loadQuestions(currentBank.value);
+                            loadQuestions(currentExam.value);
                         } else {
                             loginError.value = data.message || '登录失败';
                         }
@@ -1111,7 +1209,7 @@ export function useExamApp() {
                         return { success: false, message: '请先登录' };
                     }
                     
-                    const result = await addFavorite(currentUser.value.openid, currentBank.value, questionId);
+                    const result = await addFavorite(currentUser.value.openid, currentExam.value, questionId);
                     if (result.success) {
                         if (!favoriteQuestionIds.value.includes(questionId)) {
                             favoriteQuestionIds.value.push(questionId);
@@ -1127,7 +1225,7 @@ export function useExamApp() {
                         return { success: false, message: '请先登录' };
                     }
                     
-                    const result = await removeFavorite(currentUser.value.openid, currentBank.value, questionId);
+                    const result = await removeFavorite(currentUser.value.openid, currentExam.value, questionId);
                     if (result.success) {
                         const index = favoriteQuestionIds.value.indexOf(questionId);
                         if (index > -1) {
@@ -1158,7 +1256,7 @@ export function useExamApp() {
                     }
                     
                     favoritesLoading.value = true;
-                    const result = await getFavorites(currentUser.value.openid, currentBank.value);
+                    const result = await getFavorites(currentUser.value.openid, currentExam.value);
                     if (result.success) {
                         favoritesQuestions.value = result.data;
                         favoriteQuestionIds.value = result.data.map(q => q.id);
@@ -1199,11 +1297,11 @@ export function useExamApp() {
                     navItems,
                     questions,
                     loading,
-                    banks,
-                    currentBank,
-                    currentBankName,
-                    currentBankConfig,
-                    switchBank,
+                    exams,
+                    currentExam,
+                    currentExamName,
+                    currentExamConfig,
+                    switchExam,
                     totalQuestions,
                     totalPages,
                     currentPageQuestions,
@@ -1275,6 +1373,20 @@ export function useExamApp() {
                     // 考试指南相关
                     guideData,
                     guideLoading,
+                    guideEditing,
+                    guideForm,
+                    guideSaved,
+                    initGuideForm,
+                    saveGuide,
+                    cancelEdit,
+                    addTip,
+                    removeTip,
+                    addExamTip,
+                    removeExamTip,
+                    addExamContent,
+                    removeExamContent,
+                    addQuestionType,
+                    removeQuestionType,
                     // 收藏相关
                     favoriteQuestionIds,
                     favoritesLoading,

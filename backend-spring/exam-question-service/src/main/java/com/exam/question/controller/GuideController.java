@@ -47,7 +47,7 @@ public class GuideController {
                 "多做模拟练习题"
         ));
         EXAM_GUIDES.put("security_admin_3", securityAdmin3);
-        EXAM_GUIDES.put("security_level3", securityAdmin3);
+        EXAM_GUIDES.put("security_exam_3", securityAdmin3);
 
         // 网络与信息安全管理员四级
         Map<String, Object> securityAdmin4 = new LinkedHashMap<>();

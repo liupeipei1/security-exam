@@ -1461,4 +1461,134 @@
             font-size: 0.9rem;
             margin-top: 15px;
         }
+
+        /* 考试指南编辑样式 */
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-btn,
+        .save-btn,
+        .cancel-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn {
+            background: #4a90d9;
+            color: #fff;
+        }
+
+        .edit-btn:hover {
+            background: #357abd;
+        }
+
+        .save-btn {
+            background: #4CAF50;
+            color: #fff;
+        }
+
+        .save-btn:hover {
+            background: #45a049;
+        }
+
+        .cancel-btn {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .cancel-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .guide-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .guide-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            margin-right: 8px;
+        }
+
+        .guide-input.small {
+            flex: none;
+            width: 100px;
+        }
+
+        .edit-item-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .add-btn,
+        .remove-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .add-btn {
+            background: #2196F3;
+            color: #fff;
+        }
+
+        .add-btn:hover {
+            background: #1976D2;
+        }
+
+        .remove-btn {
+            background: #f44336;
+            color: #fff;
+            padding: 8px 12px;
+        }
+
+        .remove-btn:hover {
+            background: #d32f2f;
+        }
+
+        .save-success {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(76, 175, 80, 0.9);
+            color: #fff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
  
