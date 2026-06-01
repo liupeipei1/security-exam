@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS exam_guide (
     exam_content TEXT COMMENT '考试内容（JSON数组格式）',
     question_type_distribution TEXT COMMENT '题型分布（JSON数组格式）',
     preparation_tips TEXT COMMENT '备考建议（JSON数组格式）',
+    content LONGTEXT COMMENT '备考备注内容（支持HTML格式，可包含图片标签）',
     exam_duration INT DEFAULT 90 COMMENT '考试时长（分钟）',
     total_score INT DEFAULT 100 COMMENT '总分',
     pass_score INT DEFAULT 60 COMMENT '及格分数',

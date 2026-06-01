@@ -66,7 +66,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useExamApp } from '../composables/useExamApp';
 import { apiPost } from '../api/client';
 
-const { currentExam, currentUser, guideNotes, loadGuideNotes, saveGuideNotes } = useExamApp();
+const { currentExam, currentUser, guideNotes, saveGuideNotes } = useExamApp();
 
 const noteContent = ref('');
 const isEditing = ref(false);
@@ -138,9 +138,7 @@ const renderedContent = computed(() => {
 
 // 加载已有备注
 const loadNotes = async () => {
-  if (!currentUser.value?.openid || !currentExam.value) return;
-  
-  await loadGuideNotes();
+  if (!currentExam.value) return;
   
   if (guideNotes.value) {
     noteContent.value = guideNotes.value.content || '';
@@ -228,11 +226,11 @@ const handlePaste = async (e) => {
 
 // 保存备注
 const saveNotes = async () => {
-  if (!currentUser.value?.openid || !currentExam.value) return;
+  if (!currentExam.value) return;
   
   const content = noteContent.value;
   
-  await saveGuideNotes(content, []);
+  await saveGuideNotes(content);
   isEditing.value = false;
   alert('备注保存成功！');
 };

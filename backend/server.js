@@ -144,18 +144,9 @@ async function checkVipStatus(openid) {
   }
 }
 
-// 获取随机题目（需要会员）
+// 获取随机题目
 app.get('/api/questions/random', async (req, res) => {
   const { openid, exam_code } = req.query;
-  const vipStatus = await checkVipStatus(openid);
-  
-  if (!vipStatus.is_vip) {
-    return res.status(403).json({ 
-      success: false, 
-      message: vipStatus.message,
-      need_vip: true 
-    });
-  }
   
   try {
     const connection = await mysql.createConnection(dbConfig);
@@ -248,18 +239,6 @@ app.get('/api/questions', async (req, res) => {
     const { openid, exam_code } = req.query;
     console.log('请求参数 openid:', openid, ', exam_code:', exam_code);
     console.log('openid类型:', typeof openid);
-    
-    const vipStatus = await checkVipStatus(openid);
-    console.log('VIP状态:', JSON.stringify(vipStatus));
-    
-    if (!vipStatus.is_vip) {
-      console.log('用户不是会员，返回403');
-      return res.status(403).json({ 
-        success: false, 
-        message: vipStatus.message,
-        need_vip: true 
-      });
-    }
     
     console.log('开始查询数据库...');
     let rows;
@@ -374,15 +353,6 @@ app.get('/api/questions', async (req, res) => {
 app.get('/api/questions/type/:type', async (req, res) => {
   const { openid, exam_code } = req.query;
   const questionType = req.params.type;
-  const vipStatus = await checkVipStatus(openid);
-  
-  if (!vipStatus.is_vip) {
-    return res.status(403).json({ 
-      success: false, 
-      message: vipStatus.message,
-      need_vip: true 
-    });
-  }
   
   try {
     const connection = await mysql.createConnection(dbConfig);
@@ -410,19 +380,10 @@ app.get('/api/questions/type/:type', async (req, res) => {
   }
 });
 
-// 获取随机题目（指定数量，需要会员）
+// 获取随机题目（指定数量）
 app.get('/api/questions/random/:count', async (req, res) => {
   const { openid, exam_code } = req.query;
   const count = parseInt(req.params.count) || 10;
-  const vipStatus = await checkVipStatus(openid);
-  
-  if (!vipStatus.is_vip) {
-    return res.status(403).json({ 
-      success: false, 
-      message: vipStatus.message,
-      need_vip: true 
-    });
-  }
   
   try {
     const connection = await mysql.createConnection(dbConfig);
@@ -1435,44 +1396,31 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
     
     console.log('图片转换为base64成功，大小:', fileBuffer.length, 'bytes');
     
-    // 如果提供了openid和exam_code，将图片base64数据保存到guide_notes的images字段
-    const { openid, exam_code } = req.body;
-    if (openid && exam_code) {
+    // 如果提供了exam_code，将图片base64数据保存到exam_guide的content字段
+    const { exam_code } = req.body;
+    if (exam_code) {
       const connection = await mysql.createConnection(dbConfig);
       
       // 查询现有记录
       const [existing] = await connection.execute(
-        'SELECT images FROM guide_notes WHERE openid = ? AND exam_code = ?',
-        [openid, exam_code]
+        'SELECT content FROM exam_guide WHERE exam_code = ?',
+        [exam_code]
       );
       
-      let images = [];
-      if (existing.length > 0 && existing[0].images) {
-        try {
-          images = JSON.parse(existing[0].images);
-        } catch (e) {
-          images = [];
-        }
-      }
+      let content = existing.length > 0 && existing[0].content ? existing[0].content : '';
       
-      // 添加新图片base64数据
-      images.push(imageData);
+      // 将图片添加到content中（作为img标签）
+      const imgTag = `<img src="${imageData}" />`;
+      content += imgTag;
       
-      // 更新或插入记录
-      if (existing.length > 0) {
-        await connection.execute(
-          'UPDATE guide_notes SET images = ?, updated_at = NOW() WHERE openid = ? AND exam_code = ?',
-          [JSON.stringify(images), openid, exam_code]
-        );
-      } else {
-        await connection.execute(
-          'INSERT INTO guide_notes (openid, exam_code, content, images) VALUES (?, ?, ?, ?)',
-          [openid, exam_code, '', JSON.stringify(images)]
-        );
-      }
+      // 更新记录
+      await connection.execute(
+        'UPDATE exam_guide SET content = ?, updated_at = NOW() WHERE exam_code = ?',
+        [content, exam_code]
+      );
       
       await connection.end();
-      console.log('图片base64数据已保存到guide_notes表的images字段');
+      console.log('图片base64数据已保存到exam_guide表的content字段');
     }
     
     res.json({ 
@@ -1614,79 +1562,22 @@ app.delete('/api/notes', async (req, res) => {
 
 // ==================== 考试指南备注API ====================
 
-// 获取用户的备考备注
-app.get('/api/guide/notes', async (req, res) => {
-  try {
-    const { openid, exam_code } = req.query;
-    
-    if (!openid || !exam_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数' });
-    }
-    
-    const connection = await mysql.createConnection(dbConfig);
-    
-    const [rows] = await connection.execute(
-      'SELECT * FROM guide_notes WHERE openid = ? AND exam_code = ?',
-      [openid, exam_code]
-    );
-    
-    await connection.end();
-    
-    if (rows.length > 0) {
-      const note = rows[0];
-      // 解析images字段，从JSON字符串转为数组
-      if (note.images) {
-        try {
-          note.images = JSON.parse(note.images);
-        } catch (e) {
-          console.warn('解析images字段失败:', e);
-          note.images = [];
-        }
-      } else {
-        note.images = [];
-      }
-      res.json({ success: true, data: note });
-    } else {
-      res.json({ success: true, data: null });
-    }
-  } catch (error) {
-    console.error('获取备考备注失败:', error);
-    res.status(500).json({ success: false, message: '获取备考备注失败' });
-  }
-});
-
 // 保存或更新备考备注
 app.post('/api/guide/notes', async (req, res) => {
   try {
-    const { openid, exam_code, content, images } = req.body;
+    const { exam_code, content } = req.body;
     
-    if (!openid || !exam_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    if (!exam_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
-    // 检查是否已存在备注
-    const [existing] = await connection.execute(
-      'SELECT id FROM guide_notes WHERE openid = ? AND exam_code = ?',
-      [openid, exam_code]
+    // 更新exam_guide表的content字段
+    await connection.execute(
+      'UPDATE exam_guide SET content = ?, updated_at = NOW() WHERE exam_code = ?',
+      [content || '', exam_code]
     );
-    
-    const imagesJson = Array.isArray(images) ? JSON.stringify(images) : JSON.stringify([]);
-    
-    if (existing.length > 0) {
-      // 更新备注
-      await connection.execute(
-        'UPDATE guide_notes SET content = ?, images = ?, updated_at = NOW() WHERE openid = ? AND exam_code = ?',
-        [content || '', imagesJson, openid, exam_code]
-      );
-    } else {
-      // 插入新备注
-      await connection.execute(
-        'INSERT INTO guide_notes (openid, exam_code, content, images) VALUES (?, ?, ?, ?)',
-        [openid, exam_code, content || '', imagesJson]
-      );
-    }
     
     await connection.end();
     res.json({ success: true, message: '保存成功' });
@@ -1696,20 +1587,20 @@ app.post('/api/guide/notes', async (req, res) => {
   }
 });
 
-// 删除备考备注
+// 删除备考备注（清空content字段）
 app.delete('/api/guide/notes', async (req, res) => {
   try {
-    const { openid, exam_code } = req.query;
+    const { exam_code } = req.query;
     
-    if (!openid || !exam_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    if (!exam_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
     await connection.execute(
-      'DELETE FROM guide_notes WHERE openid = ? AND exam_code = ?',
-      [openid, exam_code]
+      'UPDATE exam_guide SET content = NULL, updated_at = NOW() WHERE exam_code = ?',
+      [exam_code]
     );
     
     await connection.end();
@@ -1800,7 +1691,7 @@ app.get('/api/guide', async (req, res) => {
         examContent: parseJsonField(guide.exam_content),
         questionTypeDistribution: parseQuestionTypeDistribution(guide.question_type_distribution),
         preparationTips: parseJsonField(guide.preparation_tips),
-        examTips: parseJsonField(guide.exam_tips),
+            content: guide.content,
         createdAt: guide.created_at,
         updatedAt: guide.updated_at
       };
@@ -1824,7 +1715,7 @@ app.put('/api/guide', async (req, res) => {
   console.log('请求体:', JSON.stringify(req.body));
   
   try {
-    const { exam_code, examOverview, examContent, questionTypeDistribution, preparationTips, examTips } = req.body;
+    const { exam_code, examOverview, examContent, questionTypeDistribution, preparationTips } = req.body;
     
     if (!exam_code) {
       return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
@@ -1840,7 +1731,6 @@ app.put('/api/guide', async (req, res) => {
     const examContentStr = Array.isArray(examContent) ? JSON.stringify(examContent) : JSON.stringify([]);
     const questionTypeDistributionStr = Array.isArray(questionTypeDistribution) ? JSON.stringify(questionTypeDistribution) : JSON.stringify([]);
     const preparationTipsStr = Array.isArray(preparationTips) ? JSON.stringify(preparationTips) : JSON.stringify([]);
-    const examTipsStr = Array.isArray(examTips) ? JSON.stringify(examTips) : JSON.stringify([]);
     
     // 检查是否已存在该考试指南
     let [rows] = await connection.execute(
@@ -1853,14 +1743,14 @@ app.put('/api/guide', async (req, res) => {
       // 更新现有记录
       [result] = await connection.execute(
         'UPDATE exam_guide SET exam_overview = ?, exam_content = ?, question_type_distribution = ?, preparation_tips = ?, exam_tips = ?, updated_at = NOW() WHERE exam_code = ?',
-        [examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, examTipsStr, finalExamCode]
+        [examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, finalExamCode]
       );
       console.log('考试指南更新成功');
     } else {
       // 创建新记录
       [result] = await connection.execute(
         'INSERT INTO exam_guide (exam_code, title, exam_overview, exam_content, question_type_distribution, preparation_tips, exam_tips) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [finalExamCode, '', examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, examTipsStr]
+        [finalExamCode, '', examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr]
       );
       console.log('考试指南创建成功');
     }

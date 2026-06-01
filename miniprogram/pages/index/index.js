@@ -231,7 +231,7 @@ Page({
   // 加载题库列表
   loadBanks: function() {
     const that = this
-    console.log('loadBanks 被调用，isVip:', that.data.isVip, 'userInfo:', !!that.data.userInfo)
+    console.log('loadBanks 被调用')
     apiGet('/api/banks')
       .then(res => {
         console.log('加载题库列表成功:', res)
@@ -243,14 +243,9 @@ Page({
             banks: banks,
             currentBank: defaultBank
           })
-          // 如果已经是会员，加载对应题库的题目
-          console.log('准备检查是否加载题目，isVip:', that.data.isVip, 'userInfo:', !!that.data.userInfo)
-          if (that.data.isVip && that.data.userInfo) {
-            console.log('条件满足，调用 loadQuestions')
-            that.loadQuestions()
-          } else {
-            console.log('条件不满足，不调用 loadQuestions')
-          }
+          // 直接加载题目，无需VIP校验
+          console.log('直接调用 loadQuestions')
+          that.loadQuestions()
         }
       })
       .catch(err => {
@@ -270,9 +265,8 @@ Page({
         selectedOptions: [],
         showAnswer: false
       })
-      if (this.data.isVip) {
-        this.loadQuestions()
-      }
+      // 直接加载题目，无需VIP校验
+      this.loadQuestions()
     }
   },
 
@@ -299,14 +293,7 @@ Page({
   loadQuestions: function() {
     const that = this
     
-    console.log('loadQuestions 被调用，isVip:', this.data.isVip)
-    
-    // 如果不是会员，不加载题目
-    if (!this.data.isVip) {
-      console.log('不是会员，不加载题目')
-      that.setData({ loading: false })
-      return
-    }
+    console.log('loadQuestions 被调用')
     
     const bankCode = this.data.currentBank ? this.data.currentBank.bank_code : null
     const openid = this.data.userInfo ? this.data.userInfo.openid : null

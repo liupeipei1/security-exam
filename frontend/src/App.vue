@@ -533,22 +533,6 @@
                             </ul>
                         </div>
 
-                        <div v-if="guideData.examTips && guideData.examTips.length > 0" class="knowledge-card">
-                            <h3>🔑 通关秘诀</h3>
-                            <div v-if="guideEditing">
-                                <div v-for="(tip, index) in guideForm.examTips" :key="index" class="edit-item-row">
-                                    <input v-model="guideForm.examTips[index]" class="guide-input" />
-                                    <button @click="removeExamTip(index)" class="remove-btn">-</button>
-                                </div>
-                                <button @click="addExamTip" class="add-btn">+ 添加秘诀</button>
-                            </div>
-                            <ul v-else>
-                                <li v-for="(tip, index) in guideData.examTips" :key="index">
-                                    {{ tip }}
-                                </li>
-                            </ul>
-                        </div>
-
                         <!-- 备考备注组件 -->
                         <GuideNotes v-if="!guideEditing" />
 
@@ -835,9 +819,6 @@ const {
   saveGuide,
   cancelEdit,
   addTip,
-  removeTip,
-  addExamTip,
-  removeExamTip,
   addExamContent,
   removeExamContent,
   addQuestionType,

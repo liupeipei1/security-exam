@@ -76,46 +76,25 @@ export function useExamApp() {
                     examContent: [],
                     questionTypeDistribution: [],
                     preparationTips: [],
-                    examTips: []
                 });
                 const guideSaved = ref(false);
                 
                 // 备考备注数据
                 const guideNotes = ref(null);
                 
-                // 加载备考备注
-                const loadGuideNotes = async () => {
-                    try {
-                        if (!currentUser.value.openid || !currentExam.value) return;
-                        
-                        const data = await apiGet('/api/guide/notes', {
-                            openid: currentUser.value.openid,
-                            exam_code: currentExam.value
-                        });
-                        
-                        if (data && data.success === true) {
-                            // API返回的数据结构是 {success: true, data: {...}}
-                            guideNotes.value = data.data.data || data.data;
-                        }
-                    } catch (error) {
-                        console.error('加载备考备注失败:', error);
-                    }
-                };
-                
                 // 保存备考备注
-                const saveGuideNotes = async (content, images) => {
+                const saveGuideNotes = async (content) => {
                     try {
-                        if (!currentUser.value.openid || !currentExam.value) return;
+                        if (!currentExam.value) return;
                         
                         const data = await apiPost('/api/guide/notes', {
-                            openid: currentUser.value.openid,
                             exam_code: currentExam.value,
-                            content: content || '',
-                            images: images || []
+                            content: content || ''
                         });
                         
                         if (data && data.success === true) {
-                            await loadGuideNotes();
+                            // 直接更新guideNotes.value，无需重新加载
+                            guideNotes.value = { content: content || '', images: [] };
                         }
                     } catch (error) {
                         console.error('保存备考备注失败:', error);
@@ -125,10 +104,9 @@ export function useExamApp() {
                 // 清空备考备注
                 const clearGuideNotes = async () => {
                     try {
-                        if (!currentUser.value.openid || !currentExam.value) return;
+                        if (!currentExam.value) return;
                         
                         const data = await apiDelete('/api/guide/notes', {
-                            openid: currentUser.value.openid,
                             exam_code: currentExam.value
                         });
                         
@@ -149,7 +127,6 @@ export function useExamApp() {
                             ? JSON.parse(JSON.stringify(guideData.value.questionTypeDistribution)) 
                             : [],
                         preparationTips: guideData.value.preparationTips ? [...guideData.value.preparationTips] : [],
-                        examTips: guideData.value.examTips ? [...guideData.value.examTips] : []
                     };
                 };
                 
@@ -194,16 +171,7 @@ export function useExamApp() {
                     guideForm.value.preparationTips.splice(index, 1);
                 };
                 
-                // 添加通关秘诀
-                const addExamTip = () => {
-                    guideForm.value.examTips.push('');
-                };
-                
-                // 删除通关秘诀
-                const removeExamTip = (index) => {
-                    guideForm.value.examTips.splice(index, 1);
-                };
-                
+                               
                 // 添加考试内容
                 const addExamContent = () => {
                     guideForm.value.examContent.push('');
@@ -354,13 +322,21 @@ export function useExamApp() {
                         console.log('考试指南API返回数据:', data);
                         if (data && data.success === true && data.data) {
                             guideData.value = data.data;
+                            // 同时设置备考备注
+                            if (data.data.content) {
+                                guideNotes.value = { content: data.data.content, images: [] };
+                            } else {
+                                guideNotes.value = null;
+                            }
                             console.log('成功加载考试指南:', guideData.value.title);
                         } else {
                             guideData.value = {};
+                            guideNotes.value = null;
                         }
                     } catch (error) {
                         console.error('加载考试指南失败:', error);
                         guideData.value = {};
+                        guideNotes.value = null;
                     } finally {
                         guideLoading.value = false;
                     }
@@ -368,13 +344,14 @@ export function useExamApp() {
 
                 // 切换题库
                 const switchExam = (examCode) => {
-                    currentExam.value = examCode;
-                    if (isLoggedIn.value) {
-                        loadQuestions(examCode);
-                    }
-                    // 无论是否登录都加载知识要点和考试指南
-                    loadKnowledgePoints(examCode);
-                    loadGuide(examCode);
+                    // 处理可能传入的ref对象，提取实际值
+                    const targetExamCode = examCode?.value !== undefined ? examCode.value : examCode;
+                    currentExam.value = targetExamCode;
+                    console.log('switchExam called with examCode:', targetExamCode);
+                    // 无论是否登录都加载题目、知识要点和考试指南
+                    loadQuestions(targetExamCode);
+                    loadKnowledgePoints(targetExamCode);
+                    loadGuide(targetExamCode);
                 };
 
                 // 获取当前题库名称
@@ -1479,15 +1456,12 @@ export function useExamApp() {
                     cancelEdit,
                     addTip,
                     removeTip,
-                    addExamTip,
-                    removeExamTip,
                     addExamContent,
                     removeExamContent,
                     addQuestionType,
                     removeQuestionType,
                     // 备考备注相关
                     guideNotes,
-                    loadGuideNotes,
                     saveGuideNotes,
                     clearGuideNotes,
                     // 收藏相关
