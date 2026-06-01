@@ -1520,27 +1520,55 @@ app.get('/api/guide', async (req, res) => {
     
     if (rows.length > 0) {
       const guide = rows[0];
-      // 将JSON字符串解析为对象，添加错误处理
+      // 将字段解析为数组格式
       const parseJsonField = (field) => {
         if (!field) return [];
         try {
-          return JSON.parse(field);
+          // 尝试解析为JSON
+          const parsed = JSON.parse(field);
+          // 如果是数组直接返回，否则转换为数组
+          return Array.isArray(parsed) ? parsed : [parsed];
         } catch (e) {
-          // 如果不是有效的JSON，直接返回原始字符串
-          console.warn(`字段解析JSON失败，返回原始字符串: ${field.substring(0, 50)}...`);
-          return field;
+          // 如果不是有效的JSON，按换行符分割成数组
+          console.warn(`字段解析JSON失败，按换行分割: ${field.substring(0, 50)}...`);
+          return field.split('\n').filter(item => item.trim());
         }
       };
       
+      // 解析题型分布，转换为前端期望的格式
+      const parseQuestionTypeDistribution = (field) => {
+        if (!field) return [];
+        try {
+          const parsed = JSON.parse(field);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+          // 不是JSON，按换行分割
+          const lines = field.split('\n').filter(item => item.trim());
+          return lines.map(line => {
+            // 解析格式：判断题：40题，每题0.5分，共20分
+            const typeMatch = line.match(/(.+?)：/);
+            const countMatch = line.match(/(\d+)题/);
+            const scoreMatch = line.match(/共(\d+)分/);
+            return {
+              type: typeMatch ? typeMatch[1] : line,
+              count: countMatch ? parseInt(countMatch[1]) : 0,
+              score: scoreMatch ? parseInt(scoreMatch[1]) : 0
+            };
+          }).filter(item => item.type && item.type !== '合计');
+        }
+        return [];
+      };
+      
       const parsedGuide = {
-        exam_code: guide.exam_code,
+        examCode: guide.exam_code,
         title: guide.title,
-        exam_overview: guide.exam_overview,
-        exam_content: parseJsonField(guide.exam_content),
-        question_type_distribution: parseJsonField(guide.question_type_distribution),
-        preparation_tips: parseJsonField(guide.preparation_tips),
-        created_at: guide.created_at,
-        updated_at: guide.updated_at
+        examOverview: guide.exam_overview,
+        examContent: parseJsonField(guide.exam_content),
+        questionTypeDistribution: parseQuestionTypeDistribution(guide.question_type_distribution),
+        preparationTips: parseJsonField(guide.preparation_tips),
+        examTips: [], // 前端期望的字段，暂时设为空数组
+        createdAt: guide.created_at,
+        updatedAt: guide.updated_at
       };
       console.log('从数据库查询到考试指南:', guide.title);
       res.json({ success: true, data: parsedGuide });
