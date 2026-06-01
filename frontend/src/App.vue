@@ -6,7 +6,7 @@
             
             <!-- 题库选择器 -->
             <div class="bank-selector">
-                <select id="bank-select" v-model="currentExam" @change="switchExam(currentExam)" class="bank-select">
+                <select id="bank-select" v-model="currentExam" @change="handleExamChange" class="bank-select">
                     <option v-for="exam in exams" :key="exam.exam_code" :value="exam.exam_code">
                         {{ exam.icon }} {{ exam.exam_name }}
                     </option>
@@ -727,7 +727,7 @@
 <script setup>
 import './assets/legacy.css'
 import './config/wechat.js'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 import GuideNotes from './components/GuideNotes.vue'
 
@@ -836,6 +836,19 @@ const {
 // 更新备考建议内容
 const updateTip = (index, event) => {
   guideForm.preparationTips[index] = event.target.innerText
+}
+
+// 处理考试切换
+const handleExamChange = async (event) => {
+  // 直接从事件对象获取选中的考试代码，确保使用最新值
+  const selectedExamCode = event.target.value;
+  console.log('handleExamChange called, selected exam code:', selectedExamCode);
+  console.log('currentExam.value before switch:', currentExam.value);
+  
+  // 直接传递选中的值给switchExam
+  switchExam(selectedExamCode);
+  
+  console.log('currentExam.value after switch:', currentExam.value);
 }
 
 

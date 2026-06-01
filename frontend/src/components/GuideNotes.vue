@@ -183,7 +183,7 @@ const handlePaste = async (e) => {
         // 上传图片（使用原生fetch，不使用apiPost因为需要FormData）
         const formData = new FormData();
         formData.append('image', file);
-        // 添加openid和exam_code，让后端将图片URL保存到guide_notes的images字段
+        // 添加openid和exam_code，让后端将图片保存到exam_guide表
         if (currentUser.value?.openid) {
           formData.append('openid', currentUser.value.openid);
         }
@@ -239,6 +239,11 @@ const saveNotes = async () => {
 watch(currentExam, () => {
   loadNotes();
 });
+
+// 监听guideNotes变化，同步更新显示内容
+watch(guideNotes, () => {
+  loadNotes();
+}, { deep: true });
 
 
 

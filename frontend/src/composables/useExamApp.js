@@ -1,7 +1,10 @@
 import { ref, computed, watch } from 'vue'
 import { apiGet, apiPost, apiPut, apiDelete, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
-export function useExamApp() {
+// 使用单例模式，确保所有组件共享同一个状态
+let instance = null;
+
+function createInstance() {
                 const showUserMenu = ref(false)
                 const currentSection = ref('single'); // 默认显示单选题
                 const currentPage = ref(1);
@@ -82,12 +85,16 @@ export function useExamApp() {
                 // 备考备注数据
                 const guideNotes = ref(null);
                 
-                // 保存备考备注
+                // 保存备考备注（已合并到 /api/guide 接口）
                 const saveGuideNotes = async (content) => {
                     try {
-                        if (!currentExam.value) return;
+                        console.log('saveGuideNotes called, currentExam.value:', currentExam.value, ', content length:', content?.length);
+                        if (!currentExam.value) {
+                            console.error('saveGuideNotes: currentExam.value is empty!');
+                            return;
+                        }
                         
-                        const data = await apiPost('/api/guide/notes', {
+                        const data = await apiPut('/api/guide', {
                             exam_code: currentExam.value,
                             content: content || ''
                         });
@@ -101,13 +108,14 @@ export function useExamApp() {
                     }
                 };
                 
-                // 清空备考备注
+                // 清空备考备注（已合并到 /api/guide 接口）
                 const clearGuideNotes = async () => {
                     try {
                         if (!currentExam.value) return;
                         
-                        const data = await apiDelete('/api/guide/notes', {
-                            exam_code: currentExam.value
+                        const data = await apiPut('/api/guide', {
+                            exam_code: currentExam.value,
+                            content: ''
                         });
                         
                         if (data && data.success === true) {
@@ -346,8 +354,9 @@ export function useExamApp() {
                 const switchExam = (examCode) => {
                     // 处理可能传入的ref对象，提取实际值
                     const targetExamCode = examCode?.value !== undefined ? examCode.value : examCode;
+                    console.log('switchExam called - param examCode:', examCode, ', targetExamCode:', targetExamCode);
                     currentExam.value = targetExamCode;
-                    console.log('switchExam called with examCode:', targetExamCode);
+                    console.log('switchExam - currentExam.value set to:', currentExam.value);
                     // 无论是否登录都加载题目、知识要点和考试指南
                     loadQuestions(targetExamCode);
                     loadKnowledgePoints(targetExamCode);
@@ -404,9 +413,11 @@ export function useExamApp() {
                         const data = await apiGet('/api/exams');
                         if (data && data.success === true && Array.isArray(data.data)) {
                             exams.value = data.data;
+                            console.log('loadExams - 加载的题库列表:', JSON.stringify(exams.value.map(e => ({exam_code: e.exam_code, exam_name: e.exam_name}))));
                             // 设置默认选中第一个题库
                             if (exams.value.length > 0 && !currentExam.value) {
                                 currentExam.value = exams.value[0].exam_code;
+                                console.log('loadExams - 设置默认考试:', currentExam.value);
                             }
                             console.log('成功加载题库列表:', exams.value.length, '个题库');
                         }
@@ -1477,4 +1488,11 @@ export function useExamApp() {
                     openFavoritesModal,
                     closeFavoritesModal
                 };
+}
+
+export function useExamApp() {
+    if (!instance) {
+        instance = createInstance();
+    }
+    return instance;
 }

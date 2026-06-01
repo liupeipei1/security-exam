@@ -1375,7 +1375,7 @@ app.use((error, req, res, next) => {
 /**
  * 图片上传接口
  * POST /api/upload/image
- * @param {string} openid - 用户openid（可选，提供时会更新guide_notes的images字段）
+ * @param {string} openid - 用户openid（可选，预留字段）
  * @param {string} exam_code - 考试编码（可选，与openid配合使用）
  */
 app.post('/api/upload/image', upload.single('image'), async (req, res) => {
@@ -1560,61 +1560,8 @@ app.delete('/api/notes', async (req, res) => {
   }
 });
 
-// ==================== 考试指南备注API ====================
-
-// 保存或更新备考备注
-app.post('/api/guide/notes', async (req, res) => {
-  try {
-    const { exam_code, content } = req.body;
-    
-    if (!exam_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
-    }
-    
-    const connection = await mysql.createConnection(dbConfig);
-    
-    // 更新exam_guide表的content字段
-    await connection.execute(
-      'UPDATE exam_guide SET content = ?, updated_at = NOW() WHERE exam_code = ?',
-      [content || '', exam_code]
-    );
-    
-    await connection.end();
-    res.json({ success: true, message: '保存成功' });
-  } catch (error) {
-    console.error('保存备考备注失败:', error);
-    res.status(500).json({ success: false, message: '保存备考备注失败' });
-  }
-});
-
-// 删除备考备注（清空content字段）
-app.delete('/api/guide/notes', async (req, res) => {
-  try {
-    const { exam_code } = req.query;
-    
-    if (!exam_code) {
-      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
-    }
-    
-    const connection = await mysql.createConnection(dbConfig);
-    
-    await connection.execute(
-      'UPDATE exam_guide SET content = NULL, updated_at = NOW() WHERE exam_code = ?',
-      [exam_code]
-    );
-    
-    await connection.end();
-    res.json({ success: true, message: '删除成功' });
-  } catch (error) {
-    console.error('删除备考备注失败:', error);
-    res.status(500).json({ success: false, message: '删除备考备注失败' });
-  }
-});
-
-// 初始化知识要点表
-// 考试指南数据已迁移至数据exam_guide �?
-// 知识要点表和收藏表已通过SQL脚本创建，此处不再保留初始化函数
-
+// ==================== 考试指南备注API（已合并到 /api/guide） ====================
+// 备考备注功能已合并到 PUT /api/guide 接口中，通过 content 字段更新
 // 获取考试指南API
 app.get('/api/guide', async (req, res) => {
   console.log('========== /api/guide 接口被调用 ==========');
@@ -1710,12 +1657,13 @@ app.get('/api/guide', async (req, res) => {
 
 
 // ==================== 考试指南更新接口 ====================
+// 支持更新考试指南的所有字段，包括备考备注(content字段)
 app.put('/api/guide', async (req, res) => {
   console.log('========== PUT /api/guide 接口被调用 ==========');
   console.log('请求体:', JSON.stringify(req.body));
   
   try {
-    const { exam_code, examOverview, examContent, questionTypeDistribution, preparationTips } = req.body;
+    const { exam_code, examOverview, examContent, questionTypeDistribution, preparationTips, content } = req.body;
     
     if (!exam_code) {
       return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
@@ -1727,11 +1675,6 @@ app.put('/api/guide', async (req, res) => {
     const exam = await getExamByCode(connection, exam_code);
     const finalExamCode = exam ? exam.exam_code : exam_code;
     
-    // 将数组字段转换为JSON字符串
-    const examContentStr = Array.isArray(examContent) ? JSON.stringify(examContent) : JSON.stringify([]);
-    const questionTypeDistributionStr = Array.isArray(questionTypeDistribution) ? JSON.stringify(questionTypeDistribution) : JSON.stringify([]);
-    const preparationTipsStr = Array.isArray(preparationTips) ? JSON.stringify(preparationTips) : JSON.stringify([]);
-    
     // 检查是否已存在该考试指南
     let [rows] = await connection.execute(
       'SELECT id FROM exam_guide WHERE exam_code = ?',
@@ -1740,20 +1683,75 @@ app.put('/api/guide', async (req, res) => {
     
     let result;
     if (rows.length > 0) {
-      // 更新现有记录
+      // 更新现有记录 - 只更新请求中提供的字段
+      const updateFields = [];
+      const updateValues = [];
+      
+      if (examOverview !== undefined) {
+        updateFields.push('exam_overview = ?');
+        updateValues.push(examOverview);
+      }
+      if (examContent !== undefined) {
+        updateFields.push('exam_content = ?');
+        updateValues.push(Array.isArray(examContent) ? JSON.stringify(examContent) : JSON.stringify([]));
+      }
+      if (questionTypeDistribution !== undefined) {
+        updateFields.push('question_type_distribution = ?');
+        updateValues.push(Array.isArray(questionTypeDistribution) ? JSON.stringify(questionTypeDistribution) : JSON.stringify([]));
+      }
+      if (preparationTips !== undefined) {
+        updateFields.push('preparation_tips = ?');
+        updateValues.push(Array.isArray(preparationTips) ? JSON.stringify(preparationTips) : JSON.stringify([]));
+      }
+      if (content !== undefined) {
+        updateFields.push('content = ?');
+        updateValues.push(content);
+      }
+      
+      if (updateFields.length === 0) {
+        return res.status(400).json({ success: false, message: '没有提供任何要更新的字段' });
+      }
+      
+      updateFields.push('updated_at = NOW()');
+      updateValues.push(finalExamCode);
+      
       [result] = await connection.execute(
-        'UPDATE exam_guide SET exam_overview = ?, exam_content = ?, question_type_distribution = ?, preparation_tips = ?, exam_tips = ?, updated_at = NOW() WHERE exam_code = ?',
-        [examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, finalExamCode]
+        `UPDATE exam_guide SET ${updateFields.join(', ')} WHERE exam_code = ?`,
+        updateValues
       );
       console.log('考试指南更新成功');
     } else {
-      // 创建新记录
-      [result] = await connection.execute(
-        'INSERT INTO exam_guide (exam_code, title, exam_overview, exam_content, question_type_distribution, preparation_tips, exam_tips) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [finalExamCode, '', examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr]
-      );
-      console.log('考试指南创建成功');
-    }
+        // 创建新记录 - 只插入提供了值的字段
+        const insertFields = ['exam_code', 'title'];
+        const insertValues = [finalExamCode, '']; // title字段需要默认值
+        
+        if (examOverview !== undefined) {
+          insertFields.push('exam_overview');
+          insertValues.push(examOverview);
+        }
+        if (examContent !== undefined) {
+          insertFields.push('exam_content');
+          insertValues.push(Array.isArray(examContent) ? JSON.stringify(examContent) : JSON.stringify([]));
+        }
+        if (questionTypeDistribution !== undefined) {
+          insertFields.push('question_type_distribution');
+          insertValues.push(Array.isArray(questionTypeDistribution) ? JSON.stringify(questionTypeDistribution) : JSON.stringify([]));
+        }
+        if (preparationTips !== undefined) {
+          insertFields.push('preparation_tips');
+          insertValues.push(Array.isArray(preparationTips) ? JSON.stringify(preparationTips) : JSON.stringify([]));
+        }
+        if (content !== undefined) {
+          insertFields.push('content');
+          insertValues.push(content);
+        }
+        
+        [result] = await connection.execute(
+          `INSERT INTO exam_guide (${insertFields.join(', ')}) VALUES (${insertValues.map(() => '?').join(', ')})`,
+          insertValues
+        );
+        console.log('考试指南创建成功');
+      }
     
     await connection.end();
     
