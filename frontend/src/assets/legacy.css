@@ -1591,4 +1591,206 @@
                 transform: translate(-50%, -50%) scale(1);
             }
         }
+
+        .tip-editor {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .tip-content {
+            flex: 1;
+            min-height: 60px;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-right: 8px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .tip-content:focus {
+            border-color: #2196F3;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+        }
+
+        .tip-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+
+        .image-upload-btn {
+            padding: 8px 12px;
+            border: 1px solid #2196F3;
+            border-radius: 6px;
+            background: #fff;
+            color: #2196F3;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-right: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .image-upload-btn:hover {
+            background: #2196F3;
+            color: #fff;
+        }
+
+        /* 图片管理界面样式 */
+        .image-manager-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .image-manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .image-manager-header h2 {
+            font-size: 1.4rem;
+            color: #1a1a2e;
+            margin: 0;
+        }
+
+        .close-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        /* 粘贴上传区域 */
+        .paste-upload-area {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .paste-upload-area:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .paste-upload-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .paste-upload-area p {
+            margin: 8px 0;
+            font-size: 1rem;
+        }
+
+        .paste-hint {
+            font-size: 0.85rem !important;
+            opacity: 0.8;
+        }
+
+        /* 已存储图片区域 */
+        .stored-images-section h3 {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            background: #fafafa;
+            border-radius: 12px;
+            color: #999;
+        }
+
+        .empty-state p {
+            margin: 8px 0;
+        }
+
+        /* 图片网格 */
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .image-card {
+            background: #fafafa;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .image-thumbnail {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .image-info {
+            padding: 12px;
+        }
+
+        .image-name {
+            display: block;
+            font-size: 0.85rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .image-size {
+            display: block;
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .delete-image-btn {
+            width: calc(100% - 24px);
+            margin: 0 12px 12px;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid #ff5252;
+            border-radius: 6px;
+            color: #ff5252;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .delete-image-btn:hover {
+            background: #ff5252;
+            color: #fff;
+        }
  

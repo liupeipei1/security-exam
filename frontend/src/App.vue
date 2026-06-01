@@ -42,6 +42,14 @@
                         <span class="icon">{{ item.icon }}</span>
                         <span>{{ item.name }}</span>
                     </li>
+                    <li 
+                        class="nav-item"
+                        :class="{ active: showImageManager }"
+                        @click="openImageManager"
+                    >
+                        <span class="icon">🖼️</span>
+                        <span>图片管理</span>
+                    </li>
                 </ul>
 
                 <div class="stats">
@@ -516,8 +524,13 @@
                             <h3>📚 备考建议</h3>
                             <div v-if="guideEditing">
                                 <div v-for="(tip, index) in guideForm.preparationTips" :key="index" class="edit-item-row">
-                                    <input v-model="guideForm.preparationTips[index]" class="guide-input" />
-                                    <button @click="removeTip(index)" class="remove-btn">-</button>
+                                    <div class="tip-editor">
+                                        <div class="tip-content" contenteditable="true" @input="updateTip(index, $event)">
+                                            {{ guideForm.preparationTips[index] }}
+                                        </div>
+                                        <input type="file" accept="image/*" @change="handleTipImageUpload($event, index)" class="image-upload-btn" />
+                                        <button @click="removeTip(index)" class="remove-btn">-</button>
+                                    </div>
                                 </div>
                                 <button @click="addTip" class="add-btn">+ 添加建议</button>
                             </div>
@@ -726,6 +739,44 @@
                 </div>
             </div>
         </div>
+
+        <!-- 图片管理界面 -->
+        <div v-if="showImageManager" class="image-manager-section">
+            <div class="image-manager-header">
+                <h2>🖼️ 图片管理</h2>
+                <button class="close-btn" @click="closeImageManager">✕</button>
+            </div>
+            
+            <!-- 粘贴上传区域 -->
+            <div 
+                class="paste-upload-area"
+                ref="pasteAreaRef"
+                @paste="handlePaste"
+            >
+                <div class="paste-upload-icon">📋</div>
+                <p>在此区域粘贴图片（从其他界面复制图片后粘贴即可）</p>
+                <p class="paste-hint">💡 提示：可以直接从浏览器、截图工具或其他应用复制图片后粘贴到这里</p>
+            </div>
+            
+            <!-- 已存储图片列表 -->
+            <div class="stored-images-section">
+                <h3>已存储的图片</h3>
+                <div v-if="storedImages.length === 0" class="empty-state">
+                    <p>暂无存储的图片</p>
+                    <p>请从其他界面复制图片后粘贴到上方区域</p>
+                </div>
+                <div v-else class="images-grid">
+                    <div v-for="image in storedImages" :key="image.id" class="image-card">
+                        <img :src="`/api/images/${image.id}`" :alt="image.filename" class="image-thumbnail" />
+                        <div class="image-info">
+                            <span class="image-name">{{ image.filename }}</span>
+                            <span class="image-size">{{ (image.file_size / 1024).toFixed(1) }} KB</span>
+                        </div>
+                        <button class="delete-image-btn" @click="handleDeleteImage(image.id)">🗑️ 删除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </template>
@@ -733,6 +784,7 @@
 <script setup>
 import './assets/legacy.css'
 import './config/wechat.js'
+import { ref, onMounted } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 
 const {
@@ -830,6 +882,11 @@ const {
   removeExamContent,
   addQuestionType,
   removeQuestionType,
+  uploadImage,
+  pasteUploadImage,
+  storedImages,
+  fetchStoredImages,
+  deleteStoredImage,
   // 收藏相关
   favoritesQuestions,
   favoritesLoading,
@@ -837,4 +894,80 @@ const {
   isQuestionFavorite,
   toggleFavorite
 } = useExamApp()
+
+// 图片管理相关状态
+const showImageManager = ref(false)
+const pasteAreaRef = ref(null)
+
+// 初始化时获取图片列表
+onMounted(() => {
+  fetchStoredImages()
+})
+
+// 处理粘贴事件
+const handlePaste = async (event) => {
+  const items = event.clipboardData?.items
+  if (!items) return
+  
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        // 将文件转换为base64
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          const base64Data = e.target?.result
+          if (base64Data) {
+            const result = await pasteUploadImage(base64Data, file.name)
+            if (result) {
+              // 刷新图片列表
+              await fetchStoredImages()
+              alert('图片粘贴上传成功！')
+            }
+          }
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+  }
+}
+
+// 打开图片管理器
+const openImageManager = () => {
+  showImageManager.value = true
+  fetchStoredImages()
+}
+
+// 关闭图片管理器
+const closeImageManager = () => {
+  showImageManager.value = false
+}
+
+// 处理删除图片
+const handleDeleteImage = async (imageId) => {
+  if (confirm('确定要删除这张图片吗？')) {
+    const success = await deleteStoredImage(imageId)
+    if (success) {
+      alert('图片删除成功！')
+    }
+  }
+}
+
+// 更新备考建议内容
+const updateTip = (index, event) => {
+  guideForm.preparationTips[index] = event.target.innerText
+}
+
+// 处理备考建议图片上传
+const handleTipImageUpload = async (event, index) => {
+  const file = event.target.files[0]
+  if (file) {
+    const imageUrl = await uploadImage(file)
+    if (imageUrl) {
+      // 在当前tip中插入图片
+      const imgHtml = `<img src="${imageUrl}" style="max-width: 100%; height: auto;" />`
+      guideForm.value.preparationTips[index] = (guideForm.value.preparationTips[index] || '') + imgHtml
+    }
+  }
+}
 </script>

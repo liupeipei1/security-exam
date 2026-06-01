@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
 const axios = require('axios'); // 引入gtts模块，用于语音合成
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 // 导入考试配置管理
 const { getAllExams, getExamByCode, getDefaultExam } = require('./config/exams');
@@ -25,7 +28,42 @@ const PORT = 3001;
 
 // 中间件
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10MB' }));
+
+// 图片上传配置
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'image-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('只允许上传图片文件 (JPEG, JPG, PNG, GIF)'), false);
+    }
+  }
+});
+
+// 静态文件服务，用于访问上传的图片
+app.use('/uploads', express.static(uploadDir));
 
 // 数据库连接配置（支持环境变量）
 const dbConfig = {
@@ -1566,7 +1604,7 @@ app.get('/api/guide', async (req, res) => {
         examContent: parseJsonField(guide.exam_content),
         questionTypeDistribution: parseQuestionTypeDistribution(guide.question_type_distribution),
         preparationTips: parseJsonField(guide.preparation_tips),
-        examTips: [], // 前端期望的字段，暂时设为空数组
+        examTips: parseJsonField(guide.exam_tips),
         createdAt: guide.created_at,
         updatedAt: guide.updated_at
       };
@@ -1579,6 +1617,235 @@ app.get('/api/guide', async (req, res) => {
   } catch (error) {
     console.error('获取考试指南失败:', error);
     res.status(500).json({ success: false, message: '获取考试指南失败' });
+  }
+});
+
+// ==================== 图片上传接口 ====================
+app.post('/api/upload/image', upload.single('image'), async (req, res) => {
+  console.log('========== /api/upload/image 接口被调用 ==========');
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '请选择要上传的图片' });
+    }
+    
+    // 读取图片文件内容
+    const fileData = fs.readFileSync(req.file.path);
+    
+    // 将图片存储到数据库
+    const connection = await mysql.createConnection(dbConfig);
+    const [result] = await connection.execute(
+      'INSERT INTO image_storage (filename, file_type, file_size, file_data) VALUES (?, ?, ?, ?)',
+      [req.file.originalname, req.file.mimetype, req.file.size, fileData]
+    );
+    await connection.end();
+    
+    // 删除临时文件
+    fs.unlinkSync(req.file.path);
+    
+    const imageUrl = `/api/images/${result.insertId}`;
+    console.log('图片上传成功:', imageUrl);
+    
+    res.json({
+      success: true,
+      data: {
+        id: result.insertId,
+        url: imageUrl,
+        filename: req.file.filename,
+        size: req.file.size,
+        originalName: req.file.originalname,
+        fileType: req.file.mimetype
+      }
+    });
+  } catch (error) {
+    console.error('图片上传失败:', error);
+    res.status(500).json({ success: false, message: '图片上传失败: ' + error.message });
+  }
+});
+
+// ==================== 粘贴上传图片到数据库（base64格式） ====================
+app.post('/api/upload/image/base64', async (req, res) => {
+  console.log('========== /api/upload/image/base64 接口被调用 ==========');
+  try {
+    const { base64Data, filename } = req.body;
+    
+    if (!base64Data) {
+      return res.status(400).json({ success: false, message: '请提供图片数据' });
+    }
+    
+    // 解析base64数据
+    const matches = base64Data.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ success: false, message: '无效的图片格式' });
+    }
+    
+    const fileType = matches[1];
+    const fileData = Buffer.from(matches[2], 'base64');
+    const fileSize = fileData.length;
+    
+    // 生成文件名
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = fileType.split('/')[1] || 'png';
+    const storedFilename = 'image-' + uniqueSuffix + '.' + ext;
+    const originalName = filename || storedFilename;
+    
+    // 将图片存储到数据库（只存储到数据库，不保存到文件系统）
+    const connection = await mysql.createConnection(dbConfig);
+    const [result] = await connection.execute(
+      'INSERT INTO image_storage (filename, file_type, file_size, file_data) VALUES (?, ?, ?, ?)',
+      [originalName, fileType, fileSize, fileData]
+    );
+    await connection.end();
+    
+    const imageUrl = `/api/images/${result.insertId}`;
+    console.log('图片粘贴上传成功:', imageUrl);
+    
+    res.json({
+      success: true,
+      data: {
+        id: result.insertId,
+        url: imageUrl,
+        filename: storedFilename,
+        size: fileSize,
+        originalName: originalName,
+        fileType: fileType
+      }
+    });
+  } catch (error) {
+    console.error('图片粘贴上传失败:', error);
+    res.status(500).json({ success: false, message: '图片粘贴上传失败: ' + error.message });
+  }
+});
+
+// ==================== 获取已存储图片列表 ====================
+app.get('/api/images', async (req, res) => {
+  console.log('========== GET /api/images 接口被调用 ==========');
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      'SELECT id, filename, file_type, file_size, created_at FROM image_storage ORDER BY created_at DESC'
+    );
+    await connection.end();
+    
+    res.json({
+      success: true,
+      data: rows.map(row => ({
+        id: row.id,
+        filename: row.filename,
+        fileType: row.file_type,
+        fileSize: row.file_size,
+        url: `/api/images/${row.id}`,
+        createdAt: row.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('获取图片列表失败:', error);
+    res.status(500).json({ success: false, message: '获取图片列表失败: ' + error.message });
+  }
+});
+
+// ==================== 根据ID获取图片内容 ====================
+app.get('/api/images/:id', async (req, res) => {
+  console.log('========== GET /api/images/:id 接口被调用 ==========');
+  try {
+    const { id } = req.params;
+    
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows] = await connection.execute(
+      'SELECT file_type, file_data FROM image_storage WHERE id = ?',
+      [id]
+    );
+    await connection.end();
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: '图片不存在' });
+    }
+    
+    const image = rows[0];
+    res.setHeader('Content-Type', image.file_type);
+    res.send(image.file_data);
+  } catch (error) {
+    console.error('获取图片失败:', error);
+    res.status(500).json({ success: false, message: '获取图片失败: ' + error.message });
+  }
+});
+
+// ==================== 删除图片 ====================
+app.delete('/api/images/:id', async (req, res) => {
+  console.log('========== DELETE /api/images/:id 接口被调用 ==========');
+  try {
+    const { id } = req.params;
+    
+    const connection = await mysql.createConnection(dbConfig);
+    const [result] = await connection.execute(
+      'DELETE FROM image_storage WHERE id = ?',
+      [id]
+    );
+    await connection.end();
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: '图片不存在' });
+    }
+    
+    res.json({ success: true, message: '图片删除成功' });
+  } catch (error) {
+    console.error('删除图片失败:', error);
+    res.status(500).json({ success: false, message: '删除图片失败: ' + error.message });
+  }
+});
+
+// ==================== 考试指南更新接口 ====================
+app.put('/api/guide', async (req, res) => {
+  console.log('========== PUT /api/guide 接口被调用 ==========');
+  console.log('请求体:', JSON.stringify(req.body));
+  
+  try {
+    const { exam_code, examOverview, examContent, questionTypeDistribution, preparationTips, examTips } = req.body;
+    
+    if (!exam_code) {
+      return res.status(400).json({ success: false, message: '缺少必要参数 exam_code' });
+    }
+    
+    // 获取正确的exam_code
+    const connection = await mysql.createConnection(dbConfig);
+    
+    const exam = await getExamByCode(connection, exam_code);
+    const finalExamCode = exam ? exam.exam_code : exam_code;
+    
+    // 将数组字段转换为JSON字符串
+    const examContentStr = Array.isArray(examContent) ? JSON.stringify(examContent) : JSON.stringify([]);
+    const questionTypeDistributionStr = Array.isArray(questionTypeDistribution) ? JSON.stringify(questionTypeDistribution) : JSON.stringify([]);
+    const preparationTipsStr = Array.isArray(preparationTips) ? JSON.stringify(preparationTips) : JSON.stringify([]);
+    const examTipsStr = Array.isArray(examTips) ? JSON.stringify(examTips) : JSON.stringify([]);
+    
+    // 检查是否已存在该考试指南
+    let [rows] = await connection.execute(
+      'SELECT id FROM exam_guide WHERE exam_code = ?',
+      [finalExamCode]
+    );
+    
+    let result;
+    if (rows.length > 0) {
+      // 更新现有记录
+      [result] = await connection.execute(
+        'UPDATE exam_guide SET exam_overview = ?, exam_content = ?, question_type_distribution = ?, preparation_tips = ?, exam_tips = ?, updated_at = NOW() WHERE exam_code = ?',
+        [examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, examTipsStr, finalExamCode]
+      );
+      console.log('考试指南更新成功');
+    } else {
+      // 创建新记录
+      [result] = await connection.execute(
+        'INSERT INTO exam_guide (exam_code, title, exam_overview, exam_content, question_type_distribution, preparation_tips, exam_tips) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [finalExamCode, '', examOverview, examContentStr, questionTypeDistributionStr, preparationTipsStr, examTipsStr]
+      );
+      console.log('考试指南创建成功');
+    }
+    
+    await connection.end();
+    
+    res.json({ success: true, message: '保存成功', data: result });
+  } catch (error) {
+    console.error('保存考试指南失败:', error);
+    res.status(500).json({ success: false, message: '保存考试指南失败: ' + error.message });
   }
 });
 

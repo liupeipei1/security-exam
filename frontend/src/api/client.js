@@ -124,17 +124,115 @@ export async function apiPut(path, body) {
 }
 
 export async function apiDelete(path, params = {}) {
-  const qs = new URLSearchParams(params).toString()
-  const url = `${API_BASE}${path}${qs ? `?${qs}` : ''}`
+  const qs = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v != null && v !== '') qs.append(k, v)
+  })
+  const query = qs.toString()
+  const url = `${API_BASE}${path}${query ? `?${query}` : ''}`
   
   try {
-    const res = await fetch(url, { method: 'DELETE', headers: authHeaders() })
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
     return handleResponse(res)
   } catch (error) {
     console.error('API请求失败:', error)
     return {
       success: false,
       message: '网络请求失败，请检查网络连接',
+      code: 'NETWORK_ERROR'
+    }
+  }
+}
+
+/**
+ * 图片上传接口
+ * @param {File} file - 图片文件
+ * @returns {Promise<Object>} - 上传结果
+ */
+export async function apiUploadImage(file) {
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    
+    const headers = {}
+    const token = getToken()
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    
+    const res = await fetch(`${API_BASE}/api/upload/image`, {
+      method: 'POST',
+      headers: headers,
+      body: formData
+    })
+    return handleResponse(res)
+  } catch (error) {
+    console.error('图片上传失败:', error)
+    return {
+      success: false,
+      message: '图片上传失败，请检查网络连接',
+      code: 'NETWORK_ERROR'
+    }
+  }
+}
+
+/**
+ * 粘贴上传图片（base64格式）
+ * @param {string} base64Data - base64编码的图片数据
+ * @param {string} filename - 文件名
+ * @returns {Promise<Object>} - 上传结果
+ */
+export async function apiUploadImageBase64(base64Data, filename) {
+  try {
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    const token = getToken()
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    
+    const res = await fetch(`${API_BASE}/api/upload/image/base64`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ base64Data, filename })
+    })
+    return handleResponse(res)
+  } catch (error) {
+    console.error('图片粘贴上传失败:', error)
+    return {
+      success: false,
+      message: '图片粘贴上传失败，请检查网络连接',
+      code: 'NETWORK_ERROR'
+    }
+  }
+}
+
+/**
+ * 获取已存储图片列表
+ * @returns {Promise<Object>} - 图片列表
+ */
+export async function apiGetImages() {
+  try {
+    const headers = {}
+    const token = getToken()
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+    
+    const res = await fetch(`${API_BASE}/api/images`, {
+      method: 'GET',
+      headers: headers
+    })
+    return handleResponse(res)
+  } catch (error) {
+    console.error('获取图片列表失败:', error)
+    return {
+      success: false,
+      message: '获取图片列表失败，请检查网络连接',
       code: 'NETWORK_ERROR'
     }
   }

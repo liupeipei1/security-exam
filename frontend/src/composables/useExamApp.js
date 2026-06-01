@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import { apiGet, apiPost, apiPut, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
+import { apiGet, apiPost, apiPut, apiDelete, apiUploadImage, apiUploadImageBase64, apiGetImages, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
 export function useExamApp() {
                 const showUserMenu = ref(false)
@@ -166,6 +166,60 @@ export function useExamApp() {
                 // 删除题型
                 const removeQuestionType = (index) => {
                     guideForm.value.questionTypeDistribution.splice(index, 1);
+                };
+                
+                // 图片上传
+                const uploadImage = async (file) => {
+                    const result = await apiUploadImage(file);
+                    if (result.success) {
+                        return result.data.url;
+                    } else {
+                        console.error('图片上传失败:', result.message);
+                        return null;
+                    }
+                };
+                
+                // 粘贴上传图片（支持从剪贴板复制的图片）
+                const pasteUploadImage = async (base64Data, filename = null) => {
+                    // 如果没有提供文件名，生成一个随机文件名
+                    if (!filename) {
+                        const timestamp = Date.now();
+                        const extension = base64Data.startsWith('data:image/png') ? 'png' : 
+                                         base64Data.startsWith('data:image/jpeg') ? 'jpg' : 'png';
+                        filename = `paste_${timestamp}.${extension}`;
+                    }
+                    const result = await apiUploadImageBase64(base64Data, filename);
+                    if (result.success) {
+                        return result.data;
+                    } else {
+                        console.error('图片粘贴上传失败:', result.message);
+                        return null;
+                    }
+                };
+                
+                // 获取已存储的图片列表
+                const storedImages = ref([]);
+                
+                const fetchStoredImages = async () => {
+                    const result = await apiGetImages();
+                    if (result.success) {
+                        storedImages.value = result.data;
+                    } else {
+                        console.error('获取图片列表失败:', result.message);
+                    }
+                };
+                
+                // 删除已存储的图片
+                const deleteStoredImage = async (imageId) => {
+                    const result = await apiDelete(`/api/images/${imageId}`);
+                    if (result.success) {
+                        // 从本地列表中移除
+                        storedImages.value = storedImages.value.filter(img => img.id !== imageId);
+                        return true;
+                    } else {
+                        console.error('删除图片失败:', result.message);
+                        return false;
+                    }
                 };
                 
                 // 统一处理API错误响应
@@ -1387,6 +1441,11 @@ export function useExamApp() {
                     removeExamContent,
                     addQuestionType,
                     removeQuestionType,
+                    uploadImage,
+                    pasteUploadImage,
+                    storedImages,
+                    fetchStoredImages,
+                    deleteStoredImage,
                     // 收藏相关
                     favoriteQuestionIds,
                     favoritesLoading,
