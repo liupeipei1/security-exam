@@ -1399,6 +1399,18 @@ app.delete('/api/exam/session', async (req, res) => {
 // 静态文件服务：提供上传的图片
 app.use('/uploads', express.static(uploadsDir));
 
+// multer错误处理中间件
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    console.error('Multer错误:', error.message);
+    return res.status(500).json({ success: false, message: '文件上传失败: ' + error.message });
+  } else if (error) {
+    console.error('上传错误:', error.message);
+    return res.status(500).json({ success: false, message: '上传失败: ' + error.message });
+  }
+  next();
+});
+
 /**
  * 图片上传接口
  * POST /api/upload/image

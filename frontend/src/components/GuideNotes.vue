@@ -1,6 +1,6 @@
 <template>
   <div class="guide-notes-container">
-    <!-- 对话框样式的备注展示区域 -->
+    <!-- 对话框样式的备注展示和编辑区域 -->
     <div class="notes-dialog">
       <!-- 头部 -->
       <div class="dialog-header">
@@ -9,57 +9,53 @@
           <h3 class="notes-title">备考备注</h3>
           <span class="update-time">{{ lastUpdateTime }}</span>
         </div>
-        <button v-if="hasNotes" class="edit-btn" @click="toggleEditMode">
-          ✏️ 编辑
-        </button>
+        <!-- 编辑模式显示取消按钮，显示模式显示编辑按钮 -->
+        <button v-if="isEditing" class="close-btn" @click="cancelEdit">✕</button>
+        <button v-else-if="hasNotes" class="edit-btn" @click="toggleEditMode">✏️ 编辑</button>
       </div>
       
       <!-- 内容区域 -->
-      <div class="dialog-content" v-if="hasNotes">
-        <!-- 文字内容 -->
-        <div class="text-content" v-if="noteContent" v-html="renderedContent">
+      <div class="dialog-content" v-if="hasNotes || isEditing">
+        <!-- 编辑模式 -->
+        <div v-if="isEditing" class="edit-content">
+          <!-- 文字输入 -->
+          <textarea
+            ref="textareaRef"
+            v-model="editDisplayContent"
+            class="edit-textarea"
+            placeholder="在这里输入备考备注，支持粘贴图片..."
+            rows="6"
+            @paste="handlePaste"
+          ></textarea>
+          
+          <!-- 操作按钮 -->
+          <div class="edit-actions">
+            <button class="cancel-btn" @click="cancelEdit">取消</button>
+            <button class="save-btn" :disabled="!hasContent" @click="saveNotes">
+              保存备注
+            </button>
+          </div>
         </div>
         
-        <!-- 空状态 -->
-        <div class="empty-content" v-else>
-          <span class="empty-icon">📭</span>
-          <p>暂无备注内容，点击右上角编辑按钮添加</p>
+        <!-- 显示模式 -->
+        <div v-else>
+          <!-- 文字内容 -->
+          <div class="text-content" v-if="noteContent" v-html="renderedContent">
+          </div>
+          
+          <!-- 空状态 -->
+          <div class="empty-content" v-else>
+            <span class="empty-icon">📭</span>
+            <p>暂无备注内容，点击右上角编辑按钮添加</p>
+          </div>
         </div>
       </div>
       
-      <!-- 空状态 -->
+      <!-- 空状态（没有任何备注） -->
       <div class="dialog-empty" v-else>
         <div class="empty-icon">📭</div>
         <p>暂无备考备注</p>
         <button class="create-btn" @click="toggleEditMode">+ 添加备注</button>
-      </div>
-    </div>
-    
-    <!-- 编辑模式 -->
-    <div class="edit-panel" v-if="isEditing">
-      <div class="edit-header">
-        <h4>编辑备注</h4>
-        <button class="close-btn" @click="cancelEdit">✕</button>
-      </div>
-      
-      <div class="edit-content">
-        <!-- 文字输入 -->
-        <textarea
-          ref="textareaRef"
-          v-model="noteContent"
-          class="edit-textarea"
-          placeholder="在这里输入备考备注..."
-          rows="5"
-          @paste="handlePaste"
-        ></textarea>
-        
-        <!-- 操作按钮 -->
-        <div class="edit-actions">
-          <button class="cancel-btn" @click="cancelEdit">取消</button>
-          <button class="save-btn" :disabled="!hasContent" @click="saveNotes">
-            保存备注
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -82,6 +78,45 @@ const hasNotes = computed(() => {
 
 const hasContent = computed(() => {
   return noteContent.value.trim();
+});
+
+// 编辑模式显示用的内容（将base64图片转换为简洁标记）
+const editDisplayContent = computed({
+  get: () => {
+    let content = noteContent.value;
+    // 将base64图片转换为简洁标记
+    content = content.replace(/!\[图片\]\((data:image[^)]+)\)/g, '![图片]');
+    return content;
+  },
+  set: (newValue) => {
+    // 需要处理用户编辑，保持图片数据完整
+    let original = noteContent.value;
+    let display = newValue;
+    
+    // 找出新增的图片标记并恢复原始数据
+    const originalImages = [];
+    const originalMatches = original.match(/!\[图片\]\((data:image[^)]+)\)/g) || [];
+    originalMatches.forEach((match, index) => {
+      const url = match.match(/\((data:image[^)]+)\)/)[1];
+      originalImages.push(url);
+    });
+    
+    // 统计显示内容中的图片标记数量
+    const displayCount = (display.match(/!\[图片\]/g) || []).length;
+    
+    // 重建原始内容
+    let result = display;
+    let imageIndex = 0;
+    
+    // 替换每个图片标记为原始URL
+    result = result.replace(/!\[图片\]/g, () => {
+      const url = originalImages[imageIndex] || '';
+      imageIndex++;
+      return `![图片](${url})`;
+    });
+    
+    noteContent.value = result;
+  }
 });
 
 const lastUpdateTime = computed(() => {
@@ -353,35 +388,10 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(74, 144, 217, 0.4);
 }
 
-/* 编辑面板 */
-.edit-panel {
-  margin-top: 16px;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e8e8e8;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-
-.edit-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.edit-header h4 {
-  margin: 0;
-  color: #333;
-  font-size: 14px;
-}
-
 .close-btn {
   background: none;
   border: none;
-  color: #999;
+  color: #0b0a0a;
   font-size: 18px;
   cursor: pointer;
   padding: 4px;
