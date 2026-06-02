@@ -757,6 +757,10 @@ page {
   min-height: 56px;
   box-sizing: border-box;
   position: relative;
+  cursor: pointer;
+  z-index: 10;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
 }
 
 .options-list .option-item.selected {
@@ -808,11 +812,12 @@ page {
 }
 
 .option-content {
+  display: flex;
+  align-items: center;
   flex: 1;
 }
 
 .option-label {
-  display: inline-block;
   width: 26px;
   height: 26px;
   line-height: 26px;
@@ -823,18 +828,17 @@ page {
   font-weight: 500;
   color: #666;
   margin-right: 12px;
+  flex-shrink: 0;
   border: 1px solid #ddd;
-  vertical-align: middle;
 }
 
 .option-text {
-  display: inline-block;
+  flex: 1;
   font-size: 15px;
   color: #333;
   word-break: break-all;
   line-height: 1.6;
-  vertical-align: middle;
-  max-width: calc(100% - 40px);
+  min-width: 0;
 }
 
 .option-icon {

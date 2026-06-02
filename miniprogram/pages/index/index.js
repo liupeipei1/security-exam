@@ -491,8 +491,25 @@ Page({
 
   // 选择选项
   selectOption: function(e) {
+    console.log('selectOption 被调用！')
+    console.log('事件对象:', e)
+    
+    if (!e || !e.currentTarget) {
+      console.error('事件对象异常:', e)
+      return
+    }
+    
     const index = parseInt(e.currentTarget.dataset.index)
+    console.log('选中的选项索引:', index)
+    
     const { selectedOptions, showAnswer, currentQuestions, allQuestions, currentMode, currentQuestionType, currentQuestionData } = this.data
+    
+    console.log('当前数据状态:', {
+      currentQuestionsLength: currentQuestions.length,
+      currentQuestionData: currentQuestionData,
+      selectedOptions: selectedOptions,
+      showAnswer: showAnswer
+    })
     
     // 检查题目数据是否存在
     if (!currentQuestions || currentQuestions.length === 0) {
@@ -556,9 +573,18 @@ Page({
     const resetAnswer = showAnswer
     
     // 重新初始化 selectedFlags，清除之前的选中状态
+    // 使用字符串键名，确保 setData 能正确更新
     const newSelectedFlags = {}
     newSelected.forEach(idx => {
-      newSelectedFlags[idx] = true
+      newSelectedFlags[idx.toString()] = true
+    })
+    
+    console.log('newSelectedFlags 内容:', JSON.stringify(newSelectedFlags))
+    console.log('newSelectedFlags[1]:', newSelectedFlags['1'])
+    
+    console.log('准备更新的数据:', {
+      newSelected: newSelected,
+      newSelectedFlags: newSelectedFlags
     })
     
     this.setData({ 
@@ -638,8 +664,12 @@ Page({
   getOptionClass: function(index) {
     const { selectedFlags, showAnswer, currentQuestionData } = this.data
     const classes = ['option-item']
+    // 使用字符串键名访问 selectedFlags
+    const indexStr = index.toString()
     
-    if (selectedFlags[index]) {
+    console.log('getOptionClass', { index, indexStr, selectedFlags, hasFlag: selectedFlags[indexStr] })
+    
+    if (selectedFlags[indexStr]) {
       classes.push('selected')
     }
     
@@ -651,7 +681,7 @@ Page({
         
         if (answerIndices.includes(index)) {
           classes.push('correct')
-        } else if (selectedFlags[index]) {
+        } else if (selectedFlags[indexStr]) {
           classes.push('wrong')
         }
       }
@@ -679,7 +709,8 @@ Page({
   // 是否选中了错误选项
   isSelectedWrong: function(index) {
     const { selectedFlags, currentQuestionData } = this.data
-    if (!selectedFlags[index] || !currentQuestionData) return false
+    // 使用字符串键名访问 selectedFlags
+    if (!selectedFlags[index.toString()] || !currentQuestionData) return false
     
     const correctAnswer = currentQuestionData.answer || ''
     if (!correctAnswer) return false // 没有答案时不认为是错误选项

@@ -119,8 +119,8 @@
     
     <!-- 选项列表 -->
     <view class="options-list">
-      <view wx:for="{{currentQuestionData.options}}" wx:key="index" 
-            class="{{getOptionClass(index)}}" 
+      <view wx:for="{{currentQuestionData.options}}" wx:key="*this" 
+            class="option-item {{selectedFlags[index] ? 'selected' : ''}} {{showAnswer && isCorrectOption(index) ? 'correct' : ''}} {{showAnswer && isSelectedWrong(index) ? 'wrong' : ''}}" 
             bindtap="selectOption" data-index="{{index}}">
         <view class="option-content">
           <view class="option-label">{{getOptionLabel(index)}}</view>
