@@ -50,14 +50,21 @@ Page({
       yearly: 129.9
     },
     // 题库配置
-    banks: [],
-    currentBank: null,
-    showBankSelector: false,
+    exams: [],
+    currentExam: null,
+    examIndex: 0,
     // 收藏相关
     favorites: [],
     showFavoritesModal: false,
     favoritesLoading: false,
-    currentFavoriteIds: []
+    currentFavoriteIds: [],
+    // 计算属性（用于模板绑定）
+    examQuestionCount: 0,
+    progressPercent: 0,
+    accuracyRate: 0,
+    judgmentCount: 0,
+    singleCount: 0,
+    multipleCount: 0
   },
 
   onLoad: function (options) {
@@ -74,67 +81,24 @@ Page({
     const that = this
     // 先从本地缓存获取用户信息
     const userInfo = wx.getStorageSync('userInfo')
-    const isVip = wx.getStorageSync('isVip')
-    const vipEndTime = wx.getStorageSync('vipEndTime')
     
     console.log('检查登录状态 - userInfo:', userInfo);
-    console.log('检查登录状态 - isVip:', isVip);
     
     if (userInfo) {
       that.setData({
         isLoggedIn: true,
         userInfo: userInfo,
-        isVip: isVip,
-        vipEndTime: vipEndTime
+        isVip: true  // 默认设置为VIP，跳过VIP检查
       })
       
-      // 验证会员状态
-      that.checkVipStatus()
+      // 直接加载题库，不检查VIP状态
+      that.loadExams()
     } else {
       that.setData({
         loading: false,
         isLoggedIn: false
       })
     }
-  },
-
-  // 检查会员状态
-  checkVipStatus: function() {
-    const that = this
-    const userInfo = this.data.userInfo
-    
-    console.log('checkVipStatus 被调用，userInfo:', userInfo)
-    
-    if (!userInfo || !userInfo.openid) {
-      console.log('userInfo 或 openid 为空')
-      that.setData({ loading: false })
-      return
-    }
-    
-    apiGet('/api/user/vip-status', { openid: userInfo.openid })
-      .then(res => {
-        console.log('VIP状态查询成功:', res)
-        if (res.success) {
-          const vipData = res.data
-          wx.setStorageSync('isVip', vipData.is_vip)
-          wx.setStorageSync('vipEndTime', vipData.vip_expire)
-          
-          // 使用setData回调确保数据更新完成后再加载题库
-          that.setData({
-            isVip: vipData.is_vip,
-            vipEndTime: vipData.vip_expire
-          }, function() {
-            console.log('设置 isVip 为:', vipData.is_vip)
-            that.loadBanks()
-          })
-        } else {
-          that.loadBanks()
-        }
-      })
-      .catch(err => {
-        console.error('VIP状态查询失败:', err)
-        that.loadQuestions()
-      })
   },
 
   // 微信登录
@@ -171,8 +135,8 @@ Page({
                   openid: userData.openid,
                   token: userData.token
                 })
-                wx.setStorageSync('isVip', userData.is_vip)
-                wx.setStorageSync('vipEndTime', userData.vip_expire)
+                // 设置默认VIP状态为true
+                wx.setStorageSync('isVip', true)
                 
                 that.setData({
                   loading: false,
@@ -183,8 +147,7 @@ Page({
                     nickname: userData.nickname,
                     avatar: userData.avatar
                   },
-                  isVip: userData.is_vip,
-                  vipEndTime: userData.vip_expire
+                  isVip: true  // 默认设置为VIP
                 })
                 
                 wx.showToast({
@@ -193,7 +156,7 @@ Page({
                 })
                 
                 // 加载题库列表
-                that.loadBanks()
+                that.loadExams()
               } else {
                 wx.showToast({
                   title: response.message || '登录失败',
@@ -229,19 +192,21 @@ Page({
   },
 
   // 加载题库列表
-  loadBanks: function() {
+  loadExams: function() {
     const that = this
-    console.log('loadBanks 被调用')
-    apiGet('/api/banks')
+    console.log('exams 被调用')
+    apiGet('/api/exams')
       .then(res => {
         console.log('加载题库列表成功:', res)
         if (res.success && res.data && res.data.length > 0) {
-          const banks = res.data
+          const exams = res.data
           // 默认选择第一个题库
-          const defaultBank = banks.find(b => b.is_default) || banks[0]
+          const defaultExam = exams.find(b => b.is_default) || exams[0]
+          const defaultIndex = exams.findIndex(b => b === defaultExam)
           that.setData({
-            banks: banks,
-            currentBank: defaultBank
+            exams: exams,
+            currentExam: defaultExam,
+            examIndex: defaultIndex >= 0 ? defaultIndex : 0
           })
           // 直接加载题目，无需VIP校验
           console.log('直接调用 loadQuestions')
@@ -253,14 +218,14 @@ Page({
       })
   },
 
-  // 切换题库
-  switchBank: function(e) {
-    const bankCode = e.currentTarget.dataset.bankCode
-    const bank = this.data.banks.find(b => b.bank_code === bankCode)
-    if (bank) {
+  // 题库变化事件处理
+  onExamChange: function(e) {
+    const index = e.detail.value
+    const exam = this.data.exams[index]
+    if (exam) {
       this.setData({
-        currentBank: bank,
-        showBankSelector: false,
+        currentExam: exam,
+        examIndex: index,
         currentQuestionIndex: 0,
         selectedOptions: [],
         showAnswer: false
@@ -270,35 +235,16 @@ Page({
     }
   },
 
-  // 显示题库选择器
-  showBankSelector: function() {
-    this.setData({
-      showBankSelector: true
-    })
-  },
-
-  // 隐藏题库选择器
-  hideBankSelector: function() {
-    this.setData({
-      showBankSelector: false
-    })
-  },
-
-  // 阻止事件冒泡
-  stopPropagation: function(e) {
-    e.stopPropagation()
-  },
-
   // 从后端API加载题目数据
   loadQuestions: function() {
     const that = this
     
     console.log('loadQuestions 被调用')
     
-    const bankCode = this.data.currentBank ? this.data.currentBank.bank_code : null
+    const examCode = this.data.currentExam ? this.data.currentExam.exam_code : null
     const openid = this.data.userInfo ? this.data.userInfo.openid : null
     
-    apiGet('/api/questions', { openid: openid, bank_code: bankCode })
+    apiGet('/api/questions', { openid: openid, exam_code: examCode })
       .then(res => {
         console.log('加载题目成功，res:', res)
         if (res.success) {
@@ -335,6 +281,9 @@ Page({
               console.log('第一个题目的options:', that.data.currentQuestions[0].options)
               console.log('第一个题目的type:', that.data.currentQuestions[0].type)
             }
+            
+            // 更新计算属性
+            that.updateComputedProperties()
             
             // 只有考试模式才调用 generateExamQuestions
             if (that.data.currentMode === 'exam') {
@@ -395,13 +344,13 @@ Page({
   },
 
   // 获取考试题目数量
-  get examQuestionCount() {
+  getExamQuestionCount: function() {
     const { examConfig } = this.data
     return examConfig.judgment + examConfig.single + examConfig.multiple
   },
 
   // 获取当前题目
-  get currentQuestion() {
+  getCurrentQuestion: function() {
     return this.data.currentQuestions[this.data.currentQuestionIndex] || {}
   },
 
@@ -773,6 +722,9 @@ Page({
       correctCount: isCorrect ? this.data.correctCount + 1 : this.data.correctCount
     })
     
+    // 更新计算属性（正确率）
+    this.updateComputedProperties()
+    
     // 显示答题结果提示
     wx.showToast({
       title: isCorrect ? '回答正确！' : '回答错误',
@@ -808,6 +760,7 @@ Page({
         selectedFlags: {},
         showAnswer: false
       })
+      this.updateComputedProperties()
     }
   },
 
@@ -823,37 +776,59 @@ Page({
         selectedFlags: {},
         showAnswer: false
       })
+      this.updateComputedProperties()
     }
   },
 
   // 获取进度百分比
-  get progressPercent() {
+  getProgressPercent: function() {
     const { currentQuestionIndex, currentQuestions } = this.data
     if (currentQuestions.length === 0) return 0
     return Math.round(((currentQuestionIndex + 1) / currentQuestions.length) * 100)
   },
 
   // 获取正确率
-  get accuracyRate() {
+  getAccuracyRate: function() {
     const { answeredCount, correctCount } = this.data
     if (answeredCount === 0) return 0
     return Math.round((correctCount / answeredCount) * 100)
   },
 
   // 获取各题型数量
-  get judgmentCount() {
+  getJudgmentCount: function() {
     const questions = this.data.allQuestions || []
     return questions.filter(q => q && q.type === 'judgment').length
   },
 
-  get singleCount() {
+  getSingleCount: function() {
     const questions = this.data.allQuestions || []
     return questions.filter(q => q && q.type === 'single').length
   },
 
-  get multipleCount() {
+  getMultipleCount: function() {
     const questions = this.data.allQuestions || []
     return questions.filter(q => q && q.type === 'multiple').length
+  },
+
+  // 更新所有计算属性
+  updateComputedProperties: function() {
+    const { examConfig, currentQuestionIndex, currentQuestions, answeredCount, correctCount, allQuestions } = this.data
+    
+    const examQuestionCount = examConfig.judgment + examConfig.single + examConfig.multiple
+    const progressPercent = currentQuestions.length === 0 ? 0 : Math.round(((currentQuestionIndex + 1) / currentQuestions.length) * 100)
+    const accuracyRate = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100)
+    const judgmentCount = (allQuestions || []).filter(q => q && q.type === 'judgment').length
+    const singleCount = (allQuestions || []).filter(q => q && q.type === 'single').length
+    const multipleCount = (allQuestions || []).filter(q => q && q.type === 'multiple').length
+    
+    this.setData({
+      examQuestionCount,
+      progressPercent,
+      accuracyRate,
+      judgmentCount,
+      singleCount,
+      multipleCount
+    })
   },
 
   // 显示统计
@@ -1044,33 +1019,33 @@ Page({
 
   // 检查当前题目是否已收藏
   isCurrentQuestionFavorited: function() {
-    const { currentQuestion, currentFavoriteIds } = this.data
-    return currentQuestion && currentFavoriteIds.includes(currentQuestion.id)
+    const { currentQuestionData, currentFavoriteIds } = this.data
+    return currentQuestionData && currentFavoriteIds.includes(currentQuestionData.id)
   },
 
   // 切换收藏状态
   toggleFavorite: function() {
     const that = this
-    const { userInfo, currentBank, currentQuestion, currentFavoriteIds } = this.data
+    const { userInfo, currentExam, currentQuestionData, currentFavoriteIds } = this.data
     
     if (!userInfo || !userInfo.openid) {
       wx.showToast({ title: '请先登录', icon: 'none' })
       return
     }
     
-    if (!currentQuestion || !currentQuestion.id) {
+    if (!currentQuestionData || !currentQuestionData.id) {
       wx.showToast({ title: '题目数据异常', icon: 'none' })
       return
     }
     
-    const isFavorited = currentFavoriteIds.includes(currentQuestion.id)
+    const isFavorited = currentFavoriteIds.includes(currentQuestionData.id)
     
     if (isFavorited) {
       // 取消收藏
-      removeFavorite(userInfo.openid, currentBank?.bank_code, currentQuestion.id)
+      removeFavorite(userInfo.openid, currentExam?.exam_code, currentQuestionData.id)
         .then(res => {
           if (res.success) {
-            const newFavoriteIds = currentFavoriteIds.filter(id => id !== currentQuestion.id)
+            const newFavoriteIds = currentFavoriteIds.filter(id => id !== currentQuestionData.id)
             that.setData({ currentFavoriteIds: newFavoriteIds })
             wx.showToast({ title: '已取消收藏', icon: 'success' })
           } else {
@@ -1082,10 +1057,10 @@ Page({
         })
     } else {
       // 添加收藏
-      addFavorite(userInfo.openid, currentBank?.bank_code, currentQuestion.id)
+      addFavorite(userInfo.openid, currentExam?.exam_code, currentQuestionData.id)
         .then(res => {
           if (res.success) {
-            const newFavoriteIds = [...currentFavoriteIds, currentQuestion.id]
+            const newFavoriteIds = [...currentFavoriteIds, currentQuestionData.id]
             that.setData({ currentFavoriteIds: newFavoriteIds })
             wx.showToast({ title: '收藏成功', icon: 'success' })
           } else {
@@ -1101,7 +1076,7 @@ Page({
   // 加载收藏列表
   loadFavorites: function() {
     const that = this
-    const { userInfo, currentBank } = this.data
+    const { userInfo, currentExam } = this.data
     
     if (!userInfo || !userInfo.openid) {
       wx.showToast({ title: '请先登录', icon: 'none' })
@@ -1110,7 +1085,7 @@ Page({
     
     that.setData({ favoritesLoading: true })
     
-    getFavorites(userInfo.openid, currentBank?.bank_code)
+    getFavorites(userInfo.openid, currentExam?.exam_code)
       .then(res => {
         that.setData({ favoritesLoading: false })
         if (res.success) {
@@ -1148,7 +1123,7 @@ Page({
   removeFromFavorites: function(e) {
     const that = this
     const questionId = e.currentTarget.dataset.questionId
-    const { userInfo, currentBank, currentFavoriteIds, favorites } = this.data
+    const { userInfo, currentExam, currentFavoriteIds, favorites } = this.data
     
     if (!userInfo || !userInfo.openid) {
       wx.showToast({ title: '请先登录', icon: 'none' })
@@ -1160,7 +1135,7 @@ Page({
       content: '确定要从收藏中移除这道题吗？',
       success: function(res) {
         if (res.confirm) {
-          removeFavorite(userInfo.openid, currentBank?.bank_code, questionId)
+          removeFavorite(userInfo.openid, currentExam?.exam_code, questionId)
             .then(res => {
               if (res.success) {
                 const newFavoriteIds = currentFavoriteIds.filter(id => id !== questionId)

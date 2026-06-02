@@ -1832,9 +1832,11 @@ app.get('/api/knowledge', async (req, res) => {
 app.post('/api/favorites/add', async (req, res) => {
   console.log('========== /api/favorites/add 接口被调用 ==========');
   try {
-    const { openid, exam_code, question_id } = req.body;
+    // 兼容 bank_code 和 exam_code 两种参数名
+    const { openid, exam_code, bank_code, question_id } = req.body;
+    const examCode = exam_code || bank_code;
     
-    if (!openid || !exam_code || question_id === undefined) {
+    if (!openid || !examCode || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
@@ -1843,7 +1845,7 @@ app.post('/api/favorites/add', async (req, res) => {
     try {
       await connection.execute(
         'INSERT INTO favorites (openid, exam_code, question_id) VALUES (?, ?, ?)',
-        [openid, exam_code, question_id]
+        [openid, examCode, question_id]
       );
       await connection.end();
       res.json({ success: true, message: '收藏成功' });
@@ -1865,16 +1867,18 @@ app.post('/api/favorites/add', async (req, res) => {
 app.post('/api/favorites/remove', async (req, res) => {
   console.log('========== /api/favorites/remove 接口被调用 ==========');
   try {
-    const { openid, exam_code, question_id } = req.body;
+    // 兼容 bank_code 和 exam_code 两种参数名
+    const { openid, exam_code, bank_code, question_id } = req.body;
+    const examCode = exam_code || bank_code;
     
-    if (!openid || !exam_code || question_id === undefined) {
+    if (!openid || !examCode || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     const [result] = await connection.execute(
       'DELETE FROM favorites WHERE openid = ? AND exam_code = ? AND question_id = ?',
-      [openid, exam_code, question_id]
+      [openid, examCode, question_id]
     );
     await connection.end();
     
@@ -1893,7 +1897,9 @@ app.post('/api/favorites/remove', async (req, res) => {
 app.get('/api/favorites', async (req, res) => {
   console.log('========== /api/favorites 接口被调用 ==========');
   try {
-    const { openid, exam_code } = req.query;
+    // 兼容 bank_code 和 exam_code 两种参数名
+    const { openid, exam_code, bank_code } = req.query;
+    const examCode = exam_code || bank_code;
     
     if (!openid) {
       return res.status(400).json({ success: false, message: '缺少必要参数 openid' });
@@ -1908,8 +1914,8 @@ app.get('/api/favorites', async (req, res) => {
     
     // 根据exam_code获取对应的考试表名
     let tableName = 'security_exam_3';
-    if (exam_code) {
-      const exam = await getExamByCode(connection, exam_code);
+    if (examCode) {
+      const exam = await getExamByCode(connection, examCode);
       if (exam) {
         tableName = exam.table_name;
       }
@@ -1920,9 +1926,9 @@ app.get('/api/favorites', async (req, res) => {
     
     const params = [openid];
     
-    if (exam_code) {
+    if (examCode) {
       query += ' AND f.exam_code = ?';
-      params.push(exam_code);
+      params.push(examCode);
     }
     
     query += ' ORDER BY f.created_at DESC';
@@ -2004,16 +2010,18 @@ app.get('/api/favorites', async (req, res) => {
 app.get('/api/favorites/check', async (req, res) => {
   console.log('========== /api/favorites/check 接口被调用 ==========');
   try {
-    const { openid, exam_code, question_id } = req.query;
+    // 兼容 bank_code 和 exam_code 两种参数名
+    const { openid, exam_code, bank_code, question_id } = req.query;
+    const examCode = exam_code || bank_code;
     
-    if (!openid || !exam_code || question_id === undefined) {
+    if (!openid || !examCode || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     const [rows] = await connection.execute(
       'SELECT id FROM favorites WHERE openid = ? AND exam_code = ? AND question_id = ?',
-      [openid, exam_code, question_id]
+      [openid, examCode, question_id]
     );
     await connection.end();
     
