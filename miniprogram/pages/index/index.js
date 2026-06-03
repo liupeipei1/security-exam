@@ -405,6 +405,7 @@ Page({
     const shuffledExamQuestions = shuffle(examQuestions)
     
     this.setData({
+      examQuestions: shuffledExamQuestions,  // 保存原始考试题目列表
       currentQuestions: shuffledExamQuestions,
       currentQuestionIndex: 0,
       currentQuestionData: shuffledExamQuestions[0] || null,
@@ -465,6 +466,8 @@ Page({
     
     if (mode === 'exam') {
       this.generateExamQuestions()
+      // 更新计算属性，显示考试配置的题型分布
+      this.updateComputedProperties()
     } else {
       // 直接设置 currentQuestions，而不是调用 switchQuestionType
       let newCurrentQuestions = allQuestions
@@ -481,11 +484,11 @@ Page({
   // 切换题型筛选
   switchQuestionType: function(e) {
     const type = e.currentTarget.dataset.type
-    const { allQuestions } = this.data
+    const { allQuestions, examQuestions, currentMode } = this.data
     
-    console.log('switchQuestionType 被调用，type:', type, 'allQuestions.length:', allQuestions.length)
+    console.log('switchQuestionType 被调用，type:', type, 'allQuestions.length:', allQuestions.length, 'currentMode:', currentMode)
     
-    // 检查 allQuestions 是否有数据
+    // 检查题目数据是否有数据
     if (!allQuestions || allQuestions.length === 0) {
       console.error('allQuestions 为空，无法切换题型')
       wx.showToast({
@@ -495,7 +498,16 @@ Page({
       return
     }
     
-    let questions = allQuestions
+    let questions
+    
+    // 根据当前模式决定从哪个数据源筛选
+    if (currentMode === 'exam') {
+      // 考试模式：从保存的考试题目中筛选，保持数据源稳定
+      questions = examQuestions.length > 0 ? examQuestions : allQuestions
+    } else {
+      // 练习模式：从全部题库中筛选
+      questions = allQuestions
+    }
     
     if (type !== 'all') {
       questions = questions.filter(q => q.type === type)
@@ -952,14 +964,27 @@ Page({
 
   // 更新所有计算属性
   updateComputedProperties: function() {
-    const { examConfig, currentQuestionIndex, currentQuestions, answeredCount, correctCount, allQuestions } = this.data
+    const { examConfig, currentQuestionIndex, currentQuestions, answeredCount, correctCount, allQuestions, currentMode } = this.data
     
     const examQuestionCount = examConfig.judgment + examConfig.single + examConfig.multiple
     const progressPercent = currentQuestions.length === 0 ? 0 : Math.round(((currentQuestionIndex + 1) / currentQuestions.length) * 100)
     const accuracyRate = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100)
-    const judgmentCount = (allQuestions || []).filter(q => q && q.type === 'judgment').length
-    const singleCount = (allQuestions || []).filter(q => q && q.type === 'single').length
-    const multipleCount = (allQuestions || []).filter(q => q && q.type === 'multiple').length
+    
+    // 根据当前模式决定显示哪种题型分布
+    let judgmentCount, singleCount, multipleCount, totalQuestionCount
+    if (currentMode === 'exam') {
+      // 考试模式：显示考试配置中的题目分布
+      judgmentCount = examConfig.judgment
+      singleCount = examConfig.single
+      multipleCount = examConfig.multiple
+      totalQuestionCount = examQuestionCount
+    } else {
+      // 练习模式：显示全部题库的题型分布
+      judgmentCount = (allQuestions || []).filter(q => q && q.type === 'judgment').length
+      singleCount = (allQuestions || []).filter(q => q && q.type === 'single').length
+      multipleCount = (allQuestions || []).filter(q => q && q.type === 'multiple').length
+      totalQuestionCount = (allQuestions || []).length
+    }
     
     this.setData({
       examQuestionCount,
@@ -967,7 +992,8 @@ Page({
       accuracyRate,
       judgmentCount,
       singleCount,
-      multipleCount
+      multipleCount,
+      totalQuestionCount
     })
   },
 

@@ -79,7 +79,7 @@
     <view class="type-item {{currentQuestionType === 'all' ? 'active' : ''}}" bindtap="switchQuestionType" data-type="all">
       <view class="type-icon all">全部</view>
       <text class="type-name">全部题型</text>
-      <text class="type-count">{{allQuestions.length}}</text>
+      <text class="type-count">{{totalQuestionCount}}</text>
     </view>
     <view class="type-item {{currentQuestionType === 'judgment' ? 'active' : ''}}" bindtap="switchQuestionType" data-type="judgment">
       <view class="type-icon judgment">判</view>
