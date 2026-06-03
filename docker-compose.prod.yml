@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: exam-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: exam-db
+    volumes:
+      - exam-mysql-data:/var/lib/mysql
+      - ./DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
+      - ./DML/exam_config.sql:/docker-entrypoint-initdb.d/02-exam_config.sql:ro
+      - ./DML/knowledge_points.sql:/docker-entrypoint-initdb.d/03-knowledge_points.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: exam-redis
+    volumes:
+      - exam-redis-data:/data
+
+  backend:
+    build: ./backend
+    container_name: exam-backend
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: 123456
+      REDIS_HOST: redis
+      WECHAT_APPID: ${WECHAT_APPID:-wxbbfc83572c7db218}
+      WECHAT_APPSECRET: ${WECHAT_APPSECRET:-58fa649790458708aa941492f5c15b66}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  nginx:
+    image: nginx:alpine
+    container_name: exam-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+
+volumes:
+  exam-mysql-data:
+  exam-redis-data:

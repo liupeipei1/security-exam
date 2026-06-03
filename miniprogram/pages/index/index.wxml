@@ -134,6 +134,10 @@
     <!-- 答案解析 -->
     <view wx:if="{{showAnswer}}" class="answer-analysis">
       <view class="analysis-title">📖 答案解析</view>
+      <view class="correct-answer">
+        <text class="answer-label">正确答案：</text>
+        <text class="answer-value">{{currentQuestionData.answer}}</text>
+      </view>
       <text class="analysis-content">{{currentQuestionData.analysis}}</text>
     </view>
     

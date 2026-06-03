@@ -285,6 +285,9 @@ Page({
             // 更新计算属性
             that.updateComputedProperties()
             
+            // 加载收藏列表
+            that.loadUserFavorites()
+            
             // 只有考试模式才调用 generateExamQuestions
             if (that.data.currentMode === 'exam') {
               that.generateExamQuestions()
@@ -1064,6 +1067,11 @@ Page({
       return
     }
     
+    if (!currentExam || !currentExam.exam_code) {
+      wx.showToast({ title: '请选择考试题库', icon: 'none' })
+      return
+    }
+    
     if (!currentQuestionData || !currentQuestionData.id) {
       wx.showToast({ title: '题目数据异常', icon: 'none' })
       return
@@ -1210,5 +1218,26 @@ Page({
         wx.showToast({ title: '该题目不在当前题库中', icon: 'none' })
       }
     }
+  },
+
+  // 加载用户收藏列表（用于初始化currentFavoriteIds）
+  loadUserFavorites: function() {
+    const that = this
+    const { userInfo, currentExam } = this.data
+    
+    if (!userInfo || !userInfo.openid || !currentExam || !currentExam.exam_code) {
+      return
+    }
+    
+    getFavorites(userInfo.openid, currentExam.exam_code)
+      .then(res => {
+        if (res.success) {
+          const currentFavoriteIds = res.data.map(q => q.id)
+          that.setData({ currentFavoriteIds })
+        }
+      })
+      .catch(err => {
+        console.error('加载收藏列表失败', err)
+      })
   }
 })
