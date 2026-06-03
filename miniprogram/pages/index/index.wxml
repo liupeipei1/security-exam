@@ -53,27 +53,6 @@
     </view>
   </view>
   
-  <!-- 考试提示 -->
-  <view wx:if="{{currentMode === 'exam'}}" class="exam-tip">
-    ⚠️ 考试模式将随机抽取 {{examConfig.judgment}} 道判断题、{{examConfig.single}} 道单选题、{{examConfig.multiple}} 道多选题
-  </view>
-  
-  <!-- 统计卡片 -->
-  <view class="stats-card">
-    <view class="stat-item">
-      <text class="stat-value">{{answeredCount}}</text>
-      <text class="stat-label">已做题目</text>
-    </view>
-    <view class="stat-item">
-      <text class="stat-value">{{correctCount}}</text>
-      <text class="stat-label">正确数量</text>
-    </view>
-    <view class="stat-item">
-      <text class="stat-value">{{accuracyRate}}%</text>
-      <text class="stat-label">正确率</text>
-    </view>
-  </view>
-  
   <!-- 题型统计 -->
   <view class="type-stats">
     <view class="type-item {{currentQuestionType === 'all' ? 'active' : ''}}" bindtap="switchQuestionType" data-type="all">
@@ -147,6 +126,14 @@
       <button class="action-btn submit" bindtap="submitAnswer" wx:else>提交答案</button>
       <button class="action-btn next" bindtap="nextQuestion" wx:if="{{showAnswer && currentQuestionIndex < currentQuestions.length - 1}}">下一题</button>
     </view>
+  </view>
+  
+  <!-- 考试模式提交按钮 -->
+  <view wx:if="{{currentMode === 'exam'}}" class="exam-submit-section">
+    <button class="exam-submit-btn" bindtap="submitExam">
+      <text class="submit-icon">📝</text>
+      <text class="submit-text">提交考试</text>
+    </button>
   </view>
   
   <!-- 分页导航 -->
@@ -231,6 +218,61 @@
       
       <view class="suggestion-box">
         <text>💡 学习建议：继续保持，每天坚持练习效果更好！</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 提交确认弹窗 -->
+<view wx:if="{{showSubmitConfirm}}" class="modal-overlay" bindtap="cancelSubmitExam">
+  <view class="modal-container submit-modal" bindtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">确认提交</text>
+      <view class="modal-close" bindtap="cancelSubmitExam">✕</view>
+    </view>
+    <view class="modal-body">
+      <view class="submit-summary">
+        <view class="summary-row">
+          <text class="summary-label">总题数</text>
+          <text class="summary-value">{{currentQuestions.length}} 题</text>
+        </view>
+        <view class="summary-row">
+          <text class="summary-label">已答题</text>
+          <text class="summary-value answered">{{answeredCount}} 题</text>
+        </view>
+        <view class="summary-row">
+          <text class="summary-label">未答题</text>
+          <text class="summary-value unanswered">{{currentQuestions.length - answeredCount}} 题</text>
+        </view>
+      </view>
+      
+      <view class="question-status-header">
+        <text class="status-title">答题状态</text>
+        <view class="status-legend">
+          <view class="legend-item">
+            <view class="legend-dot answered"></view>
+            <text>已答</text>
+          </view>
+          <view class="legend-item">
+            <view class="legend-dot unanswered"></view>
+            <text>未答</text>
+          </view>
+        </view>
+      </view>
+      
+      <scroll-view class="question-grid-scroll" scroll-y>
+        <view class="question-grid">
+          <view wx:for="{{currentQuestions}}" wx:key="index" 
+                class="question-num {{questionAnswers[index] ? 'answered' : 'unanswered'}}"
+                bindtap="goToQuestion" data-index="{{index}}">
+            {{index + 1}}
+          </view>
+        </view>
+      </scroll-view>
+      
+      <view class="submit-actions">
+        <button class="submit-btn cancel" bindtap="cancelSubmitExam">继续答题</button>
+        <button class="submit-btn confirm" bindtap="confirmSubmitExam">确认提交</button>
       </view>
     </view>
   </view>

@@ -37,6 +37,7 @@ Page({
     showResult: false,
     showLoginModal: false,
     showPayModal: false,
+    showSubmitConfirm: false,
     // 考试配置
     examConfig: {
        judgment: 40,
@@ -1014,6 +1015,41 @@ Page({
 
   // 阻止事件冒泡
   stopPropagation: function() {},
+
+  // 提交考试
+  submitExam: function() {
+    const { answeredCount, currentQuestions, currentMode } = this.data
+    
+    if (currentMode !== 'exam') {
+      return
+    }
+    
+    // 显示答题状态弹窗
+    this.setData({ showSubmitConfirm: true })
+  },
+
+  // 确认提交考试
+  confirmSubmitExam: function() {
+    this.setData({ 
+      showSubmitConfirm: false,
+      showResult: true 
+    })
+  },
+
+  // 取消提交考试
+  cancelSubmitExam: function() {
+    this.setData({ showSubmitConfirm: false })
+  },
+
+  // 跳转到指定题目
+  goToQuestion: function(e) {
+    const index = e.currentTarget.dataset.index
+    this.setData({
+      currentQuestionIndex: index,
+      showSubmitConfirm: false,
+      showAnswer: false
+    })
+  },
 
   // 重新开始
   restartExam: function() {
