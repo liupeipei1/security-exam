@@ -27,6 +27,8 @@ Page({
     selectedFlags: {},
     // 是否显示答案
     showAnswer: false,
+    // 答题记录（保存每个题目的答题状态）
+    questionAnswers: {},
     // 统计数据
     answeredCount: 0,
     correctCount: 0,
@@ -208,14 +210,72 @@ Page({
             currentExam: defaultExam,
             examIndex: defaultIndex >= 0 ? defaultIndex : 0
           })
-          // 直接加载题目，无需VIP校验
-          console.log('直接调用 loadQuestions')
-          that.loadQuestions()
+          // 先加载考试指南获取题型分布
+          that.loadExamGuide(defaultExam.exam_code)
         }
       })
       .catch(err => {
         console.error('加载题库列表失败:', err)
       })
+  },
+
+  // 加载考试指南（获取题型分布）
+  loadExamGuide: function(examCode) {
+    const that = this
+    console.log('loadExamGuide 被调用，examCode:', examCode)
+    apiGet('/api/guide', { exam_code: examCode })
+      .then(res => {
+        console.log('加载考试指南成功:', res)
+        if (res.success && res.data) {
+          const guide = res.data
+          // 解析题型分布
+          that.parseQuestionTypeDistribution(guide.questionTypeDistribution)
+        } else {
+          // 如果获取指南失败，使用默认配置
+          console.warn('获取考试指南失败，使用默认配置')
+        }
+        // 加载题目
+        that.loadQuestions()
+      })
+      .catch(err => {
+        console.error('加载考试指南失败:', err)
+        // 使用默认配置
+        that.loadQuestions()
+      })
+  },
+
+  // 解析题型分布配置
+  parseQuestionTypeDistribution: function(distribution) {
+    console.log('parseQuestionTypeDistribution:', distribution)
+    if (!distribution || !Array.isArray(distribution)) {
+      console.warn('题型分布数据无效')
+      return
+    }
+    
+    const examConfig = {
+      judgment: 40,  // 默认值
+      single: 140,   // 默认值
+      multiple: 10   // 默认值
+    }
+    
+    distribution.forEach(item => {
+      const type = item.type
+      const count = item.count
+      
+      if (type && count) {
+        if (type.includes('判断') || type === 'judgment') {
+          examConfig.judgment = parseInt(count) || 40
+        } else if (type.includes('单选') || type === 'single') {
+          examConfig.single = parseInt(count) || 140
+        } else if (type.includes('多选') || type === 'multiple') {
+          examConfig.multiple = parseInt(count) || 10
+        }
+      }
+    })
+    
+    console.log('解析后的考试配置:', examConfig)
+    const examQuestionCount = examConfig.judgment + examConfig.single + examConfig.multiple
+    this.setData({ examConfig, examQuestionCount })
   },
 
   // 题库变化事件处理
@@ -230,8 +290,8 @@ Page({
         selectedOptions: [],
         showAnswer: false
       })
-      // 直接加载题目，无需VIP校验
-      this.loadQuestions()
+      // 先加载考试指南获取题型分布，再加载题目
+      this.loadExamGuide(exam.exam_code)
     }
   },
 
@@ -262,12 +322,19 @@ Page({
           console.log('转换后的题目数据:', questions[0])
           console.log('加载到的题目总数:', questions.length)
           
-          that.setData({
-            allQuestions: questions,
-            currentQuestions: questions,
-            loading: false,
-            currentQuestionData: questions[0] || null
-          }, function() {
+          // 初始化答题记录对象
+            const questionAnswers = {}
+            questions.forEach((q, index) => {
+              questionAnswers[index] = null
+            })
+            
+            that.setData({
+              allQuestions: questions,
+              currentQuestions: questions,
+              loading: false,
+              currentQuestionData: questions[0] || null,
+              questionAnswers: questionAnswers
+            }, function() {
             // 数据设置完成后验证
             console.log('数据设置完成后验证:')
             console.log('allQuestions.length:', that.data.allQuestions.length)
@@ -750,10 +817,19 @@ Page({
       }
     }
     
+    // 保存当前题目的答题记录
+    const questionAnswers = { ...this.data.questionAnswers }
+    questionAnswers[currentQuestionIndex] = {
+      selectedOptions: [...selectedOptions],
+      showAnswer: true,
+      isCorrect: isCorrect
+    }
+    
     this.setData({
       showAnswer: true,
       answeredCount: this.data.answeredCount + 1,
-      correctCount: isCorrect ? this.data.correctCount + 1 : this.data.correctCount
+      correctCount: isCorrect ? this.data.correctCount + 1 : this.data.correctCount,
+      questionAnswers: questionAnswers
     })
     
     // 更新计算属性（正确率）
@@ -784,15 +860,30 @@ Page({
 
   // 下一题
   nextQuestion: function() {
-    const { currentQuestionIndex, currentQuestions } = this.data
+    const { currentQuestionIndex, currentQuestions, questionAnswers } = this.data
     if (currentQuestionIndex < currentQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1
+      // 从答题记录中恢复之前的答题状态
+      const savedAnswer = questionAnswers[newIndex]
+      let selectedOptions = []
+      let selectedFlags = {}
+      let showAnswer = false
+      
+      if (savedAnswer) {
+        selectedOptions = savedAnswer.selectedOptions || []
+        showAnswer = savedAnswer.showAnswer || false
+        // 重建 selectedFlags
+        selectedOptions.forEach(idx => {
+          selectedFlags[idx.toString()] = true
+        })
+      }
+      
       this.setData({ 
         currentQuestionIndex: newIndex,
         currentQuestionData: currentQuestions[newIndex],
-        selectedOptions: [],
-        selectedFlags: {},
-        showAnswer: false
+        selectedOptions: selectedOptions,
+        selectedFlags: selectedFlags,
+        showAnswer: showAnswer
       })
       this.updateComputedProperties()
     }
@@ -800,15 +891,30 @@ Page({
 
   // 上一题
   prevQuestion: function() {
-    const { currentQuestionIndex, currentQuestions } = this.data
+    const { currentQuestionIndex, currentQuestions, questionAnswers } = this.data
     if (currentQuestionIndex > 0) {
       const newIndex = currentQuestionIndex - 1
+      // 从答题记录中恢复之前的答题状态
+      const savedAnswer = questionAnswers[newIndex]
+      let selectedOptions = []
+      let selectedFlags = {}
+      let showAnswer = false
+      
+      if (savedAnswer) {
+        selectedOptions = savedAnswer.selectedOptions || []
+        showAnswer = savedAnswer.showAnswer || false
+        // 重建 selectedFlags
+        selectedOptions.forEach(idx => {
+          selectedFlags[idx.toString()] = true
+        })
+      }
+      
       this.setData({ 
         currentQuestionIndex: newIndex,
         currentQuestionData: currentQuestions[newIndex],
-        selectedOptions: [],
-        selectedFlags: {},
-        showAnswer: false
+        selectedOptions: selectedOptions,
+        selectedFlags: selectedFlags,
+        showAnswer: showAnswer
       })
       this.updateComputedProperties()
     }

@@ -45,7 +45,7 @@
   <view class="mode-tabs">
     <view class="mode-tab {{currentMode === 'practice' ? 'active' : ''}}" bindtap="switchMode" data-mode="practice">
       <text class="mode-title">练习模式</text>
-      <text class="mode-count">共 {{currentQuestions.length}} 题</text>
+      <text class="mode-count">共 {{allQuestions.length}} 题</text>
     </view>
     <view class="mode-tab {{currentMode === 'exam' ? 'active' : ''}}" bindtap="switchMode" data-mode="exam">
       <text class="mode-title">考试模式</text>
