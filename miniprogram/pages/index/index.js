@@ -17,6 +17,7 @@ Page({
     currentQuestionType: 'all',
     // 题目数据
     allQuestions: [],
+    examQuestions: [],
     currentQuestions: [],
     currentQuestionIndex: 0,
     // 当前题目数据（用于模板渲染）
@@ -391,17 +392,25 @@ Page({
     const { allQuestions, examConfig, currentMode } = this.data
     if (currentMode !== 'exam') return
 
-    const judgmentQuestions = allQuestions.filter(q => q.type === 'judgment')
-    const singleQuestions = allQuestions.filter(q => q.type === 'single')
-    const multipleQuestions = allQuestions.filter(q => q.type === 'multiple')
+    // 根据实际数据库中的题型筛选题目
+    const judgmentQuestions = allQuestions.filter(q => q && q.type === 'judgment')
+    const singleQuestions = allQuestions.filter(q => q && q.type === 'single')
+    const multipleQuestions = allQuestions.filter(q => q && q.type === 'multiple')
 
     const shuffle = (arr) => arr.sort(() => Math.random() - 0.5)
 
+    // 根据实际可用的题目数量来生成考试题目
+    // 使用Math.min确保不会超过实际可用数量
     const examQuestions = [
-      ...shuffle(judgmentQuestions).slice(0, examConfig.judgment),
-      ...shuffle(singleQuestions).slice(0, examConfig.single),
-      ...shuffle(multipleQuestions).slice(0, examConfig.multiple)
+      ...shuffle(judgmentQuestions).slice(0, Math.min(examConfig.judgment, judgmentQuestions.length)),
+      ...shuffle(singleQuestions).slice(0, Math.min(examConfig.single, singleQuestions.length)),
+      ...shuffle(multipleQuestions).slice(0, Math.min(examConfig.multiple, multipleQuestions.length))
     ]
+
+    console.log('生成考试题目数量:', examQuestions.length)
+    console.log('判断题可用:', judgmentQuestions.length, '使用:', Math.min(examConfig.judgment, judgmentQuestions.length))
+    console.log('单选题可用:', singleQuestions.length, '使用:', Math.min(examConfig.single, singleQuestions.length))
+    console.log('多选题可用:', multipleQuestions.length, '使用:', Math.min(examConfig.multiple, multipleQuestions.length))
 
     const shuffledExamQuestions = shuffle(examQuestions)
     
@@ -413,6 +422,9 @@ Page({
       selectedOptions: [],
       showAnswer: false
     })
+    
+    // 更新计算属性
+    this.updateComputedProperties()
   },
 
   // 获取考试题目数量
@@ -965,19 +977,23 @@ Page({
 
   // 更新所有计算属性
   updateComputedProperties: function() {
-    const { examConfig, currentQuestionIndex, currentQuestions, answeredCount, correctCount, allQuestions, currentMode } = this.data
+    const { examConfig, currentQuestionIndex, currentQuestions, answeredCount, correctCount, allQuestions, currentMode, examQuestions } = this.data
     
-    const examQuestionCount = examConfig.judgment + examConfig.single + examConfig.multiple
+    // 使用实际生成的考试题目数量，而不是配置值
+    const examQuestionCount = examQuestions.length || examConfig.judgment + examConfig.single + examConfig.multiple
     const progressPercent = currentQuestions.length === 0 ? 0 : Math.round(((currentQuestionIndex + 1) / currentQuestions.length) * 100)
     const accuracyRate = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100)
     
     // 根据当前模式决定显示哪种题型分布
     let judgmentCount, singleCount, multipleCount, totalQuestionCount
     if (currentMode === 'exam') {
-      // 考试模式：显示考试配置中的题目分布
-      judgmentCount = examConfig.judgment
-      singleCount = examConfig.single
-      multipleCount = examConfig.multiple
+      // 考试模式：显示实际生成的考试题目分布
+      const actualJudgment = (examQuestions || []).filter(q => q && q.type === 'judgment').length
+      const actualSingle = (examQuestions || []).filter(q => q && q.type === 'single').length
+      const actualMultiple = (examQuestions || []).filter(q => q && q.type === 'multiple').length
+      judgmentCount = actualJudgment > 0 ? actualJudgment : examConfig.judgment
+      singleCount = actualSingle > 0 ? actualSingle : examConfig.single
+      multipleCount = actualMultiple > 0 ? actualMultiple : examConfig.multiple
       totalQuestionCount = examQuestionCount
     } else {
       // 练习模式：显示全部题库的题型分布
@@ -1386,6 +1402,57 @@ Page({
         wx.showToast({ title: '该题目不在当前题库中', icon: 'none' })
       }
     }
+  },
+
+  // 解析内容输入事件
+  onAnalysisInput: function(e) {
+    const { currentQuestions, currentQuestionIndex } = this.data
+    const newAnalysis = e.detail.value
+    
+    // 更新当前题目数据中的解析内容
+    const newCurrentQuestions = [...currentQuestions]
+    if (newCurrentQuestions[currentQuestionIndex]) {
+      newCurrentQuestions[currentQuestionIndex].analysis = newAnalysis
+    }
+    
+    this.setData({
+      currentQuestionData: {
+        ...this.data.currentQuestionData,
+        analysis: newAnalysis
+      },
+      currentQuestions: newCurrentQuestions
+    })
+  },
+
+  // 保存解析内容
+  saveAnalysis: function() {
+    const { currentQuestionData, userInfo } = this.data
+    
+    if (!currentQuestionData || !currentQuestionData.id) {
+      wx.showToast({ title: '无法获取题目信息', icon: 'none' })
+      return
+    }
+    
+    wx.showLoading({ title: '保存中...' })
+    
+    // 发送请求保存解析
+    apiPost('/api/questions/update-analysis', {
+      id: currentQuestionData.id,
+      analysis: currentQuestionData.analysis,
+      openid: userInfo?.openid
+    })
+    .then(res => {
+      wx.hideLoading()
+      if (res.success) {
+        wx.showToast({ title: '保存成功', icon: 'success' })
+      } else {
+        wx.showToast({ title: res.message || '保存失败', icon: 'none' })
+      }
+    })
+    .catch(err => {
+      wx.hideLoading()
+      wx.showToast({ title: '保存失败', icon: 'none' })
+    })
   },
 
   // 加载用户收藏列表（用于初始化currentFavoriteIds）

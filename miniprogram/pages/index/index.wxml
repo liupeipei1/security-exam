@@ -117,7 +117,13 @@
         <text class="answer-label">正确答案：</text>
         <text class="answer-value">{{currentQuestionData.answer}}</text>
       </view>
-      <text class="analysis-content">{{currentQuestionData.analysis}}</text>
+      <textarea 
+        class="analysis-content" 
+        value="{{currentQuestionData.analysis}}" 
+        bindinput="onAnalysisInput"
+        placeholder="请输入答案解析"
+      ></textarea>
+      <button class="save-analysis-btn" bindtap="saveAnalysis">保存解析</button>
     </view>
     
     <!-- 操作按钮 -->

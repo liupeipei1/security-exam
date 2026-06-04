@@ -40,7 +40,7 @@ const upload = multer({
 });
 
 // 导入考试配置管理
-const { getAllExams, getExamByCode, getDefaultExam } = require('./config/exams');
+const { getAllExams, getExamByCode, getDefaultExam, createExam, createQuestionTable } = require('./config/exams');
 
 // 导入Redis缓存服务
 const {
@@ -261,7 +261,7 @@ app.get('/api/questions', async (req, res) => {
     console.log('开始处理数据...');
     const processedData = rows.map(row => {
       const options = parseArrayString(row.options);
-      const answerArray = parseArrayString(row.answer);
+      let answerArray = parseArrayString(row.answer);
       
       // 处理options：如果是对象，转换为值数组；确保是数组
       let optionsArray;
@@ -276,7 +276,36 @@ app.get('/api/questions', async (req, res) => {
         optionsArray = [];
       }
       
+      // 提取解析内容（以"选项："开头的行）并合并到analysis
+      let extractedAnalysis = '';
+      const filteredOptions = [];
+      optionsArray.forEach(opt => {
+        const optStr = String(opt).trim();
+        if (optStr.includes('选项：')) {
+          // 这是解析内容，提取出来
+          extractedAnalysis += optStr + '\n';
+        } else {
+          // 这是真正的选项
+          filteredOptions.push(opt);
+        }
+      });
+      optionsArray = filteredOptions;
+      
+      // 如果原始analysis为空，但提取到了解析内容，使用提取的内容
+      if (!row.analysis && extractedAnalysis) {
+        row.analysis = extractedAnalysis.trim();
+      } else if (row.analysis && extractedAnalysis) {
+        // 如果都有内容，合并它们
+        row.analysis = row.analysis + '\n' + extractedAnalysis.trim();
+      }
+      
       // 将答案数组转换为字母格式（如 ["正确"] -> "A"，["选项1", "选项3"] -> "AC"）
+      // 确保answerArray是数组类型
+      if (!Array.isArray(answerArray)) {
+        console.warn('answerArray不是数组类型:', typeof answerArray, answerArray);
+        answerArray = [];
+      }
+      
       const answer = answerArray
         .map(answerText => {
           // 检查答案是否已经是字母格式（A-E，支持多选题5个选项）
@@ -1799,6 +1828,48 @@ app.post('/api/question/explanation', async (req, res) => {
   }
 });
 
+// 更新题目解析接口（小程序端使用）
+app.post('/api/questions/update-analysis', async (req, res) => {
+  console.log('========== /api/questions/update-analysis 接口被调用 ==========');
+  try {
+    const { id, analysis, openid } = req.body;
+    
+    if (!id || !openid) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+    
+    // 验证用户登录状态（测试账号直接通过）
+    if (openid !== 'test_openid' && openid !== 'dev_openid' && openid !== 'o0lS55o_tDbDXQ2rg-Y_XvLikI_U') {
+      const vipStatus = await checkVipStatus(openid);
+      if (!vipStatus.is_vip) {
+        return res.status(403).json({ success: false, message: vipStatus.message });
+      }
+    }
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 使用默认表名（小程序端使用默认题库）
+    const tableName = 'security_exam_3';
+    
+    // 更新题目解析
+    const [result] = await connection.execute(
+      `UPDATE ${tableName} SET analysis = ? WHERE id = ?`,
+      [analysis || '', id]
+    );
+    
+    await connection.end();
+    
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: '保存成功' });
+    } else {
+      res.status(404).json({ success: false, message: '题目不存在' });
+    }
+  } catch (error) {
+    console.error('更新解析失败:', error);
+    res.status(500).json({ success: false, message: '更新解析失败' });
+  }
+});
+
 // 获取知识要点API
 app.get('/api/knowledge', async (req, res) => {
   console.log('========== /api/knowledge 接口被调用 ==========');
@@ -2029,6 +2100,310 @@ app.get('/api/favorites/check', async (req, res) => {
   } catch (error) {
     console.error('检查收藏状态失败:', error);
     res.status(500).json({ success: false, message: '检查收藏状态失败' });
+  }
+});
+
+// 导入题库API - 支持解析文本格式的题目，支持自动创建新题库
+app.post('/api/questions/import', async (req, res) => {
+  console.log('========== /api/questions/import 接口被调用 ==========');
+  try {
+    const { content, exam_code, table_name, exam_name } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ success: false, message: '请提供题库内容' });
+    }
+    
+    // 确定要插入的表名
+    let targetTable = table_name || 'security_exam_3';
+    let createdNewExam = false;
+    
+    // 如果提供了exam_code，尝试获取对应的表名
+    if (exam_code) {
+      const connection = await mysql.createConnection(dbConfig);
+      const exam = await getExamByCode(connection, exam_code);
+      
+      if (exam && exam.table_name) {
+        // 题库已存在，使用已有的表名
+        targetTable = exam.table_name;
+      } else if (exam_name) {
+        // 题库不存在，但提供了题库名称，自动创建新题库
+        console.log(`题库 ${exam_code} 不存在，正在创建新题库...`);
+        const result = await createExam(connection, {
+          exam_code,
+          exam_name,
+          description: '通过导入功能创建的题库',
+          icon: '📚'
+        });
+        
+        if (result.success) {
+          targetTable = result.table_name;
+          createdNewExam = true;
+          console.log(`新题库创建成功，表名: ${targetTable}`);
+        } else {
+          await connection.end();
+          return res.status(400).json({ success: false, message: result.message });
+        }
+      } else {
+        await connection.end();
+        return res.status(400).json({ success: false, message: `题库 ${exam_code} 不存在，请提供题库名称(exam_name)以创建新题库` });
+      }
+      
+      await connection.end();
+    }
+    
+    console.log('目标表:', targetTable);
+    
+    // 解析题目内容
+    const questions = parseQuestionContent(content);
+    console.log(`解析出 ${questions.length} 道题目`);
+    console.log('解析的题目详情:', JSON.stringify(questions, null, 2));
+    
+    if (questions.length === 0) {
+      return res.status(400).json({ success: false, message: '未能解析出题目，请检查格式' });
+    }
+    
+    // 插入数据库
+    const connection = await mysql.createConnection(dbConfig);
+    let successCount = 0;
+    const errors = [];
+    
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      try {
+        // 判断题目类型
+        let type = 'single';
+        if (q.options && q.options.length === 2) {
+          type = 'judgment';
+        } else if (q.options && q.options.length >= 5) {
+          type = 'multiple';
+        } else if (q.answer && q.answer.length > 1) {
+          type = 'multiple';
+        }
+        
+        // 将答案转换为JSON数组格式
+        const answerArray = Array.isArray(q.answer) ? q.answer : [q.answer];
+        
+        await connection.execute(
+          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            q.question_text,
+            JSON.stringify(q.options),
+            JSON.stringify(answerArray),
+            q.analysis || '',
+            type,
+            'default'  // 默认exam_code
+          ]
+        );
+        successCount++;
+      } catch (err) {
+        errors.push({ index: i + 1, question: q.question_text, error: err.message });
+        console.error(`第 ${i + 1} 题导入失败:`, err.message);
+      }
+    }
+    
+    await connection.end();
+    
+    if (errors.length === 0) {
+      res.json({ 
+        success: true, 
+        message: `成功导入 ${successCount} 道题目`,
+        count: successCount 
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        message: `成功导入 ${successCount} 道题目，${errors.length} 道失败`,
+        count: successCount,
+        errors: errors.slice(0, 10) // 最多返回10个错误
+      });
+    }
+    
+  } catch (error) {
+    console.error('导入题库失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误: ' + error.message });
+  }
+});
+
+// 解析题目内容的函数
+function parseQuestionContent(content) {
+  const questions = [];
+  const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  let currentQuestion = null;
+  let inAnalysis = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 检测是否是新题目开始的条件
+    // 1. 匹配题号格式：第 * 题
+    // 2. 遇到答案行且已经有题目内容
+    // 3. 遇到选项A且已经有题目内容且没有当前题目
+    const questionMatch = line.match(/^第\s*(\d+)\s*题/);
+    const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
+    const isOptionA = line.match(/^A\.\s*/);
+    
+    if (questionMatch || (isOptionA && !currentQuestion) || (isAnswerLine && currentQuestion && currentQuestion.question_text)) {
+      // 如果是答案行触发且已经有题目，说明是新题开始，先保存旧题
+      if (isAnswerLine && currentQuestion && currentQuestion.question_text) {
+        questions.push(currentQuestion);
+        currentQuestion = null;
+      }
+      
+      // 如果有当前题目，先保存
+      if (currentQuestion && currentQuestion.question_text) {
+        questions.push(currentQuestion);
+      }
+      
+      // 开始新题目
+      currentQuestion = {
+        question_text: '',
+        options: [],
+        answer: '',
+        analysis: ''
+      };
+      inAnalysis = false;
+      
+      // 如果是题号行，跳过，不加入题目内容
+      if (questionMatch) continue;
+    }
+    
+    // 如果还没有当前题目，创建一个
+    if (!currentQuestion) {
+      currentQuestion = {
+        question_text: '',
+        options: [],
+        answer: '',
+        analysis: ''
+      };
+    }
+    
+    // 匹配选项格式：A. B. C. D. E.
+    const optionMatch = line.match(/^([A-Ea-e])\.\s*(.+)/);
+    if (optionMatch) {
+      inAnalysis = false;
+      currentQuestion.options.push(optionMatch[2]); // 只存选项内容，不存"A. "前缀
+      continue;
+    }
+    
+    // 匹配答案：支持"正确答案："或"答案："格式
+    const answerMatch = line.match(/^(正确答案|答案)\s*[：:]\s*([A-Ea-e]+)/);
+    if (answerMatch) {
+      currentQuestion.answer = answerMatch[2].toUpperCase();
+      continue;
+    }
+    
+    // 匹配解析
+    if (line.startsWith('名师解析') || line.startsWith('解析')) {
+      inAnalysis = true;
+      // 提取解析内容
+      const analysisContent = line.replace(/^名师解析\s*[：:]\s*/, '').replace(/^解析\s*[：:]\s*/, '');
+      if (analysisContent) {
+        currentQuestion.analysis = analysisContent;
+      }
+      continue;
+    }
+    
+    // 如果在解析部分，继续添加解析内容
+    if (inAnalysis) {
+      currentQuestion.analysis += (currentQuestion.analysis ? '\n' : '') + line;
+      continue;
+    }
+    
+    // 如果有答案了，后面的内容可能是解析（即使没有"解析"开头）
+    if (currentQuestion.answer) {
+      inAnalysis = true;
+      currentQuestion.analysis += (currentQuestion.analysis ? '\n' : '') + line;
+      continue;
+    }
+    
+    // 否则是题目内容的一部分
+    currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + line;
+  }
+  
+  // 添加最后一道题目
+  if (currentQuestion && currentQuestion.question_text) {
+    questions.push(currentQuestion);
+  }
+  
+  return questions;
+}
+
+// 删除题目接口
+app.delete('/api/questions/:exam_code/:id', async (req, res) => {
+  const { exam_code, id } = req.params;
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 获取考试配置
+    const exam = await getExamByCode(connection, exam_code);
+    if (!exam) {
+      await connection.end();
+      return res.status(404).json({ success: false, message: '题库不存在' });
+    }
+    
+    const tableName = exam.table_name;
+    
+    // 删除题目
+    await connection.execute(
+      `DELETE FROM ${tableName} WHERE id = ?`,
+      [id]
+    );
+    
+    await connection.end();
+    
+    // 清除缓存
+    await cacheQuestions(exam_code, null);
+    
+    res.json({ success: true, message: '题目删除成功' });
+  } catch (error) {
+    console.error('删除题目失败:', error);
+    res.status(500).json({ success: false, message: '删除题目失败' });
+  }
+});
+
+// 更新题目接口
+app.put('/api/questions/:exam_code/:id', async (req, res) => {
+  const { exam_code, id } = req.params;
+  const { question, options, answer, explanation, type, knowledgePoint } = req.body;
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 获取考试配置
+    const exam = await getExamByCode(connection, exam_code);
+    if (!exam) {
+      await connection.end();
+      return res.status(404).json({ success: false, message: '题库不存在' });
+    }
+    
+    const tableName = exam.table_name;
+    
+    // 更新题目
+    await connection.execute(
+      `UPDATE ${tableName} SET question = ?, options = ?, answer = ?, analysis = ?, type = ?, knowledge_point = ? WHERE id = ?`,
+      [
+        question,
+        JSON.stringify(options),
+        JSON.stringify(answer),
+        explanation || '',
+        type || 'single',
+        knowledgePoint || '',
+        id
+      ]
+    );
+    
+    await connection.end();
+    
+    // 清除缓存
+    await cacheQuestions(exam_code, null);
+    
+    res.json({ success: true, message: '题目更新成功' });
+  } catch (error) {
+    console.error('更新题目失败:', error);
+    res.status(500).json({ success: false, message: '更新题目失败' });
   }
 });
 

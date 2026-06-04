@@ -42,8 +42,59 @@ async function getDefaultExam(connection) {
   return null;
 }
 
+// 创建新的题库配置
+async function createExam(connection, examData) {
+  const { exam_code, exam_name, description, icon, table_name } = examData;
+  
+  // 检查是否已存在
+  const existing = await getExamByCode(connection, exam_code);
+  if (existing) {
+    return { success: false, message: '题库代码已存在' };
+  }
+  
+  // 如果没有指定表名，自动生成
+  const targetTableName = table_name || `bank_${exam_code}`;
+  
+  try {
+    await connection.execute(
+      'INSERT INTO exam_config (exam_code, exam_name, description, icon, table_name, total_questions, judgment_count, single_count, multiple_count, enabled, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [exam_code, exam_name, description || '', icon || '📚', targetTableName, 0, 0, 0, 0, 1, 999]
+    );
+    
+    // 创建对应的数据表
+    await createQuestionTable(connection, targetTableName);
+    
+    return { success: true, message: '题库创建成功', exam_code, table_name: targetTableName };
+  } catch (error) {
+    return { success: false, message: '创建失败: ' + error.message };
+  }
+}
+
+// 创建题目数据表
+async function createQuestionTable(connection, tableName) {
+  const createTableSQL = `
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      type ENUM('judgment', 'single', 'multiple') NOT NULL COMMENT '题型',
+      question TEXT NOT NULL COMMENT '题目内容',
+      options JSON NOT NULL COMMENT '选项列表',
+      answer JSON NOT NULL COMMENT '正确答案',
+      explanation VARCHAR(500) COMMENT '解析说明',
+      analysis VARCHAR(1000) COMMENT '题目分析',
+      exam_code VARCHAR(50) COMMENT '考试代码',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_type (type)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
+  `;
+  
+  await connection.execute(createTableSQL);
+}
+
 module.exports = {
   getAllExams,
   getExamByCode,
-  getDefaultExam
+  getDefaultExam,
+  createExam,
+  createQuestionTable
 };

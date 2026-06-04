@@ -180,14 +180,30 @@
                                 {{ getTypeLabel(question.type) }}
                             </span>
                             <span class="question-number">第 {{ getQuestionIndex(question.id) }} 题</span>
-                            <button 
-                                class="favorite-btn"
-                                :class="{ 'favorited': isQuestionFavorite(question.id) }"
-                                @click.stop="toggleFavorite(question.id)"
-                                title="收藏题目"
-                            >
-                                {{ isQuestionFavorite(question.id) ? '❤️' : '🤍' }}
-                            </button>
+                            <div class="question-actions-header">
+                                <button 
+                                    class="edit-btn"
+                                    @click.stop="openEditQuestion(question)"
+                                    title="编辑题目"
+                                >
+                                    ✏️
+                                </button>
+                                <button 
+                                    class="delete-btn"
+                                    @click.stop="deleteQuestion(question)"
+                                    title="删除题目"
+                                >
+                                    🗑️
+                                </button>
+                                <button 
+                                    class="favorite-btn"
+                                    :class="{ 'favorited': isQuestionFavorite(question.id) }"
+                                    @click.stop="toggleFavorite(question.id)"
+                                    title="收藏题目"
+                                >
+                                    {{ isQuestionFavorite(question.id) ? '❤️' : '🤍' }}
+                                </button>
+                            </div>
                         </div>
                         <div class="question-text">{{ question.question }}</div>
                         
@@ -545,6 +561,102 @@
                     <div v-if="guideSaved" class="save-success">✓ 保存成功</div>
                 </div>
 
+                <!-- 导入题库 -->
+                <div v-if="currentSection === 'import'" class="import-section">
+                    <div class="quiz-header">
+                        <div class="quiz-title">📥 导入题库</div>
+                    </div>
+                    
+                    <div class="import-container">
+                        <div class="import-form">
+                            <div class="form-group">
+                                <label>📝 题目内容（支持批量导入）</label>
+                                <textarea 
+                                    v-model="importContent" 
+                                    class="import-textarea"
+                                    placeholder="请输入题目内容，格式如下：
+
+1. 题目内容
+A. 选项A
+B. 选项B
+C. 选项C
+D. 选项D
+答案：A
+解析：这是解析内容
+
+2. 判断题示例
+正确
+错误
+答案：正确
+解析：这是判断题的解析
+
+3. 多选题示例（答案用逗号分隔）
+A. 选项A
+B. 选项B
+C. 选项C
+D. 选项D
+答案：A,B,C
+解析：这是多选题的解析"
+                                ></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>📁 目标题库代码</label>
+                                <input 
+                                    v-model="importExamCode" 
+                                    type="text" 
+                                    class="import-input"
+                                    placeholder="输入题库代码（如：my_new_bank），若不存在将自动创建"
+                                />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>🏷️ 题库名称（创建新题库时必填）</label>
+                                <input 
+                                    v-model="importExamName" 
+                                    type="text" 
+                                    class="import-input"
+                                    placeholder="输入题库显示名称（如：我的新题库）"
+                                />
+                                <small style="color: #666; font-size: 0.8rem;">如果题库代码不存在，将使用此名称创建新题库</small>
+                            </div>
+                            
+                            <div class="import-actions">
+                                <button 
+                                    class="import-btn" 
+                                    :disabled="!importContent.trim()"
+                                    @click="handleImport"
+                                >
+                                    {{ importLoading ? '导入中...' : '🚀 开始导入' }}
+                                </button>
+                                <button 
+                                    class="clear-btn" 
+                                    @click="clearImport"
+                                >
+                                    🗑️ 清空内容
+                                </button>
+                            </div>
+                            
+                            <!-- 导入结果 -->
+                            <div v-if="importResult" class="import-result" :class="importSuccess ? 'success' : 'error'">
+                                <div class="result-icon">{{ importSuccess ? '✅' : '❌' }}</div>
+                                <div class="result-message">{{ importResult }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="import-tips">
+                            <h4>💡 格式说明</h4>
+                            <ul>
+                                <li>每题以数字开头（如：1.、2.）</li>
+                                <li>选项以字母开头（如：A.、B.）</li>
+                                <li>答案行格式：答案：A 或 答案：A,B,C</li>
+                                <li>解析行格式：解析：内容</li>
+                                <li>系统会自动识别题型（2个选项为判断题）</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 我的收藏 -->
                 <div v-if="currentSection === 'favorites'" class="favorites-section">
                     <div class="quiz-header">
@@ -719,6 +831,99 @@
             </div>
         </div>
 
+        <!-- 编辑题目弹窗 -->
+        <div v-if="showEditQuestionModal" class="modal-overlay" @click.self="closeEditQuestion">
+            <div class="modal-content edit-question-modal">
+                <div class="modal-header">
+                    <h3>✏️ 编辑题目</h3>
+                    <button class="close-btn" @click="closeEditQuestion">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>题目类型</label>
+                        <select v-model="editForm.type" class="form-input">
+                            <option value="single">单选题</option>
+                            <option value="multiple">多选题</option>
+                            <option value="judgment">判断题</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>知识要点</label>
+                        <select v-model="editForm.knowledgePoint" class="form-input">
+                            <option value="">请选择知识要点</option>
+                            <option v-for="point in knowledgePoints" :key="point.id" :value="point.title">
+                                {{ point.title }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>题目内容</label>
+                        <textarea 
+                            v-model="editForm.question" 
+                            class="form-textarea"
+                            placeholder="请输入题目内容"
+                        ></textarea>
+                    </div>
+                    <div class="form-group" v-if="editForm.type !== 'judgment'">
+                        <label>选项（每行一个）</label>
+                        <div class="options-edit-list">
+                            <div v-for="(option, index) in editForm.options" :key="index" class="option-edit-item">
+                                <span class="option-edit-label">{{ String.fromCharCode(65 + index) }}.</span>
+                                <input 
+                                    v-model="editForm.options[index]" 
+                                    class="form-input option-input"
+                                    :placeholder="'选项' + String.fromCharCode(65 + index)"
+                                />
+                                <button 
+                                    v-if="editForm.options.length > 2"
+                                    class="remove-option-btn"
+                                    @click="removeOption(index)"
+                                >✕</button>
+                            </div>
+                            <button class="add-option-btn" @click="addOption" v-if="editForm.options.length < 10">+ 添加选项</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>正确答案</label>
+                        <div class="answer-edit-section">
+                            <template v-if="editForm.type === 'judgment'">
+                                <label class="answer-option">
+                                    <input type="radio" v-model="editForm.answer" value="true" /> 正确
+                                </label>
+                                <label class="answer-option">
+                                    <input type="radio" v-model="editForm.answer" value="false" /> 错误
+                                </label>
+                            </template>
+                            <template v-else-if="editForm.type === 'single'">
+                                <label v-for="(option, index) in editForm.options" :key="index" class="answer-option">
+                                    <input type="radio" v-model="editForm.singleAnswer" :value="index" /> {{ String.fromCharCode(65 + index) }}
+                                </label>
+                            </template>
+                            <template v-else>
+                                <label v-for="(option, index) in editForm.options" :key="index" class="answer-option">
+                                    <input type="checkbox" v-model="editForm.multipleAnswers" :value="index" /> {{ String.fromCharCode(65 + index) }}
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>解析</label>
+                        <textarea 
+                            v-model="editForm.explanation" 
+                            class="form-textarea"
+                            placeholder="请输入解析内容"
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" @click="closeEditQuestion">取消</button>
+                    <button class="save-btn" @click="saveEditQuestion" :disabled="editLoading">
+                        {{ editLoading ? '保存中...' : '保存' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
 
     </div>
 
@@ -828,7 +1033,26 @@ const {
   favoritesLoading,
   showFavoritesModal,
   isQuestionFavorite,
-  toggleFavorite
+  toggleFavorite,
+  // 导入题库相关
+  importContent,
+  importExamCode,
+  importExamName,
+  importLoading,
+  importResult,
+  importSuccess,
+  handleImport,
+  clearImport,
+  // 编辑题目相关
+  showEditQuestionModal,
+  editLoading,
+  editForm,
+  openEditQuestion,
+  closeEditQuestion,
+  addOption,
+  removeOption,
+  saveEditQuestion,
+  deleteQuestion
 } = useExamApp()
 
 

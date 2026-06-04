@@ -284,13 +284,13 @@ page {
 }
 
 .exam-name {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
   color: #333;
 }
 
 .exam-arrow {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
 }
 
@@ -325,7 +325,7 @@ page {
 }
 
 .bank-modal-title {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #333;
 }
@@ -363,7 +363,7 @@ page {
 }
 
 .bank-item-name {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
   color: #333;
   display: block;
@@ -425,7 +425,7 @@ page {
 }
 
 .bank-detail-name {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   color: #fff;
   display: block;
@@ -433,7 +433,7 @@ page {
 }
 
 .bank-detail-desc {
-  font-size: 14px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -442,14 +442,14 @@ page {
 }
 
 .bank-detail-title {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
   color: #333;
   margin-bottom: 10px;
 }
 
 .bank-detail-desc-detail {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
   line-height: 1.6;
   margin-bottom: 20px;
@@ -470,27 +470,27 @@ page {
 }
 
 .bank-detail-stat-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   color: #667eea;
   display: block;
 }
 
 .bank-detail-stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
 }
 
 .bank-detail-btn {
   width: 100%;
-  height: 48px;
+  height: 40px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 24px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
 }
 
@@ -673,9 +673,9 @@ page {
 }
 
 .question-type {
-  font-size: 14px;
-  padding: 4px 10px;
-  border-radius: 12px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
 }
 
 .question-type.judgment {
@@ -694,7 +694,7 @@ page {
 }
 
 .question-content {
-  font-size: 12px;
+  font-size: 11px;
   color: #333;
   line-height: 1.6;
   margin-bottom: 20px;
@@ -780,23 +780,23 @@ page {
 }
 
 .option-label {
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
   text-align: center;
   background: #f5f5f5;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   color: #666;
-  margin-right: 12px;
+  margin-right: 10px;
   flex-shrink: 0;
   border: 1px solid #ddd;
 }
 
 .option-text {
   flex: 1;
-  font-size: 12px;
+  font-size: 11px;
   color: #333;
   word-break: break-all;
   line-height: 1.6;
@@ -919,7 +919,7 @@ page {
 }
 
 .analysis-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   color: #667eea;
   margin-bottom: 10px;
@@ -933,34 +933,53 @@ page {
 }
 
 .answer-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #333;
   font-weight: 500;
 }
 
 .answer-value {
-  font-size: 14px;
+  font-size: 12px;
   color: #2e7d32;
   font-weight: bold;
 }
 
 .analysis-content {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
   line-height: 1.6;
+  width: 100%;
+  min-height: 120px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.save-analysis-btn {
+  margin-top: 10px;
+  width: 100%;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: bold;
+  border: none;
 }
 
 /* 操作按钮 */
 .action-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .action-btn {
-  width: 60px;
-  height: 35px;
-  border-radius: 12px;
-  font-size: 12px;
+  width: 55px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 10px;
   font-weight: bold;
   border: none;
 }
@@ -991,15 +1010,15 @@ page {
 }
 
 .exam-submit-btn {
-  width: 120px;
-  height: 35px;
+  width: 100px;
+  height: 30px;
   background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
   border: none;
-  border-radius: 15px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 12px rgba(82, 196, 26, 0.35);
+  box-shadow: 0 3px 10px rgba(82, 196, 26, 0.35);
   margin: 0 auto;
 }
 
@@ -1011,15 +1030,15 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .submit-icon {
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .submit-text {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: bold;
   color: #fff;
 }
@@ -1035,13 +1054,13 @@ page {
 }
 
 .page-btn {
-  width: 80px;
-  height: 40px;
+  width: 70px;
+  height: 34px;
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  border-radius: 20px;
+  border-radius: 17px;
   color: #fff;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .page-btn[disabled] {
@@ -1050,7 +1069,7 @@ page {
 
 .page-info {
   color: #fff;
-  font-size: 14px;
+  font-size: 11px;
 }
 
 /* 底部导航 */
@@ -1078,12 +1097,12 @@ page {
 }
 
 .nav-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
+  font-size: 20px;
+  margin-bottom: 3px;
 }
 
 .nav-label {
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
 }
 
@@ -1143,12 +1162,12 @@ page {
 }
 
 .summary-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
 }
 
 .summary-value {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   color: #333;
 }
@@ -1165,11 +1184,11 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .status-title {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
   color: #333;
 }
@@ -1182,15 +1201,15 @@ page {
 .legend-item {
   display: flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  margin-right: 4px;
+  margin-right: 3px;
 }
 
 .legend-dot.answered {
@@ -1203,24 +1222,24 @@ page {
 
 .question-grid-scroll {
   flex: 1;
-  max-height: 200px;
-  margin-bottom: 15px;
+  max-height: 180px;
+  margin-bottom: 12px;
 }
 
 .question-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .question-num {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: bold;
   background: #f0f0f0;
   color: #999;
@@ -1239,16 +1258,16 @@ page {
 
 .submit-actions {
   display: flex;
-  gap: 12px;
-  padding-top: 10px;
+  gap: 10px;
+  padding-top: 8px;
   border-top: 1px solid #eee;
 }
 
 .submit-btn {
   flex: 1;
-  height: 42px;
-  border-radius: 21px;
-  font-size: 15px;
+  height: 36px;
+  border-radius: 18px;
+  font-size: 12px;
   font-weight: bold;
 }
 
@@ -1266,23 +1285,23 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 15px;
   border-bottom: 1px solid #eee;
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #333;
 }
 
 .modal-close {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 16px;
   color: #999;
 }
 
@@ -1300,34 +1319,34 @@ page {
 
 .stat-card {
   background: #f8f9fa;
-  border-radius: 12px;
-  padding: 15px;
+  border-radius: 10px;
+  padding: 12px;
   text-align: center;
 }
 
 .stat-card .stat-icon {
-  font-size: 24px;
-  margin-bottom: 8px;
+  font-size: 20px;
+  margin-bottom: 6px;
 }
 
 .stat-card .stat-value {
   display: block;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: bold;
   color: #333;
 }
 
 .stat-card .stat-label {
-  font-size: 12px;
+  font-size: 10px;
   color: #999;
 }
 
 .stats-section {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
   color: #333;
   margin-bottom: 15px;
@@ -1354,57 +1373,57 @@ page {
 
 .type-text {
   flex: 1;
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
 }
 
 .type-count-num {
-  font-size: 14px;
+  font-size: 12px;
   color: #333;
   font-weight: bold;
 }
 
 .suggestion-box {
   background: #fffbe6;
-  border-radius: 12px;
-  padding: 15px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 12px;
   color: #d48806;
 }
 
 /* 结果弹窗 */
 .result-container {
   text-align: center;
-  padding: 30px 20px;
+  padding: 25px 15px;
 }
 
 .result-score {
   display: block;
-  font-size: 72px;
+  font-size: 56px;
   font-weight: bold;
   color: #667eea;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .result-title {
   display: block;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .result-subtitle {
   display: block;
-  font-size: 14px;
+  font-size: 12px;
   color: #999;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 
 .result-stats {
   display: flex;
   justify-content: space-around;
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 
 .result-stat-item {
@@ -1413,13 +1432,13 @@ page {
 
 .result-stat-value {
   display: block;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: bold;
   color: #333;
 }
 
 .result-stat-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #999;
 }
 
@@ -1435,42 +1454,42 @@ page {
 
 .login-modal-icon {
   display: block;
-  font-size: 60px;
-  margin-bottom: 20px;
+  font-size: 48px;
+  margin-bottom: 16px;
 }
 
 .login-modal-title {
   display: block;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .login-modal-desc {
   display: block;
-  font-size: 14px;
+  font-size: 12px;
   color: #999;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .login-modal-btn {
   width: 100%;
-  height: 50px;
+  height: 42px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 25px;
+  border-radius: 21px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .login-modal-btn-icon {
-  font-size: 24px;
-  margin-right: 10px;
+  font-size: 20px;
+  margin-right: 8px;
 }
 
 .login-modal-btn-text {
-  font-size: 18px;
+  font-size: 14px;
   color: #fff;
   font-weight: bold;
 }
@@ -1489,8 +1508,8 @@ page {
 .pay-plan {
   flex: 1;
   background: #f8f9fa;
-  border-radius: 12px;
-  padding: 15px 10px;
+  border-radius: 10px;
+  padding: 12px 8px;
   text-align: center;
   border: 2px solid transparent;
   position: relative;
@@ -1503,74 +1522,74 @@ page {
 
 .pay-plan-price {
   display: block;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   color: #667eea;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .pay-plan-duration {
   display: block;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .pay-plan-discount {
-  font-size: 10px;
+  font-size: 9px;
   color: #999;
 }
 
 .pay-plan-tag {
   position: absolute;
-  top: -10px;
+  top: -8px;
   left: 50%;
   transform: translateX(-50%);
   background: #f5a623;
   color: #fff;
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 8px;
 }
 
 .pay-benefits {
   background: #f8f9fa;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 20px;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 15px;
 }
 
 .pay-benefits-title {
   display: block;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .pay-benefit-item {
-  font-size: 13px;
+  font-size: 11px;
   color: #666;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .pay-btn {
   width: 100%;
-  height: 48px;
+  height: 40px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 24px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: bold;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .pay-tips {
   text-align: center;
-  font-size: 12px;
+  font-size: 10px;
   color: #999;
 }
 
@@ -1635,41 +1654,41 @@ page {
 }
 
 .remove-favorite-btn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   background: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #999;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .favorite-item-question {
-  font-size: 15px;
+  font-size: 12px;
   color: #333;
   line-height: 1.6;
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .favorite-item-options {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .favorite-option-item {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 5px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
 .favorite-option-label {
   color: #667eea;
   font-weight: bold;
-  margin-right: 6px;
+  margin-right: 5px;
   flex-shrink: 0;
 }
 
@@ -1684,7 +1703,7 @@ page {
 }
 
 .favorite-item-answer {
-  font-size: 13px;
+  font-size: 11px;
   color: #667eea;
   font-weight: bold;
 }
@@ -1692,24 +1711,24 @@ page {
 /* 空状态 */
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 30px 15px;
 }
 
 .empty-icon {
-  font-size: 60px;
+  font-size: 48px;
   display: block;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .empty-title {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #333;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .empty-desc {
-  font-size: 14px;
+  font-size: 12px;
   color: #999;
 }

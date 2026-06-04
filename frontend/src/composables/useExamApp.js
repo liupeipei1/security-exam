@@ -49,6 +49,7 @@ function createInstance() {
                     { id: 'single', name: '单选题', icon: '⭕' },
                     { id: 'multiple', name: '多选题', icon: '☑️' },
                     { id: 'exam', name: '模拟考试', icon: '🎯' },
+                    { id: 'import', name: '导入题库', icon: '📥' },
                     { id: 'favorites', name: '我的收藏', icon: '❤️' },
                     { id: 'history', name: '答题记录', icon: '📊' },
                     { id: 'knowledge', name: '知识要点', icon: '📖' },
@@ -84,6 +85,209 @@ function createInstance() {
                 
                 // 备考备注数据
                 const guideNotes = ref(null);
+                
+                // 导入题库相关
+                const importContent = ref('');
+                const importExamCode = ref('');
+                const importExamName = ref('');
+                const importLoading = ref(false);
+                const importResult = ref('');
+                const importSuccess = ref(false);
+                
+                // 编辑题目相关
+                const showEditQuestionModal = ref(false);
+                const editLoading = ref(false);
+                const editForm = ref({
+                    id: null,
+                    type: 'single',
+                    question: '',
+                    options: ['', ''],
+                    answer: '',
+                    explanation: '',
+                    knowledgePoint: '',
+                    singleAnswer: 0,
+                    multipleAnswers: []
+                });
+                
+                // 打开编辑题目弹窗
+                const openEditQuestion = (question) => {
+                    editForm.value = {
+                        id: question.id,
+                        type: question.type,
+                        question: question.question,
+                        options: question.options ? [...question.options] : ['', ''],
+                        answer: question.answer,
+                        explanation: question.explanation || '',
+                        knowledgePoint: question.knowledgePoint || question.knowledge_point || '',
+                        singleAnswer: 0,
+                        multipleAnswers: []
+                    };
+                    
+                    // 解析答案
+                    if (question.type === 'judgment') {
+                        editForm.value.answer = String(question.answer);
+                    } else if (question.type === 'single' && question.answer) {
+                        // 单选题：解析正确答案索引
+                        const answerIndex = (typeof question.answer === 'string') 
+                            ? question.answer.charCodeAt(0) - 65 
+                            : Number(question.answer);
+                        editForm.value.singleAnswer = answerIndex;
+                    } else if (question.type === 'multiple' && question.answer) {
+                        // 多选题：解析正确答案索引数组
+                        if (Array.isArray(question.answer)) {
+                            editForm.value.multipleAnswers = question.answer.map(a => 
+                                typeof a === 'string' ? a.charCodeAt(0) - 65 : Number(a)
+                            );
+                        } else if (typeof question.answer === 'string') {
+                            editForm.value.multipleAnswers = question.answer.split('').map(c => c.charCodeAt(0) - 65);
+                        }
+                    }
+                    
+                    showEditQuestionModal.value = true;
+                };
+                
+                // 关闭编辑题目弹窗
+                const closeEditQuestion = () => {
+                    showEditQuestionModal.value = false;
+                    editForm.value = {
+                        id: null,
+                        type: 'single',
+                        question: '',
+                        options: ['', ''],
+                        answer: '',
+                        explanation: '',
+                        knowledgePoint: '',
+                        singleAnswer: 0,
+                        multipleAnswers: []
+                    };
+                };
+                
+                // 添加选项
+                const addOption = () => {
+                    if (editForm.value.options.length < 10) {
+                        editForm.value.options.push('');
+                    }
+                };
+                
+                // 删除选项
+                const removeOption = (index) => {
+                    if (editForm.value.options.length > 2) {
+                        editForm.value.options.splice(index, 1);
+                        // 同时调整答案索引
+                        if (editForm.value.singleAnswer >= index) {
+                            editForm.value.singleAnswer = Math.max(0, editForm.value.singleAnswer - 1);
+                        }
+                        editForm.value.multipleAnswers = editForm.value.multipleAnswers
+                            .map(i => i > index ? i - 1 : i)
+                            .filter(i => i >= 0 && i < editForm.value.options.length);
+                    }
+                };
+                
+                // 保存编辑题目
+                const saveEditQuestion = async () => {
+                    if (!editForm.value.question.trim()) {
+                        alert('请输入题目内容');
+                        return;
+                    }
+                    
+                    editLoading.value = true;
+                    try {
+                        // 准备答案数据
+                        let finalAnswer = editForm.value.answer;
+                        if (editForm.value.type === 'single') {
+                            finalAnswer = String.fromCharCode(65 + editForm.value.singleAnswer);
+                        } else if (editForm.value.type === 'multiple') {
+                            finalAnswer = editForm.value.multipleAnswers
+                                .sort((a, b) => a - b)
+                                .map(i => String.fromCharCode(65 + i))
+                                .join('');
+                        }
+                        
+                        const data = await apiPut(`/api/questions/${currentExam.value}/${editForm.value.id}`, {
+                            question: editForm.value.question,
+                            options: editForm.value.options,
+                            answer: finalAnswer,
+                            explanation: editForm.value.explanation,
+                            type: editForm.value.type,
+                            knowledgePoint: editForm.value.knowledgePoint
+                        });
+                        
+                        if (data && data.success === true) {
+                            alert('保存成功');
+                            closeEditQuestion();
+                            // 重新加载题库
+                            await loadQuestions(currentExam.value);
+                        } else {
+                            alert(data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        console.error('保存题目失败:', error);
+                        alert('保存失败：' + (error.message || '未知错误'));
+                    } finally {
+                        editLoading.value = false;
+                    }
+                };
+                
+                // 删除题目
+                const deleteQuestion = async (question) => {
+                    if (!confirm(`确定要删除题目【${question.question.substring(0, 30)}...】吗？`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const data = await apiDelete(`/api/questions/${currentExam.value}/${question.id}`);
+                        
+                        if (data && data.success === true) {
+                            alert('删除成功');
+                            // 重新加载题库
+                            await loadQuestions(currentExam.value);
+                        } else {
+                            alert(data.message || '删除失败');
+                        }
+                    } catch (error) {
+                        console.error('删除题目失败:', error);
+                        alert('删除失败：' + (error.message || '未知错误'));
+                    }
+                };
+                
+                // 导入题库方法
+                const handleImport = async () => {
+                    if (!importContent.value.trim()) return;
+                    
+                    importLoading.value = true;
+                    importResult.value = '';
+                    
+                    try {
+                        const data = await apiPost('/api/questions/import', {
+                            content: importContent.value,
+                            exam_code: importExamCode.value || undefined,
+                            exam_name: importExamName.value || undefined,
+                            table_name: importExamCode.value || undefined
+                        });
+                        
+                        if (data.success) {
+                            importSuccess.value = true;
+                            importResult.value = data.message || `成功导入 ${data.count || 0} 道题目`;
+                        } else {
+                            importSuccess.value = false;
+                            importResult.value = data.message || '导入失败';
+                        }
+                    } catch (error) {
+                        importSuccess.value = false;
+                        importResult.value = '导入失败：' + (error.message || '未知错误');
+                    } finally {
+                        importLoading.value = false;
+                    }
+                };
+                
+                // 清空导入内容
+                const clearImport = () => {
+                    importContent.value = '';
+                    importExamCode.value = '';
+                    importExamName.value = '';
+                    importResult.value = '';
+                    importSuccess.value = false;
+                };
                 
                 // 保存备考备注（已合并到 /api/guide 接口）
                 const saveGuideNotes = async (content) => {
@@ -1475,6 +1679,15 @@ function createInstance() {
                     guideNotes,
                     saveGuideNotes,
                     clearGuideNotes,
+                    // 导入题库相关
+                    importContent,
+                    importExamCode,
+                    importExamName,
+                    importLoading,
+                    importResult,
+                    importSuccess,
+                    handleImport,
+                    clearImport,
                     // 收藏相关
                     favoriteQuestionIds,
                     favoritesLoading,
@@ -1486,7 +1699,17 @@ function createInstance() {
                     isQuestionFavorite,
                     loadFavorites,
                     openFavoritesModal,
-                    closeFavoritesModal
+                    closeFavoritesModal,
+                    // 编辑题目相关
+                    showEditQuestionModal,
+                    editLoading,
+                    editForm,
+                    openEditQuestion,
+                    closeEditQuestion,
+                    addOption,
+                    removeOption,
+                    saveEditQuestion,
+                    deleteQuestion
                 };
 }
 
