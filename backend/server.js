@@ -2112,7 +2112,7 @@ app.get('/api/favorites/check', async (req, res) => {
 app.post('/api/questions/import', async (req, res) => {
   console.log('========== /api/questions/import 接口被调用 ==========');
   try {
-    const { content, exam_code, table_name, exam_name, question_type, guide_id, knowledge_point_id } = req.body;
+    const { content, exam_code, table_name, exam_name, question_type, source_set } = req.body;
     
     if (!content) {
       return res.status(400).json({ success: false, message: '请提供题库内容' });
@@ -2192,8 +2192,8 @@ app.post('/api/questions/import', async (req, res) => {
         const answerArray = Array.isArray(q.answer) ? q.answer : [q.answer];
         
         await connection.execute(
-          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code, guide_id, knowledge_point_id) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code, source_set) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
             q.question_text,
             JSON.stringify(q.options),
@@ -2201,8 +2201,7 @@ app.post('/api/questions/import', async (req, res) => {
             q.analysis || '',
             type,
             exam_code || 'default',
-            guide_id || null,
-            knowledge_point_id || null
+            source_set || 0
           ]
         );
         successCount++;
@@ -2253,19 +2252,15 @@ function parseQuestionContent(content) {
     
     // 检测是否是新题目开始的条件
     // 1. 匹配题号格式：第 * 题
-    // 2. 遇到答案行且已经有题目内容
-    // 3. 遇到选项A且已经有题目内容且没有当前题目
+    // 2. 匹配新格式：单选 1、多选 1、判断 1 等
+    // 3. 遇到答案行且已经有题目内容
+    // 4. 遇到选项A且已经有题目内容且没有当前题目
     const questionMatch = line.match(/^第\s*(\d+)\s*题/);
+    const newFormatMatch = line.match(/^(单选|多选|判断|判断题|单选题|多选题)\s*\d+/);
     const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
-    const isOptionA = line.match(/^A\.\s*/);
+    const isOptionA = line.match(/^A[．.、]\s*/);
     
-    if (questionMatch || (isOptionA && !currentQuestion) || (isAnswerLine && currentQuestion && currentQuestion.question_text)) {
-      // 如果是答案行触发且已经有题目，说明是新题开始，先保存旧题
-      if (isAnswerLine && currentQuestion && currentQuestion.question_text) {
-        questions.push(currentQuestion);
-        currentQuestion = null;
-      }
-      
+    if (questionMatch || newFormatMatch || (isOptionA && !currentQuestion)) {
       // 如果有当前题目，先保存
       if (currentQuestion && currentQuestion.question_text) {
         questions.push(currentQuestion);
@@ -2280,8 +2275,8 @@ function parseQuestionContent(content) {
       };
       inAnalysis = false;
       
-      // 如果是题号行，跳过，不加入题目内容
-      if (questionMatch) continue;
+      // 如果是题号行或新格式行，跳过，不加入题目内容
+      if (questionMatch || newFormatMatch) continue;
     }
     
     // 如果还没有当前题目，创建一个
@@ -2294,8 +2289,8 @@ function parseQuestionContent(content) {
       };
     }
     
-    // 匹配选项格式：A. B. C. D. E.
-    const optionMatch = line.match(/^([A-Ea-e])\.\s*(.+)/);
+    // 匹配选项格式：支持 A. A、 A． 三种格式
+    const optionMatch = line.match(/^([A-Ea-e])[．.、]\s*(.+)/);
     if (optionMatch) {
       inAnalysis = false;
       currentQuestion.options.push(optionMatch[2]); // 只存选项内容，不存"A. "前缀
@@ -2306,6 +2301,11 @@ function parseQuestionContent(content) {
     const answerMatch = line.match(/^(正确答案|答案)\s*[：:]\s*([A-Ea-e]+)/);
     if (answerMatch) {
       currentQuestion.answer = answerMatch[2].toUpperCase();
+      continue;
+    }
+    
+    // 跳过"回答错误"、"我的答案：xxx"等无用行
+    if (line.startsWith('回答错误') || line.startsWith('我的答案') || line === '未作答') {
       continue;
     }
     
