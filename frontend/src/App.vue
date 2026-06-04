@@ -890,7 +890,7 @@ D. 选项D
                     <div class="form-group">
                         <label>题目类型</label>
                         <select v-model="editForm.type" class="form-input">
-                            <option v-for="qType in examApp.questionTypes" :key="qType.type_code" :value="qType.type_code">
+                            <option v-for="qType in questionTypes" :key="qType.type_code" :value="qType.type_code">
                                 {{ qType.type_name }}
                             </option>
                         </select>

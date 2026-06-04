@@ -1,10 +1,9 @@
 package com.exam.question.controller;
 
+import com.example.exam.service.GuideService;
 import com.exam.common.api.ApiResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -18,8 +17,10 @@ import java.util.Map;
 @RequestMapping("/api")
 public class GuideController {
 
+    private final GuideService guideService;
+
     /**
-     * 考试指南数据
+     * 默认考试指南数据（当数据库中找不到时使用）
      */
     private static final Map<String, Map<String, Object>> EXAM_GUIDES = new LinkedHashMap<>();
 
@@ -295,28 +296,94 @@ public class GuideController {
         EXAM_GUIDES.put("bank_management", bankManagement);
     }
 
+    @Autowired
+    public GuideController(GuideService guideService) {
+        this.guideService = guideService;
+    }
+
     /**
      * 获取考试指南
      * GET /api/guide
      */
     @GetMapping("/guide")
-    public ApiResult<Map<String, Object>> getGuide(@RequestParam String bank_code) {
+    public ApiResult<Map<String, Object>> getGuide(@RequestParam(value = "bank_code", required = false) String bankCode,
+                                                   @RequestParam(value = "exam_code", required = false) String examCode) {
         System.out.println("========== /api/guide 接口被调用 ==========");
-        System.out.println("请求参数 bank_code: " + bank_code);
+        
+        // 优先使用exam_code，如果没有则使用bank_code
+        String code = examCode != null && !examCode.isEmpty() ? examCode : bankCode;
+        
+        System.out.println("请求参数 code: " + code);
 
-        if (bank_code == null || bank_code.isEmpty()) {
-            return ApiResult.fail("缺少必要参数 bank_code");
+        if (code == null || code.isEmpty()) {
+            return ApiResult.fail("缺少必要参数 exam_code 或 bank_code");
         }
 
-        Map<String, Object> guide = EXAM_GUIDES.get(bank_code);
-
-        if (guide != null) {
-            System.out.println("查询到考试指南: " + guide.get("title"));
+        // 首先尝试从数据库获取
+        Map<String, Object> result = guideService.getGuide(code);
+        
+        if ((Boolean) result.get("success")) {
+            Map<String, Object> guide = (Map<String, Object>) result.get("guide");
+            // 如果数据库返回的是默认指南（没有从数据库找到），尝试从静态数据获取
+            String guideExamCode = (String) guide.get("exam_code");
+            if ("暂无详细描述".equals(guide.get("description"))) {
+                Map<String, Object> staticGuide = EXAM_GUIDES.get(code);
+                if (staticGuide != null) {
+                    System.out.println("从静态数据查询到考试指南: " + staticGuide.get("title"));
+                    return ApiResult.ok(staticGuide);
+                }
+            }
             return ApiResult.ok(guide);
         } else {
-            // 如果没有找到对应指南，返回默认指南（网络与信息安全管理员三级）
-            System.out.println("未找到对应指南，返回默认指南");
-            return ApiResult.ok(EXAM_GUIDES.get("security_admin_3"));
+            // 如果数据库查询失败，尝试从静态数据获取
+            Map<String, Object> staticGuide = EXAM_GUIDES.get(code);
+            if (staticGuide != null) {
+                System.out.println("从静态数据查询到考试指南: " + staticGuide.get("title"));
+                return ApiResult.ok(staticGuide);
+            } else {
+                System.out.println("未找到对应指南，返回默认指南");
+                return ApiResult.ok(EXAM_GUIDES.get("security_admin_3"));
+            }
+        }
+    }
+
+    /**
+     * 获取考试指南列表
+     * GET /api/guide/list
+     */
+    @GetMapping("/guide/list")
+    public ApiResult<Map<String, Object>> getGuideList() {
+        System.out.println("========== /api/guide/list 接口被调用 ==========");
+        
+        Map<String, Object> result = guideService.getGuideList();
+        
+        if ((Boolean) result.get("success")) {
+            return ApiResult.ok(result);
+        } else {
+            return ApiResult.fail("获取指南列表失败");
+        }
+    }
+
+    /**
+     * 更新考试指南
+     * PUT /api/guide
+     */
+    @PutMapping("/guide")
+    public ApiResult<Map<String, Object>> updateGuide(@RequestBody Map<String, Object> requestBody) {
+        System.out.println("========== /api/guide 接口被调用(更新) ==========");
+        
+        String examCode = (String) requestBody.get("exam_code");
+        
+        if (examCode == null || examCode.isEmpty()) {
+            return ApiResult.fail("缺少必要参数 exam_code");
+        }
+
+        Map<String, Object> result = guideService.updateGuide(examCode, requestBody);
+        
+        if ((Boolean) result.get("success")) {
+            return ApiResult.ok(result);
+        } else {
+            return ApiResult.fail((String) result.get("message"));
         }
     }
 }

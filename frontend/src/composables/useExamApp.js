@@ -557,7 +557,7 @@ function createInstance() {
                     const params = { exam_code: targetExamCode };
                     knowledgeLoading.value = true;
                     try {
-                        const data = await apiGet('/api/knowledge', params);
+                        const data = await apiGet('/api/knowledge/list', params);
                         console.log('知识要点API返回数据:', data);
                         if (data && data.success === true && Array.isArray(data.data)) {
                             knowledgePoints.value = data.data;

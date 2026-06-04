@@ -2402,18 +2402,56 @@ app.put('/api/questions/:exam_code/:id', async (req, res) => {
     
     const tableName = exam.table_name;
     
+    // 查询表结构，获取存在的字段
+    const [columns] = await connection.execute(`DESCRIBE ${tableName}`);
+    const columnNames = columns.map(col => col.Field);
+    
+    // 动态构建更新语句
+    const updateFields = [];
+    const updateValues = [];
+    
+    updateFields.push('question = ?');
+    updateValues.push(question);
+    
+    updateFields.push('options = ?');
+    updateValues.push(JSON.stringify(options));
+    
+    // 将答案转换为JSON数组格式存储
+    let answerArray;
+    if (typeof answer === 'string') {
+      try {
+        // 尝试解析为JSON数组
+        answerArray = JSON.parse(answer);
+      } catch {
+        // 如果解析失败，说明是单个字符或字符串，转为数组
+        answerArray = answer.split('');
+      }
+    } else {
+      answerArray = answer;
+    }
+    const answerJson = Array.isArray(answerArray) ? JSON.stringify(answerArray) : JSON.stringify([answerArray]);
+
+    updateFields.push('answer = ?');
+    updateValues.push(answerJson);
+    
+    updateFields.push('analysis = ?');
+    updateValues.push(explanation || '');
+    
+    updateFields.push('type = ?');
+    updateValues.push(type || 'single');
+    
+    // 只在字段存在时更新
+    if (columnNames.includes('knowledge_point_id')) {
+      updateFields.push('knowledge_point_id = ?');
+      updateValues.push(knowledgePoint || null);
+    }
+    
+    updateValues.push(id);
+    
     // 更新题目
     await connection.execute(
-      `UPDATE ${tableName} SET question = ?, options = ?, answer = ?, analysis = ?, type = ?, knowledge_point = ? WHERE id = ?`,
-      [
-        question,
-        JSON.stringify(options),
-        JSON.stringify(answer),
-        explanation || '',
-        type || 'single',
-        knowledgePoint || '',
-        id
-      ]
+      `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
     );
     
     await connection.end();

@@ -108,4 +108,89 @@ public class QuestionController {
             return ApiResult.fail("题目不存在");
         }
     }
+
+    /**
+     * 更新题目
+     * PUT /api/questions/{exam_code}/{id}
+     */
+    @PutMapping("/{exam_code}/{id}")
+    public ApiResult<Void> updateQuestion(
+            @PathVariable("exam_code") String examCode,
+            @PathVariable("id") Long id,
+            @RequestBody Map<String, Object> body) {
+        System.out.println("========== PUT /api/questions/" + examCode + "/" + id + " 接口被调用 ==========");
+        
+        String question = (String) body.get("question");
+        String options = (String) body.get("options");
+        String[] answer = JSON.parse((String) body.get("answer"));
+        String analysis = (String) body.get("analysis");
+        String type = (String) body.get("type");
+        Object knowledgePointObj = body.get("knowledgePoint");
+        
+        Long knowledgePointId = null;
+        if (knowledgePointObj instanceof Number) {
+            knowledgePointId = ((Number) knowledgePointObj).longValue();
+        } else if (knowledgePointObj != null) {
+            try {
+                knowledgePointId = Long.parseLong(knowledgePointObj.toString());
+            } catch (NumberFormatException e) {
+                // 忽略无效的知识要点ID
+            }
+        }
+        
+        boolean success = questionService.updateQuestion(examCode, id, question, options, answer, analysis, type, knowledgePointId);
+        
+        if (success) {
+            return ApiResult.okMessage("更新成功");
+        } else {
+            return ApiResult.fail("题目不存在");
+        }
+    }
+
+    /**
+     * 删除题目
+     * DELETE /api/questions/{exam_code}/{id}
+     */
+    @DeleteMapping("/{exam_code}/{id}")
+    public ApiResult<Void> deleteQuestion(
+            @PathVariable("exam_code") String examCode,
+            @PathVariable("id") Long id) {
+        System.out.println("========== DELETE /api/questions/" + examCode + "/" + id + " 接口被调用 ==========");
+        
+        boolean success = questionService.deleteQuestion(examCode, id);
+        
+        if (success) {
+            return ApiResult.okMessage("删除成功");
+        } else {
+            return ApiResult.fail("题目不存在");
+        }
+    }
+
+    /**
+     * 导入题目
+     */
+    @PostMapping("/import")
+    public ApiResult importQuestions(@RequestBody Map<String, Object> body) {
+        String content = (String) body.get("content");
+        String bankCode = (String) body.get("bank_code");
+        String questionType = (String) body.get("question_type");
+        Long guideId = body.get("guide_id") != null ? ((Number) body.get("guide_id")).longValue() : null;
+        Long knowledgePointId = body.get("knowledge_point_id") != null ? ((Number) body.get("knowledge_point_id")).longValue() : null;
+        
+        if (content == null || content.trim().isEmpty()) {
+            return ApiResult.fail("题目内容不能为空");
+        }
+        
+        if (bankCode == null || bankCode.trim().isEmpty()) {
+            return ApiResult.fail("题库代码不能为空");
+        }
+        
+        Map<String, Object> result = questionService.importQuestions(content, bankCode, questionType, guideId, knowledgePointId);
+        
+        if ((Boolean) result.get("success")) {
+            return ApiResult.success(result);
+        } else {
+            return ApiResult.fail((String) result.get("message"));
+        }
+    }
 }
