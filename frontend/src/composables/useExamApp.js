@@ -108,6 +108,29 @@ function createInstance() {
                 const importLoading = ref(false);
                 const importResult = ref('');
                 const importSuccess = ref(false);
+                const isExamCodeFromDropdown = ref(false); // 标记题库代码是否来自下拉框
+                
+                // 判断题库代码是否来自下拉框选项
+                const isExamCodeManualInput = computed(() => {
+                    if (!importExamCode.value) return false;
+                    // 如果是从下拉框选择的，不是手动输入
+                    if (isExamCodeFromDropdown.value) {
+                        return false;
+                    }
+                    // 检查是否在exams列表中存在
+                    const existsInExams = exams.value.some(exam => exam.exam_code === importExamCode.value);
+                    return !existsInExams;
+                });
+                
+                // 标记题库代码来自下拉框
+                const markExamCodeFromDropdown = () => {
+                    isExamCodeFromDropdown.value = true;
+                };
+                
+                // 标记题库代码来自手动输入
+                const markExamCodeFromInput = () => {
+                    isExamCodeFromDropdown.value = false;
+                };
                 
                 // 编辑题目相关
                 const showEditQuestionModal = ref(false);
@@ -1723,6 +1746,9 @@ function createInstance() {
                     importLoading,
                     importResult,
                     importSuccess,
+                    isExamCodeManualInput,
+                    markExamCodeFromDropdown,
+                    markExamCodeFromInput,
                     handleImport,
                     clearImport,
                     loadKnowledgePoints,

@@ -52,8 +52,8 @@ async function createExam(connection, examData) {
     return { success: false, message: '题库代码已存在' };
   }
   
-  // 如果没有指定表名，自动生成
-  const targetTableName = table_name || `bank_${exam_code}`;
+  // 如果没有指定表名，自动生成（直接使用exam_code作为表名）
+    const targetTableName = table_name || exam_code;
   
   try {
     await connection.execute(
@@ -63,6 +63,12 @@ async function createExam(connection, examData) {
     
     // 创建对应的数据表
     await createQuestionTable(connection, targetTableName);
+    
+    // 同时在exam_guide表中创建对应的指南记录（使用题库名称作为指南标题）
+    await connection.execute(
+      'INSERT INTO exam_guide (exam_code, title, exam_overview, exam_content, question_type_distribution, preparation_tips, content) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [exam_code, exam_name, '', '[]', '[]', '[]', '']
+    );
     
     return { success: true, message: '题库创建成功', exam_code, table_name: targetTableName };
   } catch (error) {
@@ -84,6 +90,7 @@ async function createQuestionTable(connection, tableName) {
       exam_code VARCHAR(50) COMMENT '考试代码',
       guide_id INT COMMENT '关联考试指南ID',
       knowledge_point_id INT COMMENT '关联知识要点ID',
+      source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_type (type),

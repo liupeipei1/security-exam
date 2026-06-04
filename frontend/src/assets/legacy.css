@@ -1862,30 +1862,31 @@
 
         .select-input-container {
             position: relative;
+            display: flex;
         }
 
         .import-select {
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
+            right: 0;
+            width: 50px;
             height: 48px;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            background: #fff;
+            padding: 0;
+            border: none;
+            border-radius: 0 10px 10px 0;
+            background: #f5f5f5;
             color: #333;
             appearance: none;
             cursor: pointer;
             z-index: 2;
-            opacity: 0;
+        }
+
+        .import-select:hover {
+            background: #e0e0e0;
         }
 
         .import-select:focus {
             outline: none;
-            border-color: #4a90d9;
-            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
         }
 
         .import-select-type {
@@ -1910,8 +1911,9 @@
 
         .import-input.editable-select {
             position: relative;
-            padding-right: 40px;
+            padding-right: 60px;
             z-index: 1;
+            border-radius: 10px 0 0 10px;
         }
 
         .select-input-container::after {

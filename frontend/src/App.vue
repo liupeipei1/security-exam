@@ -628,11 +628,12 @@ D. 选项D
                                         type="text" 
                                         class="import-input editable-select"
                                         placeholder="输入题库代码（如：my_new_bank），若不存在将自动创建"
+                                        @input="handleImportExamInput"
                                     />
                                 </div>
                             </div>
                             
-                            <div class="form-group">
+                            <div class="form-group" v-if="isExamCodeManualInput">
                                 <label>🏷️ 题库名称（创建新题库时必填）</label>
                                 <input 
                                     v-model="importExamName" 
@@ -1065,6 +1066,9 @@ const {
   importLoading,
   importResult,
   importSuccess,
+  isExamCodeManualInput,
+  markExamCodeFromDropdown,
+  markExamCodeFromInput,
   handleImport,
   clearImport,
   // 编辑题目相关
@@ -1099,10 +1103,16 @@ const handleExamChange = async (event) => {
   console.log('currentExam.value after switch:', currentExam.value);
 }
 
-// 处理导入题库选择变化
+// 处理导入题库选择变化（从下拉框选择）
 const handleImportExamChange = (event) => {
   importExamCode.value = event.target.value;
-}
+  markExamCodeFromDropdown();
+};
+
+// 处理导入题库输入变化（手动输入）
+const handleImportExamInput = () => {
+  markExamCodeFromInput();
+};
 
 
 </script>

@@ -153,7 +153,7 @@ app.get('/api/questions/random', async (req, res) => {
     
     // 获取考试配置
     const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
-    const tableName = exam ? exam.table_name : 'security_exam_3';
+    const tableName = exam.table_name;
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} ORDER BY RAND() LIMIT 1`
@@ -388,7 +388,7 @@ app.get('/api/questions/type/:type', async (req, res) => {
     
     // 获取考试配置
     const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
-    const tableName = exam ? exam.table_name : 'security_exam_3';
+    const tableName = exam.table_name;
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} WHERE type = ?`,
@@ -419,7 +419,7 @@ app.get('/api/questions/random/:count', async (req, res) => {
     
     // 获取考试配置
     const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
-    const tableName = exam ? exam.table_name : 'security_exam_3';
+    const tableName = exam.table_name;
     
     const [rows] = await connection.execute(
       `SELECT * FROM ${tableName} ORDER BY RAND() LIMIT ?`,
@@ -2119,7 +2119,7 @@ app.post('/api/questions/import', async (req, res) => {
     }
     
     // 确定要插入的表名
-    let targetTable = table_name || 'security_exam_3';
+    let targetTable = table_name;
     let createdNewExam = false;
     
     // 如果提供了exam_code，尝试获取对应的表名
@@ -2130,6 +2130,15 @@ app.post('/api/questions/import', async (req, res) => {
       if (exam && exam.table_name) {
         // 题库已存在，使用已有的表名
         targetTable = exam.table_name;
+        
+        // 检查表是否存在，如果不存在则重新创建
+        const [tables] = await connection.execute(
+          `SHOW TABLES LIKE '${targetTable}'`
+        );
+        if (tables.length === 0) {
+          console.log(`表 ${targetTable} 不存在，正在重新创建...`);
+          await createQuestionTable(connection, targetTable);
+        }
       } else if (exam_name) {
         // 题库不存在，但提供了题库名称，自动创建新题库
         console.log(`题库 ${exam_code} 不存在，正在创建新题库...`);
@@ -2260,7 +2269,8 @@ function parseQuestionContent(content) {
     const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
     const isOptionA = line.match(/^A[．.、]\s*/);
     
-    if (questionMatch || newFormatMatch || (isOptionA && !currentQuestion)) {
+    // 只有明确识别到题目开始标记时才创建新题目
+    if (questionMatch || newFormatMatch) {
       // 如果有当前题目，先保存
       if (currentQuestion && currentQuestion.question_text) {
         questions.push(currentQuestion);
@@ -2275,18 +2285,23 @@ function parseQuestionContent(content) {
       };
       inAnalysis = false;
       
-      // 如果是题号行或新格式行，跳过，不加入题目内容
-      if (questionMatch || newFormatMatch) continue;
+      // 题号行或新格式行，跳过，不加入题目内容
+      continue;
     }
     
-    // 如果还没有当前题目，创建一个
-    if (!currentQuestion) {
+    // 如果遇到选项A但还没有当前题目，说明前面可能缺少题号，创建新题目
+    if (isOptionA && !currentQuestion) {
       currentQuestion = {
         question_text: '',
         options: [],
         answer: '',
         analysis: ''
       };
+    }
+    
+    // 如果没有当前题目且不是选项A，跳过此行（不创建空题目）
+    if (!currentQuestion) {
+      continue;
     }
     
     // 匹配选项格式：支持 A. A、 A． 三种格式
@@ -2338,11 +2353,16 @@ function parseQuestionContent(content) {
   }
   
   // 添加最后一道题目
-  if (currentQuestion && currentQuestion.question_text) {
+  if (currentQuestion && currentQuestion.question_text && currentQuestion.options.length > 0) {
     questions.push(currentQuestion);
   }
   
-  return questions;
+  // 过滤不完整的题目（至少需要有题目内容和选项）
+  const validQuestions = questions.filter(q => q.question_text && q.options && q.options.length > 0);
+  
+  console.log(`过滤后有效题目数: ${validQuestions.length}（原始解析: ${questions.length}）`);
+  
+  return validQuestions;
 }
 
 // 删除题目接口
