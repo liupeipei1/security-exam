@@ -8,12 +8,16 @@ CREATE TABLE bank_personal_finance (
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
     analysis TEXT,
-    bank_code VARCHAR(50) DEFAULT 'personal_finance',
+    exam_code VARCHAR(50) DEFAULT 'personal_finance',
     source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_type (type),
-    INDEX idx_bank_code (bank_code)
+    INDEX idx_exam_code (exam_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='personal_finance';
+
+ALTER TABLE `exam-db`.bank_personal_finance ADD guide_id INT NULL;
+ALTER TABLE `exam-db`.bank_personal_finance ADD knowledge_point_id INT NULL;
+
 
 INSERT INTO bank_personal_finance (type, question, options, answer, analysis, source_set) VALUES ('single', '般而言，属于我国养老制度第一支柱的是（）。', '{"A": "社会基本养老保险", "B": "个人储备的退休养老基金", "C": "个人养老金", "D": "企业年金"}', '["A"]', '《国务院关于企业职工养者保险制度改革的决定》提出，要建立基本养老保险与企业补充养老保险和个人储蒂性养老保险相结合的制度，实行国 家、企业和个人三方共同负担的养老制度。国家、企业和个人的养老保障体系，对应着我国养老保障体系的三支柱。第一支柱是基本养老保险（A正 确），分为城镇职工基本养老保险和城乡居民基本养老保险。第二支柱包括面向政府和事业单位的职业年金，以及面向企业的企业年金。第三支柱 主要是个人自愿开展的各类养老储蓄，主要是居民个人通过购买商业养老保险、养老目标基金、养老理财等金融产品为自己积累养老金的一种制度 安排。故本题选A。', 1);
 INSERT INTO bank_personal_finance (type, question, options, answer, analysis, source_set) VALUES ('single', '下列关于保险受益人的表述中，不正确的是（）。', '{"A": "投保以死亡为给付条件的保险时，被保险人和受益人不得为同一人", "B": "受益人应当由被保险人或者投保人在投保时指定，并在保险合同中载明", "C": "投保人和受益人为同一人时，被保险人可以为另一人", "D": "被保险人和受益人为同一人时，投保人不可以为另一人"}', '["D"]', '', 1);
