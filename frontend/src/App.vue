@@ -604,7 +604,7 @@ D. 选项D
                                 <label>🏷️ 默认题型（可选，不选则自动识别）</label>
                                 <select v-model="importQuestionType" class="import-select">
                                     <option value="">自动识别（2选项=判断题，多答案=多选题）</option>
-                                    <option v-for="qType in examApp.questionTypes" :key="qType.type_code" :value="qType.type_code">
+                                    <option v-for="qType in questionTypes" :key="qType.type_code" :value="qType.type_code">
                                         {{ qType.type_name }}
                                     </option>
                                 </select>
@@ -968,6 +968,7 @@ const {
   userAnswers,
   navItems,
   questions,
+  questionTypes,
   loading,
   exams,
   currentExam,

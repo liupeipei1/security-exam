@@ -622,7 +622,7 @@ app.get('/api/questions/types', async (req, res) => {
     
     // 从question_types表获取所有题型
     const [rows] = await connection.execute(
-      'SELECT type_code, type_name, type_description FROM question_types WHERE enabled = 1 ORDER BY sort_order'
+      'SELECT type_code, type_name, type_description, type_icon FROM question_types WHERE enabled = 1 ORDER BY sort_order'
     );
     await connection.end();
     res.json({ success: true, data: rows });

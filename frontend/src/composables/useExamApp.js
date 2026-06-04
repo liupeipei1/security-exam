@@ -44,10 +44,8 @@ function createInstance() {
                 const qrCodeUrl = ref(''); // 二维码图片URL
                 const qrCodeTimer = ref(null); // 轮询计时器
 
-                const navItems = [
-                    { id: 'judgment', name: '判断题', icon: '✓✗' },
-                    { id: 'single', name: '单选题', icon: '⭕' },
-                    { id: 'multiple', name: '多选题', icon: '☑️' },
+                // 非题型导航项（保持硬编码）
+                const nonQuestionNavItems = [
                     { id: 'exam', name: '模拟考试', icon: '🎯' },
                     { id: 'import', name: '导入题库', icon: '📥' },
                     { id: 'favorites', name: '我的收藏', icon: '❤️' },
@@ -55,6 +53,19 @@ function createInstance() {
                     { id: 'knowledge', name: '知识要点', icon: '📖' },
                     { id: 'guide', name: '考试指南', icon: '📋' }
                 ];
+                
+                // 动态生成导航项：题型部分从数据库加载（图标也从数据库获取），其他部分硬编码
+                const navItems = computed(() => {
+                    // 从 questionTypes 生成题型导航项，图标直接使用数据库中的 type_icon
+                    const questionTypeNavItems = questionTypes.value.map(qType => ({
+                        id: qType.type_code,
+                        name: qType.type_name,
+                        icon: qType.type_icon || '📄'
+                    }));
+                    
+                    // 合并题型导航项和非题型导航项
+                    return [...questionTypeNavItems, ...nonQuestionNavItems];
+                });
 
                 // 题库列表（从后端获取）
                 const exams = ref([]);
@@ -65,6 +76,9 @@ function createInstance() {
                 // 题库数据
                 const questions = ref([]);
                 const loading = ref(true);
+                
+                // 题型列表
+                const questionTypes = ref([]);
                 
                 // 知识要点数据
                 const knowledgePoints = ref([]);
@@ -1603,6 +1617,7 @@ function createInstance() {
                     userAnswers,
                     navItems,
                     questions,
+                    questionTypes,
                     loading,
                     exams,
                     currentExam,
