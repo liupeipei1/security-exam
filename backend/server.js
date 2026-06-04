@@ -1680,6 +1680,58 @@ app.get('/api/guide', async (req, res) => {
 
 
 
+// ==================== 获取考试指南列表接口 ====================
+app.get('/api/guide/list', async (req, res) => {
+  console.log('========== /api/guide/list 接口被调用 ==========');
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    const [rows] = await connection.execute(
+      'SELECT id, exam_code, title FROM exam_guide ORDER BY id DESC',
+      []
+    );
+    
+    await connection.end();
+    
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('获取考试指南列表失败:', error);
+    res.status(500).json({ success: false, message: '获取考试指南列表失败' });
+  }
+});
+
+// ==================== 获取知识要点列表接口 ====================
+app.get('/api/knowledge/list', async (req, res) => {
+  console.log('========== /api/knowledge/list 接口被调用 ==========');
+  console.log('请求参数 exam_code:', req.query.exam_code);
+  try {
+    const { exam_code } = req.query;
+    
+    const connection = await mysql.createConnection(dbConfig);
+    
+    let rows;
+    if (exam_code) {
+      [rows] = await connection.execute(
+        'SELECT id, title, content FROM knowledge_points WHERE exam_code = ? ORDER BY sort_order',
+        [exam_code]
+      );
+    } else {
+      [rows] = await connection.execute(
+        'SELECT id, exam_code, title, content FROM knowledge_points ORDER BY exam_code, sort_order',
+        []
+      );
+    }
+    
+    await connection.end();
+    
+    console.log('查询到知识要点数量:', rows.length);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('获取知识要点列表失败:', error);
+    res.status(500).json({ success: false, message: '获取知识要点列表失败' });
+  }
+});
+
 // ==================== 考试指南更新接口 ====================
 // 支持更新考试指南的所有字段，包括备考备注(content字段)
 app.put('/api/guide', async (req, res) => {
@@ -1802,7 +1854,7 @@ app.post('/api/question/explanation', async (req, res) => {
     
     // 获取对应的表名
     const exam = await getExamByCode(connection, exam_code);
-    const tableName = exam ? exam.table_name : 'security_exam_3';
+    const tableName = exam.table_name;
     
     // 更新题目解析（使用analysis字段存储）
     const [result] = await connection.execute(
@@ -1823,51 +1875,9 @@ app.post('/api/question/explanation', async (req, res) => {
   }
 });
 
-// 更新题目解析接口（小程序端使用）
-app.post('/api/questions/update-analysis', async (req, res) => {
-  console.log('========== /api/questions/update-analysis 接口被调用 ==========');
-  try {
-    const { id, analysis, openid } = req.body;
-    
-    if (!id || !openid) {
-      return res.status(400).json({ success: false, message: '缺少必要参数' });
-    }
-    
-    // 验证用户登录状态（测试账号直接通过）
-    if (openid !== 'test_openid' && openid !== 'dev_openid' && openid !== 'o0lS55o_tDbDXQ2rg-Y_XvLikI_U') {
-      const vipStatus = await checkVipStatus(openid);
-      if (!vipStatus.is_vip) {
-        return res.status(403).json({ success: false, message: vipStatus.message });
-      }
-    }
-    
-    const connection = await mysql.createConnection(dbConfig);
-    
-    // 使用默认表名（小程序端使用默认题库）
-    const tableName = 'security_exam_3';
-    
-    // 更新题目解析
-    const [result] = await connection.execute(
-      `UPDATE ${tableName} SET analysis = ? WHERE id = ?`,
-      [analysis || '', id]
-    );
-    
-    await connection.end();
-    
-    if (result.affectedRows > 0) {
-      res.json({ success: true, message: '保存成功' });
-    } else {
-      res.status(404).json({ success: false, message: '题目不存在' });
-    }
-  } catch (error) {
-    console.error('更新解析失败:', error);
-    res.status(500).json({ success: false, message: '更新解析失败' });
-  }
-});
-
 // 获取知识要点API
-app.get('/api/knowledge', async (req, res) => {
-  console.log('========== /api/knowledge 接口被调用 ==========');
+app.get('/api/knowledge/list', async (req, res) => {
+  console.log('========== /api/knowledge/list 接口被调用 ==========');
   console.log('请求参数 exam_code:', req.query.exam_code);
   try {
     const { exam_code } = req.query;
@@ -2102,7 +2112,7 @@ app.get('/api/favorites/check', async (req, res) => {
 app.post('/api/questions/import', async (req, res) => {
   console.log('========== /api/questions/import 接口被调用 ==========');
   try {
-    const { content, exam_code, table_name, exam_name, question_type } = req.body;
+    const { content, exam_code, table_name, exam_name, question_type, guide_id, knowledge_point_id } = req.body;
     
     if (!content) {
       return res.status(400).json({ success: false, message: '请提供题库内容' });
@@ -2182,15 +2192,17 @@ app.post('/api/questions/import', async (req, res) => {
         const answerArray = Array.isArray(q.answer) ? q.answer : [q.answer];
         
         await connection.execute(
-          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code) 
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code, guide_id, knowledge_point_id) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             q.question_text,
             JSON.stringify(q.options),
             JSON.stringify(answerArray),
             q.analysis || '',
             type,
-            'default'  // 默认exam_code
+            exam_code || 'default',
+            guide_id || null,
+            knowledge_point_id || null
           ]
         );
         successCount++;

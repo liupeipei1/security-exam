@@ -1428,7 +1428,7 @@ Page({
 
   // 保存解析内容
   saveAnalysis: function() {
-    const { currentQuestionData, userInfo } = this.data
+    const { currentQuestionData, userInfo, currentExam } = this.data
     
     if (!currentQuestionData || !currentQuestionData.id) {
       wx.showToast({ title: '无法获取题目信息', icon: 'none' })
@@ -1438,10 +1438,10 @@ Page({
     wx.showLoading({ title: '保存中...' })
     
     // 发送请求保存解析
-    apiPost('/api/questions/update-analysis', {
-      id: currentQuestionData.id,
-      analysis: currentQuestionData.analysis,
-      openid: userInfo?.openid
+    apiPost('/api/question/explanation', {
+      exam_code: currentExam?.exam_code || 'security_exam_3',
+      question_id: currentQuestionData.id,
+      explanation: currentQuestionData.analysis
     })
     .then(res => {
       wx.hideLoading()

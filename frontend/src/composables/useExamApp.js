@@ -105,6 +105,10 @@ function createInstance() {
                 const importExamCode = ref('');
                 const importExamName = ref('');
                 const importQuestionType = ref('');
+                const importGuideId = ref('');
+                const importKnowledgePointId = ref('');
+                const guideList = ref([]);
+                const knowledgePointList = ref([]);
                 const importLoading = ref(false);
                 const importResult = ref('');
                 const importSuccess = ref(false);
@@ -278,7 +282,9 @@ function createInstance() {
                             exam_code: importExamCode.value || undefined,
                             exam_name: importExamName.value || undefined,
                             table_name: importExamCode.value || undefined,
-                            question_type: importQuestionType.value || undefined
+                            question_type: importQuestionType.value || undefined,
+                            guide_id: importGuideId.value || undefined,
+                            knowledge_point_id: importKnowledgePointId.value || undefined
                         });
                         
                         if (data.success) {
@@ -302,8 +308,34 @@ function createInstance() {
                     importExamCode.value = '';
                     importExamName.value = '';
                     importQuestionType.value = '';
+                    importGuideId.value = '';
+                    importKnowledgePointId.value = '';
                     importResult.value = '';
                     importSuccess.value = false;
+                };
+                
+                // 获取考试指南列表
+                const loadGuideList = async () => {
+                    try {
+                        const data = await apiGet('/api/guide/list');
+                        if (data && data.success) {
+                            guideList.value = data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('获取考试指南列表失败:', error);
+                    }
+                };
+                
+                // 获取知识要点列表（用于导入功能）
+                const loadKnowledgePointList = async (examCode = '') => {
+                    try {
+                        const data = await apiGet(`/api/knowledge/list${examCode ? '?exam_code=' + examCode : ''}`);
+                        if (data && data.success) {
+                            knowledgePointList.value = data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('获取知识要点列表失败:', error);
+                    }
                 };
                 
                 // 保存备考备注（已合并到 /api/guide 接口）
@@ -1718,11 +1750,18 @@ function createInstance() {
                     importExamCode,
                     importExamName,
                     importQuestionType,
+                    importGuideId,
+                    importKnowledgePointId,
+                    guideList,
+                    knowledgePointList,
                     importLoading,
                     importResult,
                     importSuccess,
                     handleImport,
                     clearImport,
+                    loadGuideList,
+                    loadKnowledgePointList,
+                    loadKnowledgePoints,
                     // 收藏相关
                     favoriteQuestionIds,
                     favoritesLoading,

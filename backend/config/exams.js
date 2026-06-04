@@ -82,9 +82,13 @@ async function createQuestionTable(connection, tableName) {
       explanation VARCHAR(500) COMMENT '解析说明',
       analysis VARCHAR(1000) COMMENT '题目分析',
       exam_code VARCHAR(50) COMMENT '考试代码',
+      guide_id INT COMMENT '关联考试指南ID',
+      knowledge_point_id INT COMMENT '关联知识要点ID',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_type (type)
+      INDEX idx_type (type),
+      INDEX idx_guide_id (guide_id),
+      INDEX idx_knowledge_point_id (knowledge_point_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
   `;
   

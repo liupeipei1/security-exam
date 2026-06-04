@@ -643,6 +643,32 @@ D. 选项D
                                 <small style="color: #666; font-size: 0.8rem;">如果题库代码不存在，将使用此名称创建新题库</small>
                             </div>
                             
+                            <div class="form-group">
+                                <label>📖 关联考试指南（可选）</label>
+                                <select 
+                                    v-model="importGuideId" 
+                                    class="import-select"
+                                >
+                                    <option value="">请选择考试指南</option>
+                                    <option v-for="guide in guideList" :key="guide.id" :value="guide.id">
+                                        {{ guide.title }}
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>📚 关联知识要点（可选）</label>
+                                <select 
+                                    v-model="importKnowledgePointId" 
+                                    class="import-select"
+                                >
+                                    <option value="">请选择知识要点</option>
+                                    <option v-for="kp in knowledgePointList" :key="kp.id" :value="kp.id">
+                                        {{ kp.title }}
+                                    </option>
+                                </select>
+                            </div>
+                            
                             <div class="import-actions">
                                 <button 
                                     class="import-btn" 
@@ -1062,11 +1088,17 @@ const {
   importExamCode,
   importExamName,
   importQuestionType,
+  importGuideId,
+  importKnowledgePointId,
+  guideList,
+  knowledgePointList,
   importLoading,
   importResult,
   importSuccess,
   handleImport,
   clearImport,
+  loadGuideList,
+  loadKnowledgePointList,
   // 编辑题目相关
   showEditQuestionModal,
   editLoading,
@@ -1100,9 +1132,18 @@ const handleExamChange = async (event) => {
 }
 
 // 处理导入题库选择变化
-const handleImportExamChange = (event) => {
+const handleImportExamChange = async (event) => {
   importExamCode.value = event.target.value;
+  // 加载知识要点列表（根据考试代码过滤）
+  if (importExamCode.value) {
+    await loadKnowledgePointList(importExamCode.value);
+  }
 }
+
+// 页面初始化时加载考试指南列表
+onMounted(async () => {
+  await loadGuideList();
+})
 
 
 </script>
