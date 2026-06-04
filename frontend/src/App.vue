@@ -602,7 +602,7 @@ D. 选项D
                             
                             <div class="form-group">
                                 <label>🏷️ 默认题型（可选，不选则自动识别）</label>
-                                <select v-model="importQuestionType" class="import-select">
+                                <select v-model="importQuestionType" class="import-select-type">
                                     <option value="">自动识别（2选项=判断题，多答案=多选题）</option>
                                     <option v-for="qType in questionTypes" :key="qType.type_code" :value="qType.type_code">
                                         {{ qType.type_name }}
