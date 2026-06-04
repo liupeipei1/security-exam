@@ -288,6 +288,32 @@ function createInstance() {
                     }
                 };
                 
+                // 删除题库
+                const deleteExam = async (examCode, examName) => {
+                    if (!confirm(`⚠️ 确定要删除题库【${examName}】吗？此操作将删除该题库下所有题目和相关数据，且不可恢复！`)) {
+                        return;
+                    }
+                    
+                    try {
+                        const data = await apiDelete(`/api/exams/${examCode}`);
+                        
+                        if (data && data.success === true) {
+                            alert('题库删除成功');
+                            // 重新加载题库列表
+                            await loadExams();
+                            // 如果删除的是当前选中的题库，切换到第一个题库
+                            if (currentExam.value === examCode && exams.value.length > 0) {
+                                currentExam.value = exams.value[0].exam_code;
+                            }
+                        } else {
+                            alert(data.message || '删除失败');
+                        }
+                    } catch (error) {
+                        console.error('删除题库失败:', error);
+                        alert('删除失败：' + (error.message || '未知错误'));
+                    }
+                };
+                
                 // 导入题库方法
                 const handleImport = async () => {
                     if (!importContent.value.trim()) return;
@@ -1773,7 +1799,8 @@ function createInstance() {
                     addOption,
                     removeOption,
                     saveEditQuestion,
-                    deleteQuestion
+                    deleteQuestion,
+                    deleteExam
                 };
 }
 

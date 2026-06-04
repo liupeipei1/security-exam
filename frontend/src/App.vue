@@ -11,6 +11,14 @@
                         {{ exam.icon }} {{ exam.exam_name }}
                     </option>
                 </select>
+                <button 
+                    class="delete-exam-btn" 
+                    @click="handleDeleteExam"
+                    :disabled="exams.length === 0"
+                    title="删除当前题库"
+                >
+                    🗑️ 删除题库
+                </button>
             </div>
             
             <!-- 用户信息区域 -->
@@ -1080,7 +1088,8 @@ const {
   addOption,
   removeOption,
   saveEditQuestion,
-  deleteQuestion
+  deleteQuestion,
+  deleteExam
 } = useExamApp()
 
 
@@ -1101,6 +1110,17 @@ const handleExamChange = async (event) => {
   switchExam(selectedExamCode);
   
   console.log('currentExam.value after switch:', currentExam.value);
+}
+
+// 处理删除题库
+const handleDeleteExam = async () => {
+  const currentExamCode = currentExam.value;
+  // exams 是 ref 对象，需要通过 .value 访问数组
+  const currentExamData = exams.value.find(exam => exam.exam_code === currentExamCode);
+  
+  if (currentExamData) {
+    await deleteExam(currentExamCode, currentExamData.exam_name);
+  }
 }
 
 // 处理导入题库选择变化（从下拉框选择）

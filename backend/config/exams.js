@@ -70,6 +70,20 @@ async function createExam(connection, examData) {
       [exam_code, exam_name, '', '[]', '[]', '[]', '']
     );
     
+    // 同时在knowledge_points表中创建默认的知识要点记录
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '1. 考试概述', '该题库的考试概述信息将在这里显示。', 1]
+    );
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '2. 核心知识点', '该题库的核心知识点将在这里列出。', 2]
+    );
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '3. 备考建议', '针对该考试的备考建议将在这里提供。', 3]
+    );
+    
     return { success: true, message: '题库创建成功', exam_code, table_name: targetTableName };
   } catch (error) {
     return { success: false, message: '创建失败: ' + error.message };

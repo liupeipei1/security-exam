@@ -251,6 +251,20 @@ app.get('/api/questions', async (req, res) => {
     const tableName = (exam && exam.table_name) || 'security_exam_3';
     console.log('使用考试:', exam_code || '默认考试', ', 表名:', tableName);
     
+    // 检查表是否存在
+    const [tableExists] = await connection.execute(
+      `SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'exam-db' AND table_name = ?`,
+      [tableName]
+    );
+    
+    if (tableExists[0].count === 0) {
+      await connection.end();
+      return res.status(404).json({
+        success: false,
+        message: `题库表 '${tableName}' 不存在，请先导入题目数据`
+      });
+    }
+    
     [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
     console.log(`查询到 ${rows.length} 条题目`);
     
@@ -477,17 +491,17 @@ app.post('/api/exams', async (req, res) => {
   const { 
     exam_code, 
     exam_name, 
-    exam_description, 
-    exam_desc_detail, 
-    description, 
-    icon, 
+    exam_description = '', 
+    exam_desc_detail = '', 
+    description = '', 
+    icon = '📚', 
     table_name, 
     total_questions = 0, 
     judgment_count = 0, 
     single_count = 0, 
     multiple_count = 0, 
     enabled = 1, 
-    sort_order = 0 
+    sort_order = 999 
   } = req.body;
   
   // 验证必填字段
@@ -517,6 +531,26 @@ app.post('/api/exams', async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [exam_code, exam_name, exam_description, exam_desc_detail, icon, table_name,
        total_questions, judgment_count, single_count, multiple_count, enabled, sort_order]
+    );
+    
+    // 同时在exam_guide表中创建对应的指南记录
+    await connection.execute(
+      'INSERT INTO exam_guide (exam_code, title, exam_overview, exam_content, question_type_distribution, preparation_tips, content) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [exam_code, exam_name, '', '[]', '[]', '[]', '']
+    );
+    
+    // 同时在knowledge_points表中创建默认的知识要点记录
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '1. 考试概述', '该题库的考试概述信息将在这里显示。', 1]
+    );
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '2. 核心知识点', '该题库的核心知识点将在这里列出。', 2]
+    );
+    await connection.execute(
+      'INSERT INTO knowledge_points (exam_code, title, content, sort_order) VALUES (?, ?, ?, ?)',
+      [exam_code, '3. 备考建议', '针对该考试的备考建议将在这里提供。', 3]
     );
     
     await connection.end();
@@ -590,27 +624,63 @@ app.put('/api/exams/:examCode', async (req, res) => {
   }
 });
 
-// 删除考试配置（管理接口）
+// 软删除题库（管理接口）
 app.delete('/api/exams/:examCode', async (req, res) => {
   const { examCode } = req.params;
   
   try {
     const connection = await mysql.createConnection(dbConfig);
     
+    // 先检查题库是否存在
+    const [examConfigs] = await connection.execute(
+      'SELECT * FROM exam_config WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    if (examConfigs.length === 0) {
+      await connection.end();
+      return res.status(404).json({ success: false, message: '考试配置不存在' });
+    }
+    
+    // 1. 删除题目笔记表中相关数据
+    await connection.execute(
+      'DELETE FROM question_notes WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    // 2. 删除收藏表中相关数据
+    await connection.execute(
+      'DELETE FROM favorites WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    // 3. 删除知识点表中相关数据
+    await connection.execute(
+      'DELETE FROM knowledge_points WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    // 4. 删除考试指南表中相关数据
+    await connection.execute(
+      'DELETE FROM exam_guide WHERE exam_code = ?',
+      [examCode]
+    );
+    
+    // 5. 软删除：将 exam_config 表中的 enabled 设为 0
     const [result] = await connection.execute(
-      'DELETE FROM exam_config WHERE exam_code = ?',
+      'UPDATE exam_config SET enabled = 0 WHERE exam_code = ?',
       [examCode]
     );
     
     await connection.end();
     
     if (result.affectedRows > 0) {
-      res.json({ success: true, message: '考试配置删除成功' });
+      res.json({ success: true, message: '题库软删除成功' });
     } else {
       res.status(404).json({ success: false, message: '考试配置不存在' });
     }
   } catch (error) {
-    console.error('删除考试配置失败:', error);
+    console.error('软删除题库失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
   }
 });
