@@ -105,7 +105,6 @@ function createInstance() {
                 const importExamCode = ref('');
                 const importExamName = ref('');
                 const importQuestionType = ref('');
-                const importExamType = ref(''); // 考试类型
                 const importLoading = ref(false);
                 const importResult = ref('');
                 const importSuccess = ref(false);
@@ -279,8 +278,7 @@ function createInstance() {
                             exam_code: importExamCode.value || undefined,
                             exam_name: importExamName.value || undefined,
                             table_name: importExamCode.value || undefined,
-                            question_type: importQuestionType.value || undefined,
-                            exam_type: importExamType.value || undefined
+                            question_type: importQuestionType.value || undefined
                         });
                         
                         if (data.success) {
@@ -304,7 +302,6 @@ function createInstance() {
                     importExamCode.value = '';
                     importExamName.value = '';
                     importQuestionType.value = '';
-                    importExamType.value = '';
                     importResult.value = '';
                     importSuccess.value = false;
                 };
@@ -1723,7 +1720,6 @@ function createInstance() {
                     importExamCode,
                     importExamName,
                     importQuestionType,
-                    importExamType,
                     importLoading,
                     importResult,
                     importSuccess,

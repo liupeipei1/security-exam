@@ -643,17 +643,6 @@ D. 选项D
                                 <small style="color: #666; font-size: 0.8rem;">如果题库代码不存在，将使用此名称创建新题库</small>
                             </div>
                             
-                            <div class="form-group">
-                                <label>🏷️ 考试类型（可选）</label>
-                                <select v-model="importExamType" class="import-select">
-                                    <option value="">请选择考试类型</option>
-                                    <option value="security_exam_3">网络与信息安全管理员三级</option>
-                                    <option value="ai_trainer_3">人工智能训练师三级</option>
-                                    <option value="personal_finance">银行从业-个人理财</option>
-                                    <option value="banking_law">银行从业-法律法规</option>
-                                </select>
-                            </div>
-                            
                             <div class="import-actions">
                                 <button 
                                     class="import-btn" 
@@ -1073,7 +1062,6 @@ const {
   importExamCode,
   importExamName,
   importQuestionType,
-  importExamType,
   importLoading,
   importResult,
   importSuccess,
