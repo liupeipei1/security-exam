@@ -644,28 +644,13 @@ D. 选项D
                             </div>
                             
                             <div class="form-group">
-                                <label>📖 关联考试指南（可选）</label>
-                                <select 
-                                    v-model="importGuideId" 
-                                    class="import-select"
-                                >
-                                    <option value="">请选择考试指南</option>
-                                    <option v-for="guide in guideList" :key="guide.id" :value="guide.id">
-                                        {{ guide.title }}
-                                    </option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>📚 关联知识要点（可选）</label>
-                                <select 
-                                    v-model="importKnowledgePointId" 
-                                    class="import-select"
-                                >
-                                    <option value="">请选择知识要点</option>
-                                    <option v-for="kp in knowledgePointList" :key="kp.id" :value="kp.id">
-                                        {{ kp.title }}
-                                    </option>
+                                <label>🏷️ 考试类型（可选）</label>
+                                <select v-model="importExamType" class="import-select">
+                                    <option value="">请选择考试类型</option>
+                                    <option value="security_exam_3">网络与信息安全管理员三级</option>
+                                    <option value="ai_trainer_3">人工智能训练师三级</option>
+                                    <option value="personal_finance">银行从业-个人理财</option>
+                                    <option value="banking_law">银行从业-法律法规</option>
                                 </select>
                             </div>
                             
@@ -1088,17 +1073,12 @@ const {
   importExamCode,
   importExamName,
   importQuestionType,
-  importGuideId,
-  importKnowledgePointId,
-  guideList,
-  knowledgePointList,
+  importExamType,
   importLoading,
   importResult,
   importSuccess,
   handleImport,
   clearImport,
-  loadGuideList,
-  loadKnowledgePointList,
   // 编辑题目相关
   showEditQuestionModal,
   editLoading,
@@ -1132,18 +1112,9 @@ const handleExamChange = async (event) => {
 }
 
 // 处理导入题库选择变化
-const handleImportExamChange = async (event) => {
+const handleImportExamChange = (event) => {
   importExamCode.value = event.target.value;
-  // 加载知识要点列表（根据考试代码过滤）
-  if (importExamCode.value) {
-    await loadKnowledgePointList(importExamCode.value);
-  }
 }
-
-// 页面初始化时加载考试指南列表
-onMounted(async () => {
-  await loadGuideList();
-})
 
 
 </script>
