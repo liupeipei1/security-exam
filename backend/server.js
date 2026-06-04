@@ -2184,6 +2184,9 @@ app.post('/api/questions/import', async (req, res) => {
   try {
     const { content, exam_code, table_name, exam_name, question_type, source_set } = req.body;
     
+    console.log('收到的content内容:', content);
+    console.log('content长度:', content.length);
+    
     if (!content) {
       return res.status(400).json({ success: false, message: '请提供题库内容' });
     }
@@ -2334,7 +2337,8 @@ function parseQuestionContent(content) {
     // 2. 匹配新格式：单选 1、多选 1、判断 1 等
     // 3. 遇到答案行且已经有题目内容
     // 4. 遇到选项A且已经有题目内容且没有当前题目
-    const questionMatch = line.match(/^第\s*(\d+)\s*题/);
+    // 支持多种格式："第61题"、"61题"、"61 题"、"第 61 题"
+const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
     const newFormatMatch = line.match(/^(单选|多选|判断|判断题|单选题|多选题)\s*\d+/);
     const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
     const isOptionA = line.match(/^A[．.、]\s*/);
@@ -2355,7 +2359,14 @@ function parseQuestionContent(content) {
       };
       inAnalysis = false;
       
-      // 题号行或新格式行，跳过，不加入题目内容
+      // 如果是题号格式，提取题号后面的内容作为题目文本的开始
+      if (questionMatch) {
+        const remainingText = line.replace(/^(第)?\s*\d+\s*题\s*/, '');
+        if (remainingText && remainingText.length > 0) {
+          currentQuestion.question_text = remainingText;
+        }
+      }
+      
       continue;
     }
     

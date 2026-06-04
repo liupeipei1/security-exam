@@ -43,23 +43,25 @@
         }
 
         .delete-exam-btn {
-            padding: 10px 16px;
-            font-size: 0.9rem;
-            border-radius: 8px;
-            border: 2px solid #e74c3c;
-            background: rgba(231, 76, 60, 0.1);
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            border: 1px solid #e74c3c;
+            background: rgba(231,76,60,0.05);
             color: #e74c3c;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 4px;
         }
 
         .delete-exam-btn:hover:not(:disabled) {
             background: #e74c3c;
             color: white;
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            border-color: #e74c3c;
+            box-shadow: none;
         }
 
         .delete-exam-btn:disabled {
