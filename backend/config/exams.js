@@ -91,10 +91,60 @@ async function createQuestionTable(connection, tableName) {
   await connection.execute(createTableSQL);
 }
 
+// 更新题库统计信息
+async function updateExamStats(examCode, tableName) {
+  const mysql = require('mysql2/promise');
+  const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '123456',
+    database: process.env.DB_NAME || 'exam-db',
+    charset: 'utf8mb4'
+  };
+  
+  const connection = await mysql.createConnection(dbConfig);
+  
+  try {
+    // 统计各类题型数量
+    const [judgmentResult] = await connection.execute(
+      `SELECT COUNT(*) as count FROM ${tableName} WHERE type = 'judgment'`
+    );
+    const judgmentCount = judgmentResult[0].count || 0;
+    
+    const [singleResult] = await connection.execute(
+      `SELECT COUNT(*) as count FROM ${tableName} WHERE type = 'single'`
+    );
+    const singleCount = singleResult[0].count || 0;
+    
+    const [multipleResult] = await connection.execute(
+      `SELECT COUNT(*) as count FROM ${tableName} WHERE type = 'multiple'`
+    );
+    const multipleCount = multipleResult[0].count || 0;
+    
+    const totalQuestions = judgmentCount + singleCount + multipleCount;
+    
+    // 更新 exam_config 表
+    await connection.execute(
+      'UPDATE exam_config SET total_questions = ?, judgment_count = ?, single_count = ?, multiple_count = ? WHERE exam_code = ?',
+      [totalQuestions, judgmentCount, singleCount, multipleCount, examCode]
+    );
+    
+    console.log(`题库 ${examCode} 统计已更新: 总计 ${totalQuestions} 题 (判断: ${judgmentCount}, 单选: ${singleCount}, 多选: ${multipleCount})`);
+    
+    return { success: true, totalQuestions, judgmentCount, singleCount, multipleCount };
+  } catch (error) {
+    console.error('更新题库统计失败:', error.message);
+    return { success: false, message: error.message };
+  } finally {
+    await connection.end();
+  }
+}
+
 module.exports = {
   getAllExams,
   getExamByCode,
   getDefaultExam,
   createExam,
-  createQuestionTable
+  createQuestionTable,
+  updateExamStats
 };

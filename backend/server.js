@@ -40,7 +40,7 @@ const upload = multer({
 });
 
 // 导入考试配置管理
-const { getAllExams, getExamByCode, getDefaultExam, createExam, createQuestionTable } = require('./config/exams');
+const { getAllExams, getExamByCode, getDefaultExam, createExam, createQuestionTable, updateExamStats } = require('./config/exams');
 
 // 导入Redis缓存服务
 const {
@@ -617,20 +617,15 @@ app.delete('/api/exams/:examCode', async (req, res) => {
 
 // 获取题目类型列表（免费）
 app.get('/api/questions/types', async (req, res) => {
-  const { exam_code } = req.query;
-  
   try {
     const connection = await mysql.createConnection(dbConfig);
     
-    // 获取考试配置
-    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
-    const tableName = exam ? exam.table_name : 'security_exam_3';
-    
+    // 从question_types表获取所有题型
     const [rows] = await connection.execute(
-      `SELECT DISTINCT type FROM ${tableName} WHERE type IS NOT NULL`
+      'SELECT type_code, type_name, type_description FROM question_types WHERE enabled = 1 ORDER BY sort_order'
     );
     await connection.end();
-    res.json({ success: true, data: rows.map(r => r.type) });
+    res.json({ success: true, data: rows });
   } catch (error) {
     console.error('数据库查询失败:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });
@@ -2107,7 +2102,7 @@ app.get('/api/favorites/check', async (req, res) => {
 app.post('/api/questions/import', async (req, res) => {
   console.log('========== /api/questions/import 接口被调用 ==========');
   try {
-    const { content, exam_code, table_name, exam_name } = req.body;
+    const { content, exam_code, table_name, exam_name, question_type } = req.body;
     
     if (!content) {
       return res.status(400).json({ success: false, message: '请提供题库内容' });
@@ -2170,14 +2165,17 @@ app.post('/api/questions/import', async (req, res) => {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       try {
-        // 判断题目类型
-        let type = 'single';
-        if (q.options && q.options.length === 2) {
-          type = 'judgment';
-        } else if (q.options && q.options.length >= 5) {
-          type = 'multiple';
-        } else if (q.answer && q.answer.length > 1) {
-          type = 'multiple';
+        // 判断题目类型：优先使用用户指定的题型，否则自动识别
+        let type = question_type || 'single';
+        if (!question_type) {
+          // 自动识别题型
+          if (q.options && q.options.length === 2) {
+            type = 'judgment';
+          } else if (q.options && q.options.length >= 5) {
+            type = 'multiple';
+          } else if (q.answer && q.answer.length > 1) {
+            type = 'multiple';
+          }
         }
         
         // 将答案转换为JSON数组格式
@@ -2203,6 +2201,11 @@ app.post('/api/questions/import', async (req, res) => {
     }
     
     await connection.end();
+    
+    // 更新题库统计信息
+    if (exam_code) {
+      await updateExamStats(exam_code, targetTable);
+    }
     
     if (errors.length === 0) {
       res.json({ 
@@ -2350,6 +2353,12 @@ app.delete('/api/questions/:exam_code/:id', async (req, res) => {
     await connection.execute(
       `DELETE FROM ${tableName} WHERE id = ?`,
       [id]
+    );
+    
+    // 同时删除该题目的所有用户备注
+    await connection.execute(
+      'DELETE FROM question_notes WHERE exam_code = ? AND question_id = ?',
+      [exam_code, id]
     );
     
     await connection.end();

@@ -90,6 +90,7 @@ function createInstance() {
                 const importContent = ref('');
                 const importExamCode = ref('');
                 const importExamName = ref('');
+                const importQuestionType = ref('');
                 const importLoading = ref(false);
                 const importResult = ref('');
                 const importSuccess = ref(false);
@@ -262,7 +263,8 @@ function createInstance() {
                             content: importContent.value,
                             exam_code: importExamCode.value || undefined,
                             exam_name: importExamName.value || undefined,
-                            table_name: importExamCode.value || undefined
+                            table_name: importExamCode.value || undefined,
+                            question_type: importQuestionType.value || undefined
                         });
                         
                         if (data.success) {
@@ -285,6 +287,7 @@ function createInstance() {
                     importContent.value = '';
                     importExamCode.value = '';
                     importExamName.value = '';
+                    importQuestionType.value = '';
                     importResult.value = '';
                     importSuccess.value = false;
                 };
@@ -488,6 +491,7 @@ function createInstance() {
                 const initLoad = async () => {
                     checkLoginStatus();
                     await loadExams();
+                    await loadQuestionTypes();
                     // 加载之前保存的备注（从数据库）
                     await loadQuestionNotes();
                     // 题库列表加载完成后，根据登录状态加载题目
@@ -627,6 +631,19 @@ function createInstance() {
                         }
                     } catch (error) {
                         console.error('加载题库列表失败:', error);
+                    }
+                };
+                
+                // 加载题型列表
+                const loadQuestionTypes = async () => {
+                    try {
+                        const data = await apiGet('/api/questions/types');
+                        if (data && data.success === true && Array.isArray(data.data)) {
+                            questionTypes.value = data.data;
+                            console.log('成功加载题型列表:', questionTypes.value);
+                        }
+                    } catch (error) {
+                        console.error('加载题型列表失败:', error);
                     }
                 };
 
@@ -1679,10 +1696,13 @@ function createInstance() {
                     guideNotes,
                     saveGuideNotes,
                     clearGuideNotes,
+                    // 题库列表
+                    exams,
                     // 导入题库相关
                     importContent,
                     importExamCode,
                     importExamName,
+                    importQuestionType,
                     importLoading,
                     importResult,
                     importSuccess,

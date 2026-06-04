@@ -601,13 +601,35 @@ D. 选项D
                             </div>
                             
                             <div class="form-group">
+                                <label>🏷️ 默认题型（可选，不选则自动识别）</label>
+                                <select v-model="importQuestionType" class="import-select">
+                                    <option value="">自动识别（2选项=判断题，多答案=多选题）</option>
+                                    <option v-for="qType in examApp.questionTypes" :key="qType.type_code" :value="qType.type_code">
+                                        {{ qType.type_name }}
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label>📁 目标题库代码</label>
-                                <input 
-                                    v-model="importExamCode" 
-                                    type="text" 
-                                    class="import-input"
-                                    placeholder="输入题库代码（如：my_new_bank），若不存在将自动创建"
-                                />
+                                <div class="select-input-container">
+                                    <select 
+                                        v-model="importExamCode" 
+                                        class="import-select"
+                                        @change="handleImportExamChange"
+                                    >
+                                        <option value="">请选择或输入题库代码</option>
+                                        <option v-for="exam in exams" :key="exam.exam_code" :value="exam.exam_code">
+                                            {{ exam.exam_name }} ({{ exam.exam_code }})
+                                        </option>
+                                    </select>
+                                    <input 
+                                        v-model="importExamCode" 
+                                        type="text" 
+                                        class="import-input editable-select"
+                                        placeholder="输入题库代码（如：my_new_bank），若不存在将自动创建"
+                                    />
+                                </div>
                             </div>
                             
                             <div class="form-group">
@@ -842,9 +864,9 @@ D. 选项D
                     <div class="form-group">
                         <label>题目类型</label>
                         <select v-model="editForm.type" class="form-input">
-                            <option value="single">单选题</option>
-                            <option value="multiple">多选题</option>
-                            <option value="judgment">判断题</option>
+                            <option v-for="qType in examApp.questionTypes" :key="qType.type_code" :value="qType.type_code">
+                                {{ qType.type_name }}
+                            </option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1038,6 +1060,7 @@ const {
   importContent,
   importExamCode,
   importExamName,
+  importQuestionType,
   importLoading,
   importResult,
   importSuccess,
@@ -1073,6 +1096,11 @@ const handleExamChange = async (event) => {
   switchExam(selectedExamCode);
   
   console.log('currentExam.value after switch:', currentExam.value);
+}
+
+// 处理导入题库选择变化
+const handleImportExamChange = (event) => {
+  importExamCode.value = event.target.value;
 }
 
 

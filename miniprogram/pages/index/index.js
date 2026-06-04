@@ -491,6 +491,8 @@ Page({
         currentQuestions: newCurrentQuestions,
         currentQuestionData: newCurrentQuestions[0] || null
       })
+      // 更新计算属性，显示练习模式的题型分布
+      this.updateComputedProperties()
     }
   },
 
