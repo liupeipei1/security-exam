@@ -110,6 +110,64 @@ function createInstance() {
                 const importSuccess = ref(false);
                 const isExamCodeFromDropdown = ref(false); // 标记题库代码是否来自下拉框
                 
+                // 图片上传相关
+                const uploadedImages = ref([]);
+                const imageUploadRef = ref(null);
+                const importContentRef = ref(null);
+                const imageSize = ref('100%'); // 图片大小设置：50%、75%、100%、150%、200%
+                
+                // 监听imageSize变化，实时更新已插入图片的大小
+                watch(imageSize, (newSize) => {
+                    if (importContentRef.value) {
+                        const images = importContentRef.value.querySelectorAll('img');
+                        images.forEach(img => {
+                            img.style.maxWidth = newSize;
+                            img.style.width = newSize;
+                        });
+                    }
+                });
+                
+                // 获取导入内容（兼容contenteditable）
+                const getImportContent = () => {
+                    let content = '';
+                    if (importContentRef.value) {
+                        content = importContentRef.value.innerHTML;
+                    } else {
+                        content = importContent.value;
+                    }
+                    // 先保存img标签
+                    const imgTags = [];
+                    content = content.replace(/<img[^>]+>/gi, (match) => {
+                        imgTags.push(match);
+                        return `[IMG_PLACEHOLDER_${imgTags.length - 1}]`;
+                    });
+                    // 清理HTML标签和多余空白，保留基本格式
+                    content = content
+                        .replace(/<br\s*\/?>/gi, '\n')          // 将<br>转换为换行
+                        .replace(/<div\s*\/?>/gi, '\n')         // 将<div>转换为换行
+                        .replace(/<\/div>/gi, '')               // 移除</div>
+                        .replace(/<[^>]+>/g, '')                // 移除其他HTML标签
+                        .replace(/&nbsp;/gi, ' ')               // 将&nbsp;转换为空格
+                        .replace(/\u200B/g, '')                 // 移除零宽字符
+                        .replace(/\r\n/g, '\n')                 // 统一换行符
+                        .replace(/\r/g, '\n')
+                        .replace(/\n{3,}/g, '\n\n')             // 最多保留两个连续换行
+                        .trim();
+                    // 恢复img标签
+                    content = content.replace(/\[IMG_PLACEHOLDER_(\d+)\]/g, (match, index) => {
+                        return imgTags[index] || '';
+                    });
+                    return content;
+                };
+                
+                // 设置导入内容
+                const setImportContent = (content) => {
+                    if (importContentRef.value) {
+                        importContentRef.value.innerHTML = content;
+                    }
+                    importContent.value = content;
+                };
+                
                 // 判断题库代码是否来自下拉框选项
                 const isExamCodeManualInput = computed(() => {
                     if (!importExamCode.value) return false;
@@ -143,6 +201,7 @@ function createInstance() {
                     answer: '',
                     explanation: '',
                     knowledgePoint: '',
+                    imageSize: '100%', // 图片大小设置
                     singleAnswer: 0,
                     multipleAnswers: []
                 });
@@ -157,6 +216,7 @@ function createInstance() {
                         answer: question.answer,
                         explanation: question.explanation || '',
                         knowledgePoint: question.knowledgePoint || question.knowledge_point || '',
+                        imageSize: '100%', // 默认图片大小
                         singleAnswer: 0,
                         multipleAnswers: []
                     };
@@ -195,6 +255,7 @@ function createInstance() {
                         answer: '',
                         explanation: '',
                         knowledgePoint: '',
+                        imageSize: '100%', // 默认图片大小
                         singleAnswer: 0,
                         multipleAnswers: []
                     };
@@ -241,8 +302,24 @@ function createInstance() {
                                 .join('');
                         }
                         
+                        // 应用图片大小设置到题目内容中的所有图片标签
+                        const imageSize = editForm.value.imageSize;
+                        let questionContent = editForm.value.question;
+                        
+                        // 替换img标签的style属性，设置图片大小
+                        questionContent = questionContent.replace(
+                            /<img([^>]*)style="[^"]*"([^>]*)>/gi,
+                            `<img$1style="max-width: ${imageSize}; width: ${imageSize}; height: auto;"$2>`
+                        );
+                        
+                        // 如果img标签没有style属性，则添加style属性
+                        questionContent = questionContent.replace(
+                            /<img([^>]*(?!style=))>/gi,
+                            `<img$1 style="max-width: ${imageSize}; width: ${imageSize}; height: auto;">`
+                        );
+                        
                         const data = await apiPut(`/api/questions/${currentExam.value}/${editForm.value.id}`, {
-                            question: editForm.value.question,
+                            question: questionContent,
                             options: editForm.value.options,
                             answer: finalAnswer,
                             explanation: editForm.value.explanation,
@@ -316,19 +393,37 @@ function createInstance() {
                 
                 // 导入题库方法
                 const handleImport = async () => {
-                    if (!importContent.value.trim()) return;
+                    const content = getImportContent();
+                    if (!content.trim()) return;
                     
                     importLoading.value = true;
                     importResult.value = '';
                     
                     try {
-                        const data = await apiPost('/api/questions/import', {
-                            content: importContent.value,
-                            exam_code: importExamCode.value || undefined,
-                            exam_name: importExamName.value || undefined,
-                            table_name: importExamCode.value || undefined,
-                            question_type: importQuestionType.value || undefined
+                        // 创建FormData对象，支持图片上传
+                        const formData = new FormData();
+                        formData.append('content', content);
+                        if (importExamCode.value) {
+                            formData.append('exam_code', importExamCode.value);
+                        }
+                        if (importExamName.value) {
+                            formData.append('exam_name', importExamName.value);
+                        }
+                        if (importExamCode.value) {
+                            formData.append('table_name', importExamCode.value);
+                        }
+                        if (importQuestionType.value) {
+                            formData.append('question_type', importQuestionType.value);
+                        }
+                        
+                        // 使用原生fetch发送multipart/form-data请求
+                        const API_BASE = import.meta.env.VITE_API_BASE || '';
+                        const res = await fetch(`${API_BASE}/api/questions/import`, {
+                            method: 'POST',
+                            body: formData
                         });
+                        
+                        const data = await res.json();
                         
                         if (data.success) {
                             importSuccess.value = true;
@@ -347,12 +442,214 @@ function createInstance() {
                 
                 // 清空导入内容
                 const clearImport = () => {
+                    if (importContentRef.value) {
+                        importContentRef.value.innerHTML = '';
+                    }
                     importContent.value = '';
                     importExamCode.value = '';
                     importExamName.value = '';
                     importQuestionType.value = '';
                     importResult.value = '';
                     importSuccess.value = false;
+                    uploadedImages.value = [];
+                };
+                
+                // 触发图片上传
+                const triggerImageUpload = () => {
+                    imageUploadRef.value?.click();
+                };
+                
+                // 将文件转换为Base64
+                const fileToBase64 = (file) => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                };
+                
+                // 处理图片上传（导入题库用）
+                const handleImportImageUpload = async (event) => {
+                    const files = event.target.files;
+                    if (!files || files.length === 0) return;
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        if (!file.type.startsWith('image/')) {
+                            alert('请选择图片文件');
+                            continue;
+                        }
+                        
+                        if (file.size > 2 * 1024 * 1024) {
+                            alert('图片大小不能超过 2MB');
+                            continue;
+                        }
+                        
+                        try {
+                            // 将图片转换为Base64格式
+                            const base64Data = await fileToBase64(file);
+                            
+                            // 将图片标签自动插入到题目内容中（直接存储Base64数据）
+                            const size = imageSize.value;
+                            const imgTag = `<img src="${base64Data}" style="max-width: ${size}; width: ${size}; height: auto;" />`;
+                            
+                            // 支持contenteditable
+                            if (importContentRef.value) {
+                                // 在光标位置插入图片
+                                const selection = window.getSelection();
+                                if (selection.rangeCount > 0) {
+                                    const range = selection.getRangeAt(0);
+                                    range.deleteContents();
+                                    const imgElement = document.createElement('img');
+                                    imgElement.src = base64Data;
+                                    imgElement.style.maxWidth = size;
+                                    imgElement.style.width = size;
+                                    imgElement.style.height = 'auto';
+                                    range.insertNode(imgElement);
+                                    // 在图片后插入换行
+                                    range.collapse(false);
+                                    const br = document.createElement('br');
+                                    range.insertNode(br);
+                                } else {
+                                    importContentRef.value.innerHTML += '\n' + imgTag + '\n';
+                                }
+                            } else {
+                                importContent.value += '\n' + imgTag + '\n';
+                            }
+                            
+                            // 添加到已上传图片列表（用于预览和管理）
+                            uploadedImages.value.push({
+                                name: file.name,
+                                url: base64Data,
+                                data: base64Data // 用于预览
+                            });
+                        } catch (error) {
+                            console.error('图片处理失败:', error);
+                            alert('图片处理失败: ' + error.message);
+                        }
+                    }
+                    
+                    // 清空input的值，允许重复上传相同文件
+                    event.target.value = '';
+                };
+                
+                // 处理拖拽上传（导入题库用）
+                const handleImportImageDrop = async (event) => {
+                    const files = event.dataTransfer.files;
+                    if (!files || files.length === 0) return;
+                    
+                    // 创建一个临时input来模拟change事件
+                    const tempInput = document.createElement('input');
+                    tempInput.type = 'file';
+                    tempInput.multiple = true;
+                    Object.defineProperty(files, 'item', {
+                        value: (index) => files[index]
+                    });
+                    tempInput.files = files;
+                    
+                    const changeEvent = new Event('change');
+                    tempInput.addEventListener('change', handleImportImageUpload);
+                    tempInput.dispatchEvent(changeEvent);
+                };
+                
+                // 移除图片
+                const removeImage = (index) => {
+                    uploadedImages.value.splice(index, 1);
+                };
+                
+                // 插入图片标签到内容中
+                const insertImageTag = (index) => {
+                    const img = uploadedImages.value[index];
+                    if (img) {
+                        const size = imageSize.value;
+                        const imgTag = `<img src="${img.url}" style="max-width: ${size}; width: ${size}; height: auto;" />`;
+                        
+                        // 支持contenteditable
+                        if (importContentRef.value) {
+                            // 在光标位置插入图片
+                            const selection = window.getSelection();
+                            if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                range.deleteContents();
+                                const imgElement = document.createElement('img');
+                                imgElement.src = img.url;
+                                imgElement.style.maxWidth = size;
+                                imgElement.style.width = size;
+                                imgElement.style.height = 'auto';
+                                range.insertNode(imgElement);
+                                // 在图片后插入换行
+                                range.collapse(false);
+                                const br = document.createElement('br');
+                                range.insertNode(br);
+                            } else {
+                                importContentRef.value.innerHTML += imgTag + '\n';
+                            }
+                        } else {
+                            importContent.value += imgTag + '\n';
+                        }
+                    }
+                };
+                
+                // 处理粘贴事件（支持粘贴图片到题目内容）
+                const handleImportPaste = async (event) => {
+                    const items = event.clipboardData?.items;
+                    if (!items) return;
+                    
+                    for (const item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            event.preventDefault();
+                            const file = item.getAsFile();
+                            if (file) {
+                                if (file.size > 2 * 1024 * 1024) {
+                                    alert('图片大小不能超过 2MB');
+                                    return;
+                                }
+                                
+                                try {
+                                    // 将图片转换为Base64格式（直接存储文件流）
+                                    const base64Data = await fileToBase64(file);
+                                    
+                                    const size = imageSize.value;
+                                    const imgTag = `<img src="${base64Data}" style="max-width: ${size}; width: ${size}; height: auto;" />`;
+                                    
+                                    // 支持contenteditable
+                                    if (importContentRef.value) {
+                                        // 在光标位置插入图片
+                                        const selection = window.getSelection();
+                                        if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            range.deleteContents();
+                                            const imgElement = document.createElement('img');
+                                            imgElement.src = base64Data;
+                                            imgElement.style.maxWidth = size;
+                                            imgElement.style.width = size;
+                                            imgElement.style.height = 'auto';
+                                            range.insertNode(imgElement);
+                                            // 在图片后插入换行
+                                            range.collapse(false);
+                                            const br = document.createElement('br');
+                                            range.insertNode(br);
+                                        } else {
+                                            importContentRef.value.innerHTML += imgTag + '\n';
+                                        }
+                                    } else {
+                                        importContent.value += imgTag + '\n';
+                                    }
+                                    
+                                    // 添加到已上传图片列表
+                                    uploadedImages.value.push({
+                                        name: file.name,
+                                        url: base64Data,
+                                        data: base64Data
+                                    });
+                                } catch (error) {
+                                    console.error('图片处理失败:', error);
+                                    alert('图片处理失败: ' + error.message);
+                                }
+                            }
+                        }
+                    }
                 };
                 
 
@@ -1777,6 +2074,18 @@ function createInstance() {
                     markExamCodeFromInput,
                     handleImport,
                     clearImport,
+                    getImportContent,
+                    // 图片上传相关（导入题库用）
+                    uploadedImages,
+                    imageUploadRef,
+                    importContentRef,
+                    imageSize,
+                    triggerImageUpload,
+                    handleImportImageUpload,
+                    handleImportImageDrop,
+                    handleImportPaste,
+                    removeImage,
+                    insertImageTag,
                     loadKnowledgePoints,
                     // 收藏相关
                     favoriteQuestionIds,

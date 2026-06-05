@@ -96,21 +96,17 @@ async function createQuestionTable(connection, tableName) {
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id INT PRIMARY KEY AUTO_INCREMENT,
       type ENUM('judgment', 'single', 'multiple') NOT NULL COMMENT '题型',
-      question TEXT NOT NULL COMMENT '题目内容',
+      question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
       options JSON NOT NULL COMMENT '选项列表',
       answer JSON NOT NULL COMMENT '正确答案',
       explanation VARCHAR(500) COMMENT '解析说明',
       analysis VARCHAR(1000) COMMENT '题目分析',
       exam_code VARCHAR(50) COMMENT '考试代码',
-      guide_id INT COMMENT '关联考试指南ID',
-      knowledge_point_id INT COMMENT '关联知识要点ID',
       source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_type (type),
-      INDEX idx_guide_id (guide_id),
-      INDEX idx_knowledge_point_id (knowledge_point_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
   `;
   
   await connection.execute(createTableSQL);

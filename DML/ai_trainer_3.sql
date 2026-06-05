@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS ai_trainer_3;
 CREATE TABLE ai_trainer_3 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type ENUM('single', 'multiple', 'judgment') NOT NULL,
-    question TEXT NOT NULL,
+    question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
     analysis TEXT,

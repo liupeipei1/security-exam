@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS question_notes (
     openid VARCHAR(100) NOT NULL COMMENT '用户openid',
     exam_code VARCHAR(50) NOT NULL COMMENT '考试编码',
     question_id INT NOT NULL COMMENT '题目ID',
-    note TEXT COMMENT '备注内容',
+    note LONGTEXT COMMENT '备注内容（支持HTML格式，可包含图片标签）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_user_question (openid, exam_code, question_id),

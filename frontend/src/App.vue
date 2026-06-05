@@ -105,7 +105,7 @@
                                 <span class="exam-question-number">第 {{ index + 1 }} 题</span>
                                 <span class="exam-question-type" :class="question.type">{{ getTypeLabel(question.type) }}</span>
                             </div>
-                            <div class="exam-question-text">{{ question.question }}</div>
+                            <div class="exam-question-text" v-html="question.question"></div>
                             <ul class="exam-options-list">
                                 <li 
                                     v-for="(option, optIndex) in question.options" 
@@ -115,7 +115,7 @@
                                     @click="selectExamOption(question.id, optIndex)"
                                 >
                                     <span class="exam-option-label">{{ getOptionLabel(optIndex) }}</span>
-                                    <span class="exam-option-text">{{ option }}</span>
+                                    <span class="exam-option-text" v-html="option"></span>
                                 </li>
                             </ul>
                         </div>
@@ -149,7 +149,7 @@
                                         {{ isExamCorrectAnswer(question.id) ? '✓ 正确' : '✗ 错误' }}
                                     </span>
                                 </div>
-                                <div class="review-question">{{ question.question }}</div>
+                                <div class="review-question" v-html="question.question"></div>
                                 <div class="review-answers">
                                     <p><strong>你的答案：</strong>{{ getExamUserAnswerText(question.id) }}</p>
                                     <p><strong>正确答案：</strong>{{ question.answer.join(', ') }}</p>
@@ -213,7 +213,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="question-text">{{ question.question }}</div>
+                        <div class="question-text" v-html="question.question"></div>
                         
                         <ul class="options-list">
                             <li 
@@ -228,7 +228,7 @@
                                 @click="selectOption(question.id, index)"
                             >
                                 <span class="option-label">{{ getOptionLabel(index) }}</span>
-                                <span class="option-text">{{ option }}</span>
+                                <span class="option-text" v-html="option"></span>
                             </li>
                         </ul>
 
@@ -578,34 +578,51 @@
                     <div class="import-container">
                         <div class="import-form">
                             <div class="form-group">
-                                <label>📝 题目内容（支持批量导入）</label>
-                                <textarea 
-                                    v-model="importContent" 
+                                <label>📝 题目内容（支持批量导入，可插入图片，支持粘贴图片）</label>
+                                <div 
+                                    ref="importContentRef"
                                     class="import-textarea"
-                                    placeholder="请输入题目内容，格式如下：
-
-1. 题目内容
-A. 选项A
-B. 选项B
-C. 选项C
-D. 选项D
-答案：A
-解析：这是解析内容
-
-2. 判断题示例
-正确
-错误
-答案：正确
-解析：这是判断题的解析
-
-3. 多选题示例（答案用逗号分隔）
-A. 选项A
-B. 选项B
-C. 选项C
-D. 选项D
-答案：A,B,C
-解析：这是多选题的解析"
-                                ></textarea>
+                                    contenteditable="true"
+                                    @paste="handleImportPaste"
+                                ></div>
+                                <div class="placeholder-text" v-if="!getImportContent().trim()" v-html="placeholderText"></div>
+                            </div>
+                            
+                            <!-- 图片上传区域 -->
+                            <div class="form-group">
+                                <label>🖼️ 上传图片（上传后会自动生成img标签插入到内容中）</label>
+                                <div class="image-size-selector">
+                                    <label class="size-label">图片大小：</label>
+                                    <select v-model="imageSize" class="image-size-select">
+                                        <option value="50%">50%</option>
+                                        <option value="75%">75%</option>
+                                        <option value="100%">100%</option>
+                                        <option value="125%">125%</option>
+                                        <option value="150%">150%</option>
+                                        <option value="200%">200%</option>
+                                    </select>
+                                </div>
+                                <div class="upload-area" @click="triggerImageUpload" @dragover.prevent @drop.prevent="handleImportImageDrop">
+                                    <input 
+                                        type="file" 
+                                        ref="imageUploadRef" 
+                                        class="image-upload-input"
+                                        accept="image/*" 
+                                        multiple
+                                        @change="handleImportImageUpload"
+                                        style="display: none;"
+                                    />
+                                    <div class="upload-icon">📤</div>
+                                    <div class="upload-text">点击或拖拽图片到此处上传</div>
+                                    <div class="upload-hint">支持 JPG、PNG、GIF、WebP 格式，单张不超过 2MB</div>
+                                </div>
+                                <div v-if="uploadedImages.length > 0" class="uploaded-images">
+                                    <div v-for="(img, index) in uploadedImages" :key="index" class="uploaded-image-item">
+                                        <img :src="img.data" :alt="`图片${index+1}`" class="preview-image" :style="{ maxWidth: imageSize, width: imageSize, height: 'auto' }" />
+                                        <button class="remove-image-btn" @click="removeImage(index)">×</button>
+                                        <button class="insert-image-btn" @click="insertImageTag(index)">插入到内容</button>
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="form-group">
@@ -655,7 +672,7 @@ D. 选项D
                             <div class="import-actions">
                                 <button 
                                     class="import-btn" 
-                                    :disabled="!importContent.trim()"
+                                    :disabled="!getImportContent().trim()"
                                     @click="handleImport"
                                 >
                                     {{ importLoading ? '导入中...' : '🚀 开始导入' }}
@@ -741,7 +758,7 @@ D. 选项D
                                         ❤️
                                     </button>
                                 </div>
-                                <div class="question-text">{{ question.question }}</div>
+                                <div class="question-text" v-html="question.question"></div>
                                 
                                 <ul class="options-list">
                                     <li 
@@ -753,7 +770,7 @@ D. 选项D
                                         }"
                                     >
                                         <span class="option-label">{{ getOptionLabel(optIndex) }}</span>
-                                        <span class="option-text">{{ option }}</span>
+                                        <span class="option-text" v-html="option"></span>
                                     </li>
                                 </ul>
 
@@ -764,7 +781,7 @@ D. 选项D
 
                                 <div class="answer-explanation">
                                     <h4>💡 解析</h4>
-                                    <p>{{ question.explanation || '暂无解析' }}</p>
+                                    <p v-html="question.explanation || '暂无解析'"></p>
                                 </div>
                             </div>
                         </div>
@@ -895,6 +912,16 @@ D. 选项D
                             placeholder="请输入题目内容"
                         ></textarea>
                     </div>
+                    <div class="form-group">
+                        <label>图片大小</label>
+                        <select v-model="editForm.imageSize" class="form-input image-size-select">
+                            <option value="50%">50%</option>
+                            <option value="75%">75%</option>
+                            <option value="100%">100%</option>
+                            <option value="150%">150%</option>
+                            <option value="200%">200%</option>
+                        </select>
+                    </div>
                     <div class="form-group" v-if="editForm.type !== 'judgment'">
                         <label>选项（每行一个）</label>
                         <div class="options-edit-list">
@@ -961,11 +988,12 @@ D. 选项D
 </template>
 
 <script setup>
-import './assets/legacy.css'
 import './config/wechat.js'
 import { ref, onMounted, nextTick } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 import GuideNotes from './components/GuideNotes.vue'
+
+const placeholderText = `请输入题目内容...`
 
 const {
   currentSection,
@@ -1079,6 +1107,18 @@ const {
   markExamCodeFromInput,
   handleImport,
   clearImport,
+  getImportContent,
+  // 图片上传相关（导入题库用）
+  uploadedImages,
+  imageUploadRef,
+  importContentRef,
+  imageSize,
+  triggerImageUpload,
+  handleImportImageUpload,
+  handleImportImageDrop,
+  handleImportPaste,
+  removeImage,
+  insertImageTag,
   // 编辑题目相关
   showEditQuestionModal,
   editLoading,

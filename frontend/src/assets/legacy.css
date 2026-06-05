@@ -1843,6 +1843,7 @@
 
         .import-form .form-group {
             margin-bottom: 20px;
+            position: relative;
         }
 
         .import-form .form-group label {
@@ -1855,7 +1856,7 @@
 
         .import-textarea {
             width: 100%;
-            height: 300px;
+            min-height: 300px;
             padding: 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
@@ -1865,12 +1866,72 @@
             transition: all 0.3s ease;
             background: #fff;
             color: #333;
+            overflow-y: auto;
+            position: relative;
         }
 
         .import-textarea:focus {
             outline: none;
             border-color: #4a90d9;
             box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+        }
+
+        .import-textarea img {
+            max-width: 100%;
+            height: auto;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .import-textarea:empty:before {
+            content: attr(data-placeholder);
+            color: #aaa;
+        }
+
+        .image-size-selector {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .size-label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .image-size-select {
+            padding: 6px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-size-select:focus {
+            outline: none;
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
+        }
+
+        .placeholder-text {
+            position: absolute;
+            top: 55px;
+            left: 15px;
+            color: #aaa;
+            pointer-events: none;
+            font-size: 0.55rem;
+            white-space: pre-line;
+            word-break: break-all;
+            overflow-wrap: break-word;
+            line-height: 1.6;
+            padding-right: 15px;
+            max-height: 300px;
+            overflow: hidden;
         }
 
         .import-input {

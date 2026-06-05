@@ -2179,13 +2179,36 @@ app.get('/api/favorites/check', async (req, res) => {
 });
 
 // 导入题库API - 支持解析文本格式的题目，支持自动创建新题库
-app.post('/api/questions/import', async (req, res) => {
+// 创建支持多文件上传的multer配置
+const importUpload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB限制
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('不支持的图片格式'), false);
+    }
+  }
+});
+
+app.post('/api/questions/import', importUpload.array('images', 10), async (req, res) => {
   console.log('========== /api/questions/import 接口被调用 ==========');
   try {
-    const { content, exam_code, table_name, exam_name, question_type, source_set } = req.body;
+    // 支持两种格式：multipart/form-data 和 application/json
+    const content = req.body.content || (req.body && typeof req.body === 'string' ? req.body : '');
+    const exam_code = req.body.exam_code;
+    const table_name = req.body.table_name;
+    const exam_name = req.body.exam_name;
+    const question_type = req.body.question_type;
+    const source_set = req.body.source_set;
     
     console.log('收到的content内容:', content);
     console.log('content长度:', content.length);
+    console.log('上传的图片数量:', req.files ? req.files.length : 0);
     
     if (!content) {
       return res.status(400).json({ success: false, message: '请提供题库内容' });
@@ -2240,8 +2263,53 @@ app.post('/api/questions/import', async (req, res) => {
     
     console.log('目标表:', targetTable);
     
+    // 不保存Base64图片到服务器，直接保留在内容中
+    let finalContent = content;
+    const savedImages = [];
+    
+    // 处理上传的图片文件：将其转换为Base64格式并嵌入到内容中
+    if (req.files && req.files.length > 0) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        
+        // 读取文件并转换为Base64
+        const fileBuffer = await fs.promises.readFile(file.path);
+        const base64Data = fileBuffer.toString('base64');
+        const mimeType = file.mimetype;
+        const base64Image = `data:${mimeType};base64,${base64Data}`;
+        const imgTag = `<img src="${base64Image}" />`;
+        
+        // 替换内容中的图片占位符
+        // 支持多种占位符格式：[图片1], [image1], <img src="blob:xxx">, <img src="data:image/xxx">
+        const blobRegex = /<img[^>]+src=["']blob:[^"']+["'][^>]*>/i;
+        const placeholderRegex = new RegExp(`[\\[（](图片|image)\\s*${i + 1}[\\]）]`, 'gi');
+        
+        // 优先替换blob格式的图片
+        if (blobRegex.test(finalContent)) {
+          finalContent = finalContent.replace(blobRegex, imgTag);
+        } else if (placeholderRegex.test(finalContent)) {
+          // 替换[图片1]或（image1）格式的占位符
+          finalContent = finalContent.replace(placeholderRegex, imgTag);
+        } else {
+          // 如果没有找到对应占位符，在内容末尾添加图片
+          finalContent += imgTag;
+        }
+        
+        savedImages.push(base64Image);
+        console.log(`将上传的图片转换为Base64并嵌入到内容中`);
+        
+        // 删除临时上传的文件
+        try {
+          await fs.promises.unlink(file.path);
+        } catch (unlinkErr) {
+          console.warn('删除临时文件失败:', unlinkErr.message);
+        }
+      }
+    }
+    console.log(`处理了 ${savedImages.length} 张图片（直接嵌入到内容中）`);
+    
     // 解析题目内容
-    const questions = parseQuestionContent(content);
+    const questions = parseQuestionContent(finalContent);
     console.log(`解析出 ${questions.length} 道题目`);
     console.log('解析的题目详情:', JSON.stringify(questions, null, 2));
     
@@ -2321,30 +2389,90 @@ app.post('/api/questions/import', async (req, res) => {
   }
 });
 
-// 解析题目内容的函数
+// 从内容中提取并保存Base64图片，返回处理后的内容和图片列表
+async function extractAndSaveBase64Images(content) {
+  const base64Regex = /<img[^>]+src=["']data:image\/(png|jpg|jpeg|gif|webp);base64,([^"']+)["'][^>]*>/gi;
+  let match;
+  const savedImages = [];
+  
+  while ((match = base64Regex.exec(content)) !== null) {
+    const imageType = match[1];
+    const base64Data = match[2];
+    
+    try {
+      // 生成唯一文件名
+      const fileName = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${imageType}`;
+      const filePath = path.join(uploadsDir, fileName);
+      
+      // 解码Base64并保存文件
+      const buffer = Buffer.from(base64Data, 'base64');
+      await fs.promises.writeFile(filePath, buffer);
+      
+      // 替换为文件路径
+      const fileUrl = `/uploads/${fileName}`;
+      content = content.replace(match[0], `<img src="${fileUrl}" />`);
+      
+      savedImages.push(fileUrl);
+      console.log(`图片保存成功: ${fileUrl}`);
+    } catch (error) {
+      console.error(`图片保存失败: ${error.message}`);
+    }
+  }
+  
+  return { content, savedImages };
+}
+
+// 解析题目内容的函数（支持HTML img标签）
 function parseQuestionContent(content) {
   const questions = [];
+  
+  // 预处理：在连续的选项之间插入换行符
+  // 匹配多种选项格式：A、 B、 C、 D、 E、 或 A. B. C. D. E. 或 A． B． C． D． E．
+  // 使用更宽松的正则，确保能匹配到选项
+  content = content.replace(/([A-Ea-e])([．.、])/g, '\n$1$2');
+  
+  // 在答案前插入换行（注意顺序：先处理"正确答案"再处理"答案"）
+  content = content.replace(/([^\n])(正确答案)\s*[：:]/g, '$1\n$2：');
+  
+  // 在解析前插入换行（先处理"名师解析"，再处理单独的"解析"）
+  // 使用更宽松的正则，确保即使"名师"和"解析"之间有空格或换行也能正确处理
+  content = content.replace(/([^\n])(名师\s*解析)\s*[：:]/g, '$1\n$2：');
+  content = content.replace(/([^\n])(解析)\s*[：:]/g, '$1\n$2：');
+  
+  // 在"回答错误"、"我的答案"前插入换行（使用负向前瞻，避免重复匹配"正确答案"中的"答案"）
+  content = content.replace(/([^\n])(回答错误|我的答案)/g, '$1\n$2');
+  
+  // 处理开头可能缺少换行的情况
+  content = content.replace(/^\s*/, '');
+  
   const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  console.log('预处理后的行数:', lines.length);
+  console.log('预处理后的内容:', lines);
   
   let currentQuestion = null;
   let inAnalysis = false;
+  let materials = [];  // 收集题目开始前的材料内容
+  let isFirstQuestion = true;  // 标记是否是第一个题目
   
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    let line = lines[i];
     
     // 检测是否是新题目开始的条件
     // 1. 匹配题号格式：第 * 题
     // 2. 匹配新格式：单选 1、多选 1、判断 1 等
-    // 3. 遇到答案行且已经有题目内容
-    // 4. 遇到选项A且已经有题目内容且没有当前题目
-    // 支持多种格式："第61题"、"61题"、"61 题"、"第 61 题"
+    // 3. 匹配括号格式：(1)、(2)、(3) 等
+    // 4. 遇到答案行且已经有题目内容
+    // 5. 遇到选项A且已经有题目内容且没有当前题目
+    // 支持多种格式："第61题"、"61题"、"61 题"、"第 61 题"、"(1)"、"(123)"
 const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
     const newFormatMatch = line.match(/^(单选|多选|判断|判断题|单选题|多选题)\s*\d+/);
+    const bracketMatch = line.match(/^\((\d+)\)/);
     const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
     const isOptionA = line.match(/^A[．.、]\s*/);
     
     // 只有明确识别到题目开始标记时才创建新题目
-    if (questionMatch || newFormatMatch) {
+    if (questionMatch || newFormatMatch || bracketMatch) {
       // 如果有当前题目，先保存
       if (currentQuestion && currentQuestion.question_text) {
         questions.push(currentQuestion);
@@ -2359,11 +2487,25 @@ const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
       };
       inAnalysis = false;
       
+      // 如果是第一个题目，将之前收集的材料内容添加到题目文本中
+      if (isFirstQuestion && materials.length > 0) {
+        currentQuestion.question_text = materials.join('\n');
+        isFirstQuestion = false;
+      }
+      
       // 如果是题号格式，提取题号后面的内容作为题目文本的开始
       if (questionMatch) {
         const remainingText = line.replace(/^(第)?\s*\d+\s*题\s*/, '');
         if (remainingText && remainingText.length > 0) {
-          currentQuestion.question_text = remainingText;
+          currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + remainingText;
+        }
+      }
+      
+      // 如果是括号格式，提取括号后面的内容作为题目文本的开始
+      if (bracketMatch) {
+        const remainingText = line.replace(/^\(\d+\)\s*/, '');
+        if (remainingText && remainingText.length > 0) {
+          currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + remainingText;
         }
       }
       
@@ -2378,16 +2520,24 @@ const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
         answer: '',
         analysis: ''
       };
+      // 如果之前有收集的材料内容，将其作为题目文本
+      if (materials.length > 0) {
+        currentQuestion.question_text = materials.join('\n');
+        materials = [];
+        isFirstQuestion = false;
+      }
     }
     
-    // 如果没有当前题目且不是选项A，跳过此行（不创建空题目）
+    // 如果没有当前题目，收集材料内容（图片、描述等）
     if (!currentQuestion) {
+      materials.push(line);
       continue;
     }
     
     // 匹配选项格式：支持 A. A、 A． 三种格式
+    // 但如果行中包含<img标签，则不视为选项（可能是题目内容的延续）
     const optionMatch = line.match(/^([A-Ea-e])[．.、]\s*(.+)/);
-    if (optionMatch) {
+    if (optionMatch && !line.includes('<img')) {
       inAnalysis = false;
       currentQuestion.options.push(optionMatch[2]); // 只存选项内容，不存"A. "前缀
       continue;
@@ -2429,7 +2579,7 @@ const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
       continue;
     }
     
-    // 否则是题目内容的一部分
+    // 否则是题目内容的一部分（保留HTML img标签）
     currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + line;
   }
   
@@ -2541,11 +2691,6 @@ app.put('/api/questions/:exam_code/:id', async (req, res) => {
     updateFields.push('type = ?');
     updateValues.push(type || 'single');
     
-    // 只在字段存在时更新
-    if (columnNames.includes('knowledge_point_id')) {
-      updateFields.push('knowledge_point_id = ?');
-      updateValues.push(knowledgePoint || null);
-    }
     
     updateValues.push(id);
     

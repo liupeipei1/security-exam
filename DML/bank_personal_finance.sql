@@ -1,10 +1,10 @@
- -- 银行从业押题：personal_finance
+-- 银行从业押题：personal_finance
 DROP TABLE IF EXISTS bank_personal_finance;
 
 CREATE TABLE bank_personal_finance (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type ENUM('single', 'multiple', 'judgment') NOT NULL,
-    question TEXT NOT NULL,
+    question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
     analysis TEXT,
