@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS bank_banking_law;
 
 CREATE TABLE bank_banking_law (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    type ENUM('single', 'multiple', 'judgment') NOT NULL,
+    type VARCHAR(50) NOT NULL,
     question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,

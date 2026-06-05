@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS security_exam_3 (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    type ENUM('judgment', 'single', 'multiple') NOT NULL COMMENT '题型',
+    type VARCHAR(50) NOT NULL COMMENT '题型',
     question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options JSON NOT NULL COMMENT '选项列表',
     answer JSON NOT NULL COMMENT '正确答案',

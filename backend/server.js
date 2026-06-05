@@ -69,7 +69,10 @@ const dbConfig = {
   user: process.env.DB_USER || 'peipei',
   password: process.env.DB_PASSWORD || '298280',
   database: process.env.DB_NAME || 'exam-db',
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  connectTimeout: 10000,
+  acquireTimeout: 10000,
+  timeout: 10000
 };
 
 // 微信配置（从环境变量读取）
@@ -2314,12 +2317,26 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
     let successCount = 0;
     const errors = [];
     
+    // 动态获取 question_types 表中的有效题型编码
+    //let validTypes = ['single', 'multiple', 'judgment']; // 默认值（防止查询失败）
+    try {
+      const [typeRows] = await connection.execute('SELECT type_code FROM question_types WHERE enabled = 1');
+      validTypes = typeRows.map(row => row.type_code);
+      console.log('从 question_types 表获取的有效题型:', validTypes);
+    } catch (e) {
+      console.warn('获取题型列表失败!', e.message);
+    }
+    
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       try {
-        // 判断题目类型：优先使用用户指定的题型，否则自动识别
-        let type = question_type || 'single';
-        if (!question_type) {
+        // 判断题目类型：优先使用用户指定的题型（必须是有效值），否则自动识别
+        let type = 'single'; // 默认值
+        
+        // 检查用户传入的 question_type 是否有效
+        if (question_type && validTypes.includes(question_type)) {
+          type = question_type;
+        } else {
           // 自动识别题型
           if (q.options && q.options.length === 2) {
             type = 'judgment';
