@@ -4,3 +4,14 @@
 61-85 单项规划提 25
 86-105 综合案例  20
 
+tmp-mysql: mysql:8.0-debian
+mysql: mysql:8.0
+
+
+docker run --rm -v "D:\docker images\mysqlbinlog:/logs" mysql:8.0-debian mysqlbinlog --no-defaults /logs/binlog.000001 /logs/binlog.000002 /logs/binlog.000003 /logs/binlog.000004 /logs/binlog.000005 /logs/binlog.000006 /logs/binlog.000007 /logs/binlog.000008 | docker exec -i mysql mysql -uroot -p123456
+
+
+docker run --rm -v "D:\docker images\mysqlbinlog:/logs" mysql:8.0-debian mysqlbinlog --no-defaults --stop-datetime="2026-06-05 05:25:44" /logs/binlog.000008 | docker exec -i mysql mysql -uroot -p123456
+
+
+docker run --rm -v "D:\docker images\mysqlbinlog:/logs" mysql:8.0-debian mysqlbinlog --no-defaults  /logs/binlog.index | docker exec -i mysql mysql -uroot -p123456

@@ -55,13 +55,23 @@ function createInstance() {
                 ];
                 
                 // 动态生成导航项：题型部分从数据库加载（图标也从数据库获取），其他部分硬编码
+                // 根据当前题库的题型统计动态显示，只显示有题目的题型
                 const navItems = computed(() => {
-                    // 从 questionTypes 生成题型导航项，图标直接使用数据库中的 type_icon
-                    const questionTypeNavItems = questionTypes.value.map(qType => ({
-                        id: qType.type_code,
-                        name: qType.type_name,
-                        icon: qType.type_icon || '📄'
-                    }));
+                    // 从 questionTypes 生成题型导航项，只包含当前题库中存在的题型
+                    const questionTypeNavItems = questionTypes.value
+                        .filter(qType => {
+                            // 如果没有加载统计信息，显示所有题型；否则只显示有题目的题型
+                            if (Object.keys(examQuestionTypeStats.value).length === 0) {
+                                return true; // 未加载统计时显示全部
+                            }
+                            return examQuestionTypeStats.value[qType.type_code] > 0;
+                        })
+                        .map(qType => ({
+                            id: qType.type_code,
+                            name: qType.type_name,
+                            icon: qType.type_icon || '📄',
+                            count: examQuestionTypeStats.value[qType.type_code] || 0
+                        }));
                     
                     // 合并题型导航项和非题型导航项
                     return [...questionTypeNavItems, ...nonQuestionNavItems];
@@ -79,6 +89,9 @@ function createInstance() {
                 
                 // 题型列表
                 const questionTypes = ref([]);
+                
+                // 当前题库的题型统计（用于动态显示导航栏）
+                const examQuestionTypeStats = ref({});
                 
                 // 知识要点数据
                 const knowledgePoints = ref([]);
@@ -869,6 +882,8 @@ function createInstance() {
                     loadKnowledgePoints(currentExam.value);
                     // 加载考试指南（不需要登录）
                     loadGuide(currentExam.value);
+                    // 加载当前题库的题型统计（用于动态显示导航栏）
+                    loadExamQuestionTypeStats(currentExam.value);
                 };
 
                 // 加载知识要点
@@ -936,6 +951,8 @@ function createInstance() {
                     loadQuestions(targetExamCode);
                     loadKnowledgePoints(targetExamCode);
                     loadGuide(targetExamCode);
+                    // 加载当前题库的题型统计（用于动态显示导航栏）
+                    loadExamQuestionTypeStats(targetExamCode);
                 };
 
                 // 获取当前题库名称
@@ -1011,6 +1028,27 @@ function createInstance() {
                         }
                     } catch (error) {
                         console.error('加载题型列表失败:', error);
+                    }
+                };
+                
+                // 加载当前题库的题型统计（用于动态显示导航栏）
+                const loadExamQuestionTypeStats = async (examCode) => {
+                    try {
+                        const data = await apiGet('/api/questions/count', { exam_code: examCode });
+                        if (data && data.success === true && data.data && data.data.types) {
+                            // 将数组转换为对象，key为题型代码，value为数量
+                            const stats = {};
+                            data.data.types.forEach(item => {
+                                stats[item.question_type] = item.count;
+                            });
+                            examQuestionTypeStats.value = stats;
+                            console.log('成功加载题库题型统计:', examQuestionTypeStats.value);
+                        } else {
+                            examQuestionTypeStats.value = {};
+                        }
+                    } catch (error) {
+                        console.error('加载题库题型统计失败:', error);
+                        examQuestionTypeStats.value = {};
                     }
                 };
 
@@ -1096,7 +1134,9 @@ function createInstance() {
                     const labels = {
                         'judgment': '判断题',
                         'single': '单选题',
-                        'multiple': '多选题'
+                        'multiple': '多选题',
+                        'essay': '解答文字题',
+                        'code': '编程题'
                     };
                     return labels[type] || '未知类型';
                 };
@@ -1178,6 +1218,16 @@ function createInstance() {
                         }
                     }
                     // 移除自动显示答案，改为点击提交按钮后显示
+                };
+
+                // 获取解答文字题的答案
+                const getEssayAnswer = (questionId) => {
+                    return userAnswers.value[questionId] || '';
+                };
+
+                // 设置解答文字题的答案
+                const setEssayAnswer = (questionId, answer) => {
+                    userAnswers.value[questionId] = answer;
                 };
 
                 // 设置题目备注（持久化存储）
@@ -1990,6 +2040,8 @@ function createInstance() {
                     isCorrectOption,
                     formatAnswer,
                     selectOption,
+                    getEssayAnswer,
+                    setEssayAnswer,
                     submitAnswers,
                     submitSingleQuestion,
                     resetSingleQuestion,

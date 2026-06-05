@@ -117,8 +117,8 @@ async function updateExamStats(examCode, tableName) {
   const mysql = require('mysql2/promise');
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '123456',
+    user: process.env.DB_USER || 'peipei',
+    password: process.env.DB_PASSWORD || '298280',
     database: process.env.DB_NAME || 'exam-db',
     charset: 'utf8mb4'
   };

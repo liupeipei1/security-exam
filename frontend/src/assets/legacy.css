@@ -151,6 +151,21 @@
             font-size: 1.2rem;
         }
 
+        .nav-count {
+            margin-left: auto;
+            background: #e8f0fe;
+            color: #4a90d9;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .nav-item.active .nav-count {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
         .stats {
             margin-top: 30px;
             padding-top: 20px;
@@ -239,6 +254,16 @@
         .question-type.judgment {
             background: #e3f2fd;
             color: #1565c0;
+        }
+
+        .question-type.essay {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .question-type.code {
+            background: #e8eaf6;
+            color: #3949ab;
         }
 
         .question-number {
@@ -1040,6 +1065,16 @@
         .exam-question-type.multiple {
             background: #fff3e0;
             color: #e65100;
+        }
+
+        .exam-question-type.essay {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .exam-question-type.code {
+            background: #e8eaf6;
+            color: #3949ab;
         }
 
         .exam-question-text {

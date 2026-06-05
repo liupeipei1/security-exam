@@ -49,6 +49,8 @@
                     >
                         <span class="icon">{{ item.icon }}</span>
                         <span>{{ item.name }}</span>
+                        <!-- 显示题型数量（非题型导航项不显示） -->
+                        <span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span>
                     </li>
 
                 </ul>
@@ -215,7 +217,18 @@
                         </div>
                         <div class="question-text" v-html="question.question"></div>
                         
-                        <ul class="options-list">
+                        <!-- 解答文字题显示输入框 -->
+                        <div v-if="question.type === 'essay'" class="essay-answer-area">
+                            <textarea 
+                                class="essay-input"
+                                :value="getEssayAnswer(question.id)"
+                                @input="setEssayAnswer(question.id, $event.target.value)"
+                                placeholder="请输入你的解答..."
+                            ></textarea>
+                        </div>
+                        
+                        <!-- 其他题型显示选项列表 -->
+                        <ul v-else class="options-list">
                             <li 
                                 v-for="(option, index) in question.options" 
                                 :key="index"

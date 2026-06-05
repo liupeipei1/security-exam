@@ -66,8 +66,8 @@ app.use(express.json({ limit: '10MB' }));
 // 数据库连接配置（支持环境变量）
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '123456',
+  user: process.env.DB_USER || 'peipei',
+  password: process.env.DB_PASSWORD || '298280',
   database: process.env.DB_NAME || 'exam-db',
   charset: 'utf8mb4'
 };

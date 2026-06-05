@@ -1,0 +1,4 @@
+CREATE USER 'peipei'@'%' IDENTIFIED BY '298280';
+GRANT SHOW DATABASES ON *.* TO 'peipei'@'%';
+GRANT CREATE TABLESPACE ON *.* TO 'peipei'@'%';
+GRANT PROCESS ON *.* TO 'peipei'@'%';
