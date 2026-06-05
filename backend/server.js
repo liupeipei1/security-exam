@@ -349,20 +349,12 @@ app.get('/api/questions', async (req, res) => {
         '判断': 'judgment'
       };
       
-      // 获取标准化类型
+      // 获取标准化类型：优先使用数据库中的type字段
       let normalizedType = typeMap[row.type] || row.type;
       
-      // 强制规则：如果答案有多个选项，一定是多选题
+      // 如果答案有多个选项，一定是多选题（覆盖数据库类型，因为答案格式更可靠）
       if (answerArray && answerArray.length > 1) {
         normalizedType = 'multiple';
-      }
-      // 强制规则：如果选项数量 >= 5，通常是多选题（有E选项）
-      else if (optionsArray.length >= 5) {
-        normalizedType = 'multiple';
-      }
-      // 强制规则：只有AB两个选项的是判断题
-      else if (optionsArray.length === 2) {
-        normalizedType = 'judgment';
       }
       // 如果类型仍无法确定，默认为单选题
       else if (!normalizedType || normalizedType === '') {
@@ -2390,38 +2382,6 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
 });
 
 // 从内容中提取并保存Base64图片，返回处理后的内容和图片列表
-async function extractAndSaveBase64Images(content) {
-  const base64Regex = /<img[^>]+src=["']data:image\/(png|jpg|jpeg|gif|webp);base64,([^"']+)["'][^>]*>/gi;
-  let match;
-  const savedImages = [];
-  
-  while ((match = base64Regex.exec(content)) !== null) {
-    const imageType = match[1];
-    const base64Data = match[2];
-    
-    try {
-      // 生成唯一文件名
-      const fileName = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${imageType}`;
-      const filePath = path.join(uploadsDir, fileName);
-      
-      // 解码Base64并保存文件
-      const buffer = Buffer.from(base64Data, 'base64');
-      await fs.promises.writeFile(filePath, buffer);
-      
-      // 替换为文件路径
-      const fileUrl = `/uploads/${fileName}`;
-      content = content.replace(match[0], `<img src="${fileUrl}" />`);
-      
-      savedImages.push(fileUrl);
-      console.log(`图片保存成功: ${fileUrl}`);
-    } catch (error) {
-      console.error(`图片保存失败: ${error.message}`);
-    }
-  }
-  
-  return { content, savedImages };
-}
-
 // 解析题目内容的函数（支持HTML img标签）
 function parseQuestionContent(content) {
   const questions = [];

@@ -306,16 +306,21 @@ function createInstance() {
                         const imageSize = editForm.value.imageSize;
                         let questionContent = editForm.value.question;
                         
-                        // 替换img标签的style属性，设置图片大小
+                        // 使用统一的正则处理所有img标签
                         questionContent = questionContent.replace(
-                            /<img([^>]*)style="[^"]*"([^>]*)>/gi,
-                            `<img$1style="max-width: ${imageSize}; width: ${imageSize}; height: auto;"$2>`
-                        );
-                        
-                        // 如果img标签没有style属性，则添加style属性
-                        questionContent = questionContent.replace(
-                            /<img([^>]*(?!style=))>/gi,
-                            `<img$1 style="max-width: ${imageSize}; width: ${imageSize}; height: auto;">`
+                            /<img([^>]*)>/gi,
+                            (match, attrs) => {
+                                if (attrs.includes('style=')) {
+                                    // 有style属性，替换style内容
+                                    return match.replace(
+                                        /style="[^"]*"/gi,
+                                        `style="max-width: ${imageSize}; width: ${imageSize}; height: auto;"`
+                                    );
+                                } else {
+                                    // 没有style属性，添加style
+                                    return `<img${attrs} style="max-width: ${imageSize}; width: ${imageSize}; height: auto;">`;
+                                }
+                            }
                         );
                         
                         const data = await apiPut(`/api/questions/${currentExam.value}/${editForm.value.id}`, {
