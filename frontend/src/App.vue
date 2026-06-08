@@ -1,8 +1,8 @@
 <template>
     <div class="container" >
         <div class="header">
-            <h1>📚 {{ currentExamName }}</h1>
-            <p>理论知识在线复习题库</p>
+            <h1>📚 在线刷题备考系统</h1>
+            <p>{{ currentExamName }}</p>
             
             <!-- 题库选择器 -->
             <div class="bank-selector">
