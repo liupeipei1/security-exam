@@ -70,9 +70,7 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || '298280',
   database: process.env.DB_NAME || 'exam-db',
   charset: 'utf8mb4',
-  connectTimeout: 10000,
-  acquireTimeout: 10000,
-  timeout: 10000
+  connectTimeout: 10000
 };
 
 // 微信配置（从环境变量读取）
@@ -2616,7 +2614,10 @@ app.delete('/api/questions/:exam_code/:id', async (req, res) => {
 // 更新题目接口
 app.put('/api/questions/:exam_code/:id', async (req, res) => {
   const { exam_code, id } = req.params;
-  const { question, options, answer, explanation, type, knowledgePoint } = req.body;
+  const { question, options, answer, explanation, analysis, type, knowledgePoint } = req.body;
+  
+  // 支持 analysis 和 explanation 两个字段名
+  const finalAnalysis = explanation || analysis || '';
   
   try {
     const connection = await mysql.createConnection(dbConfig);
@@ -2663,18 +2664,21 @@ app.put('/api/questions/:exam_code/:id', async (req, res) => {
     updateValues.push(answerJson);
     
     updateFields.push('analysis = ?');
-    updateValues.push(explanation || '');
+    updateValues.push(finalAnalysis);
     
     updateFields.push('type = ?');
     updateValues.push(type || 'single');
     
-    
-    updateValues.push(id);
+    // 如果有知识点字段且传入了知识点，添加更新
+    if (knowledgePoint && columnNames.includes('knowledge_point')) {
+      updateFields.push('knowledge_point = ?');
+      updateValues.push(knowledgePoint);
+    }
     
     // 更新题目
     await connection.execute(
       `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`,
-      updateValues
+      [...updateValues, id]
     );
     
     await connection.end();

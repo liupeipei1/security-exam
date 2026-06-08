@@ -274,6 +274,20 @@ function createInstance() {
                     };
                 };
                 
+                // 监听题目类型改变，确保正确初始化选项和答案
+                watch(() => editForm.value.type, (newType, oldType) => {
+                    if (newType === 'single' || newType === 'multiple') {
+                        // 确保有足够的选项
+                        while (editForm.value.options.length < 2) {
+                            editForm.value.options.push('');
+                        }
+                        // 确保答案索引有效
+                        if (newType === 'single' && editForm.value.singleAnswer >= editForm.value.options.length) {
+                            editForm.value.singleAnswer = 0;
+                        }
+                    }
+                });
+                
                 // 添加选项
                 const addOption = () => {
                     if (editForm.value.options.length < 10) {
@@ -297,8 +311,48 @@ function createInstance() {
                 
                 // 保存编辑题目
                 const saveEditQuestion = async () => {
+                    console.log('saveEditQuestion called!');
+                    console.log('editForm.value:', editForm.value);
+                    console.log('1. Checking currentExam...');
+                    console.log('currentExam.value:', currentExam.value);
+                    
+                    // 验证当前考试是否选择
+                    if (!currentExam.value) {
+                        console.log('currentExam is empty, returning');
+                        alert('请先选择考试');
+                        return;
+                    }
+                    
+                    console.log('2. currentExam is valid');
+                    console.log('3. Checking question content...');
+                    
+                    // 验证题目内容
                     if (!editForm.value.question.trim()) {
                         alert('请输入题目内容');
+                        return;
+                    }
+                    
+                    // 验证单选题和多选题是否有选项
+                    if ((editForm.value.type === 'single' || editForm.value.type === 'multiple') && 
+                        editForm.value.options.length < 2) {
+                        alert('请至少添加2个选项');
+                        return;
+                    }
+                    
+                    // 验证单选题是否选择了答案
+                    if (editForm.value.type === 'single') {
+                        console.log('singleAnswer:', editForm.value.singleAnswer, 'options.length:', editForm.value.options.length);
+                        if (editForm.value.singleAnswer === null || editForm.value.singleAnswer === undefined || 
+                            editForm.value.singleAnswer < 0 || editForm.value.singleAnswer >= editForm.value.options.length) {
+                            alert('请选择正确答案');
+                            return;
+                        }
+                    }
+                    
+                    // 验证多选题是否选择了答案
+                    if (editForm.value.type === 'multiple' && 
+                        (!editForm.value.multipleAnswers || editForm.value.multipleAnswers.length === 0)) {
+                        alert('请选择正确答案');
                         return;
                     }
                     
@@ -727,6 +781,9 @@ function createInstance() {
                 
                 // 保存考试指南
                 const saveGuide = async () => {
+                    console.log('saveGuide called!');
+                    console.log('currentExam.value:', currentExam.value);
+                    console.log('guideForm.value:', guideForm.value);
                     try {
                         const data = await apiPut('/api/guide', {
                             exam_code: currentExam.value,
@@ -1070,6 +1127,10 @@ function createInstance() {
                         return questions.value.filter(q => q.type === 'multiple');
                     } else if (currentSection.value === 'judgment') {
                         return questions.value.filter(q => q.type === 'judgment');
+                    } else if (currentSection.value === 'essay') {
+                        return questions.value.filter(q => q.type === 'essay');
+                    } else if (currentSection.value === 'programming') {
+                        return questions.value.filter(q => q.type === 'programming');
                     }
                     return questions.value;
                 });
@@ -1331,6 +1392,77 @@ function createInstance() {
                     if (noteContent) {
                         noteContent.innerHTML = '';
                         setQuestionNote(questionId, '');
+                    }
+                };
+
+                // 解析字段相关函数
+                const insertExplanationImage = (questionId) => {
+                    const input = document.getElementById(`explanation-image-upload-${questionId}`);
+                    if (input) {
+                        input.click();
+                    }
+                };
+
+                const handleExplanationImageUpload = async (questionId, event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const explanationContent = document.getElementById(`explanation-${questionId}`);
+                        if (explanationContent) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'note-image';
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            explanationContent.appendChild(img);
+                            editForm.value.explanation = explanationContent.innerHTML;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+
+                    // 重置input
+                    event.target.value = '';
+                };
+
+                const onExplanationInput = () => {
+                    const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
+                    if (explanationContent) {
+                        editForm.value.explanation = explanationContent.innerHTML;
+                    }
+                };
+
+                const onExplanationPaste = (event) => {
+                    const items = event.clipboardData?.items;
+                    if (!items) return;
+
+                    for (const item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            event.preventDefault();
+                            const file = item.getAsFile();
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const range = window.getSelection()?.getRangeAt(0);
+                                    if (range) {
+                                        const img = document.createElement('img');
+                                        img.src = e.target.result;
+                                        img.className = 'note-image';
+                                        img.style.maxWidth = '100%';
+                                        img.style.height = 'auto';
+                                        range.deleteContents();
+                                        range.insertNode(img);
+                                        // 更新editForm.explanation
+                                        const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
+                                        if (explanationContent) {
+                                            editForm.value.explanation = explanationContent.innerHTML;
+                                        }
+                                    }
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }
                     }
                 };
 
@@ -2052,6 +2184,11 @@ function createInstance() {
                     handleImageUpload,
                     onNotePaste,
                     clearNote,
+                    // 解析字段图片上传相关
+                    insertExplanationImage,
+                    handleExplanationImageUpload,
+                    onExplanationInput,
+                    onExplanationPaste,
                     setQuestionExplanation,
                     getQuestionExplanation,
                     goToPage,
@@ -2166,7 +2303,9 @@ function createInstance() {
                     removeOption,
                     saveEditQuestion,
                     deleteQuestion,
-                    deleteExam
+                    deleteExam,
+                    // 刷新题库相关
+                    loadQuestions
                 };
 }
 

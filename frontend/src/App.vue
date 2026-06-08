@@ -12,6 +12,14 @@
                     </option>
                 </select>
                 <button 
+                    class="refresh-exam-btn" 
+                    @click="handleRefreshExam"
+                    :disabled="exams.length === 0"
+                    title="刷新当前题库"
+                >
+                    🔄 刷新题库
+                </button>
+                <button 
                     class="delete-exam-btn" 
                     @click="handleDeleteExam"
                     :disabled="exams.length === 0"
@@ -166,10 +174,10 @@
                 </div>
 
                 <!-- 题库测试 -->
-                <div v-if="currentSection === 'single' || currentSection === 'multiple' || currentSection === 'judgment'" class="quiz-section">
+                <div v-if="currentSection === 'single' || currentSection === 'multiple' || currentSection === 'judgment' || currentSection === 'essay' || currentSection === 'programming'" class="quiz-section">
                     <div class="quiz-header">
                         <div class="quiz-title">
-                            {{ currentSection === 'single' ? '⭕ 单选题' : currentSection === 'multiple' ? '☑️ 多选题' : '✓✗ 判断题' }}
+                            {{ currentSection === 'single' ? '⭕ 单选题' : currentSection === 'multiple' ? '☑️ 多选题' : currentSection === 'judgment' ? '✓✗ 判断题' : currentSection === 'essay' ? '📝 解答文字题' : '💻 编程题' }}
                         </div>
                         <div class="quiz-info">
                             <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
@@ -979,11 +987,34 @@
                     </div>
                     <div class="form-group">
                         <label>解析</label>
-                        <textarea 
-                            v-model="editForm.explanation" 
-                            class="form-textarea"
-                            placeholder="请输入解析内容"
-                        ></textarea>
+                        <div class="note-wrapper">
+                            <div class="note-toolbar">
+                                <button 
+                                    type="button" 
+                                    title="插入图片"
+                                    @click="insertExplanationImage(editForm.id)"
+                                >
+                                    📷
+                                </button>
+                            </div>
+                            <div 
+                                :id="'explanation-' + editForm.id"
+                                class="note-content explanation-content"
+                                contenteditable="true"
+                                data-placeholder="请输入解析内容，支持文字和图片..."
+                                @input="onExplanationInput"
+                                @paste="onExplanationPaste"
+                                v-html="editForm.explanation"
+                            ></div>
+                            <input 
+                                type="file" 
+                                :id="'explanation-image-upload-' + editForm.id"
+                                class="image-upload-input"
+                                accept="image/*"
+                                style="display: none;"
+                                @change="handleExplanationImageUpload(editForm.id, $event)"
+                            />
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1047,8 +1078,15 @@ const {
   handleImageUpload,
   onNotePaste,
   clearNote,
+  // 解析字段图片上传相关
+  insertExplanationImage,
+  handleExplanationImageUpload,
+  onExplanationInput,
+  onExplanationPaste,
   setQuestionExplanation,
   getQuestionExplanation,
+  getEssayAnswer,
+  setEssayAnswer,
   goToPage,
   resetAnswers,
   closeResult,
@@ -1142,7 +1180,9 @@ const {
   removeOption,
   saveEditQuestion,
   deleteQuestion,
-  deleteExam
+  deleteExam,
+  // 刷新题库相关
+  loadQuestions
 } = useExamApp()
 
 
@@ -1173,6 +1213,17 @@ const handleDeleteExam = async () => {
   
   if (currentExamData) {
     await deleteExam(currentExamCode, currentExamData.exam_name);
+  }
+}
+
+// 处理刷新题库
+const handleRefreshExam = async () => {
+  const currentExamCode = currentExam.value;
+  if (currentExamCode) {
+    loading.value = true;
+    await loadQuestions(currentExamCode);
+    loading.value = false;
+    alert('题库刷新成功！');
   }
 }
 

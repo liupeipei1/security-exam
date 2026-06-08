@@ -1,5 +1,5 @@
 /**
- * Redis配置和工具函数
+ * Redis配置和工具函数（带内存缓存降级）
  * 用于缓存做题记录、题目数据等
  */
 
@@ -18,8 +18,16 @@ const redisConfig = {
 
 // 创建Redis客户端
 let redisClient = null;
+let redisAvailable = true;
+
+// 内存缓存（当Redis不可用时使用）
+const memoryCache = {};
 
 async function getRedisClient() {
+  if (!redisAvailable) {
+    return null;
+  }
+  
   if (redisClient && redisClient.isReady) {
     return redisClient;
   }
@@ -28,7 +36,9 @@ async function getRedisClient() {
     redisClient = redis.createClient(redisConfig);
     
     redisClient.on('error', (err) => {
-      console.error('Redis连接错误:', err);
+      console.warn('Redis连接错误，将使用内存缓存:', err.message);
+      redisAvailable = false;
+      redisClient = null;
     });
     
     redisClient.on('connect', () => {
@@ -38,9 +48,34 @@ async function getRedisClient() {
     await redisClient.connect();
     return redisClient;
   } catch (error) {
-    console.error('创建Redis客户端失败:', error);
-    throw error;
+    console.warn('创建Redis客户端失败，将使用内存缓存:', error.message);
+    redisAvailable = false;
+    return null;
   }
+}
+
+// 内存缓存操作函数
+function memorySet(key, value, options = {}) {
+  memoryCache[key] = {
+    value,
+    expiresAt: options.EX ? Date.now() + (options.EX * 1000) : null
+  };
+}
+
+function memoryGet(key) {
+  const item = memoryCache[key];
+  if (!item) return null;
+  // 检查是否过期
+  if (item.expiresAt && Date.now() > item.expiresAt) {
+    delete memoryCache[key];
+    return null;
+  }
+  return item.value;
+}
+
+function memoryDel(key) {
+  delete memoryCache[key];
+  return true;
 }
 
 /**
@@ -53,25 +88,43 @@ async function saveExamRecord(openid, record) {
   const key = `exam:record:${openid}`;
   
   try {
-    // 获取当前记录列表
-    let records = await client.get(key);
-    records = records ? JSON.parse(records) : [];
-    
-    // 添加新记录（在开头）
-    records.unshift({
-      ...record,
-      createdAt: new Date().toISOString()
-    });
-    
-    // 只保留最近100条记录
-    if (records.length > 100) {
-      records = records.slice(0, 100);
+    if (client) {
+      // 使用Redis
+      // 获取当前记录列表
+      let records = await client.get(key);
+      records = records ? JSON.parse(records) : [];
+      
+      // 添加新记录（在开头）
+      records.unshift({
+        ...record,
+        createdAt: new Date().toISOString()
+      });
+      
+      // 只保留最近100条记录
+      if (records.length > 100) {
+        records = records.slice(0, 100);
+      }
+      
+      // 保存到Redis，有效期7天
+      await client.set(key, JSON.stringify(records), {
+        EX: 7 * 24 * 60 * 60 // 7天过期
+      });
+    } else {
+      // 使用内存缓存
+      let records = memoryGet(key);
+      records = records ? JSON.parse(records) : [];
+      
+      records.unshift({
+        ...record,
+        createdAt: new Date().toISOString()
+      });
+      
+      if (records.length > 100) {
+        records = records.slice(0, 100);
+      }
+      
+      memorySet(key, JSON.stringify(records), { EX: 7 * 24 * 60 * 60 });
     }
-    
-    // 保存到Redis，有效期7天
-    await client.set(key, JSON.stringify(records), {
-      EX: 7 * 24 * 60 * 60 // 7天过期
-    });
     
     return true;
   } catch (error) {
@@ -86,8 +139,13 @@ async function getExamRecords(openid) {
   const key = `exam:record:${openid}`;
   
   try {
-    const records = await client.get(key);
-    return records ? JSON.parse(records) : [];
+    if (client) {
+      const records = await client.get(key);
+      return records ? JSON.parse(records) : [];
+    } else {
+      const records = memoryGet(key);
+      return records ? JSON.parse(records) : [];
+    }
   } catch (error) {
     console.error('获取做题记录失败:', error);
     return [];
@@ -100,7 +158,11 @@ async function deleteExamRecords(openid) {
   const key = `exam:record:${openid}`;
   
   try {
-    await client.del(key);
+    if (client) {
+      await client.del(key);
+    } else {
+      memoryDel(key);
+    }
     return true;
   } catch (error) {
     console.error('删除做题记录失败:', error);
@@ -118,9 +180,13 @@ async function cacheQuestions(examCode, questions) {
   const key = `exam:questions:${examCode}`;
   
   try {
-    await client.set(key, JSON.stringify(questions), {
-      EX: 24 * 60 * 60 // 24小时过期
-    });
+    if (client) {
+      await client.set(key, JSON.stringify(questions), {
+        EX: 24 * 60 * 60 // 24小时过期
+      });
+    } else {
+      memorySet(key, JSON.stringify(questions), { EX: 24 * 60 * 60 });
+    }
     return true;
   } catch (error) {
     console.error('缓存题目失败:', error);
@@ -134,8 +200,13 @@ async function getCachedQuestions(examCode) {
   const key = `exam:questions:${examCode}`;
   
   try {
-    const questions = await client.get(key);
-    return questions ? JSON.parse(questions) : null;
+    if (client) {
+      const questions = await client.get(key);
+      return questions ? JSON.parse(questions) : null;
+    } else {
+      const questions = memoryGet(key);
+      return questions ? JSON.parse(questions) : null;
+    }
   } catch (error) {
     console.error('获取缓存题目失败:', error);
     return null;
@@ -148,7 +219,11 @@ async function clearQuestionCache(examCode) {
   const key = `exam:questions:${examCode}`;
   
   try {
-    await client.del(key);
+    if (client) {
+      await client.del(key);
+    } else {
+      memoryDel(key);
+    }
     return true;
   } catch (error) {
     console.error('清除题目缓存失败:', error);
@@ -166,12 +241,18 @@ async function saveUserProgress(openid, examCode, progress) {
   const key = `exam:progress:${openid}:${examCode}`;
   
   try {
-    await client.set(key, JSON.stringify({
+    const data = JSON.stringify({
       ...progress,
       updatedAt: new Date().toISOString()
-    }), {
-      EX: 30 * 24 * 60 * 60 // 30天过期
     });
+    
+    if (client) {
+      await client.set(key, data, {
+        EX: 30 * 24 * 60 * 60 // 30天过期
+      });
+    } else {
+      memorySet(key, data, { EX: 30 * 24 * 60 * 60 });
+    }
     return true;
   } catch (error) {
     console.error('保存答题进度失败:', error);
@@ -185,8 +266,13 @@ async function getUserProgress(openid, examCode) {
   const key = `exam:progress:${openid}:${examCode}`;
   
   try {
-    const progress = await client.get(key);
-    return progress ? JSON.parse(progress) : null;
+    if (client) {
+      const progress = await client.get(key);
+      return progress ? JSON.parse(progress) : null;
+    } else {
+      const progress = memoryGet(key);
+      return progress ? JSON.parse(progress) : null;
+    }
   } catch (error) {
     console.error('获取答题进度失败:', error);
     return null;
@@ -203,12 +289,18 @@ async function saveExamSession(openid, session) {
   const key = `exam:session:${openid}`;
   
   try {
-    await client.set(key, JSON.stringify({
+    const data = JSON.stringify({
       ...session,
       createdAt: new Date().toISOString()
-    }), {
-      EX: 24 * 60 * 60 // 24小时过期
     });
+    
+    if (client) {
+      await client.set(key, data, {
+        EX: 24 * 60 * 60 // 24小时过期
+      });
+    } else {
+      memorySet(key, data, { EX: 24 * 60 * 60 });
+    }
     return true;
   } catch (error) {
     console.error('保存考试会话失败:', error);
@@ -222,8 +314,13 @@ async function getExamSession(openid) {
   const key = `exam:session:${openid}`;
   
   try {
-    const session = await client.get(key);
-    return session ? JSON.parse(session) : null;
+    if (client) {
+      const session = await client.get(key);
+      return session ? JSON.parse(session) : null;
+    } else {
+      const session = memoryGet(key);
+      return session ? JSON.parse(session) : null;
+    }
   } catch (error) {
     console.error('获取考试会话失败:', error);
     return null;
@@ -236,7 +333,11 @@ async function deleteExamSession(openid) {
   const key = `exam:session:${openid}`;
   
   try {
-    await client.del(key);
+    if (client) {
+      await client.del(key);
+    } else {
+      memoryDel(key);
+    }
     return true;
   } catch (error) {
     console.error('删除考试会话失败:', error);

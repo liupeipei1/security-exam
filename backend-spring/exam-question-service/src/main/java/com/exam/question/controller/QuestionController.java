@@ -119,11 +119,30 @@ public class QuestionController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, Object> body) {
         System.out.println("========== PUT /api/questions/" + examCode + "/" + id + " 接口被调用 ==========");
+        System.out.println("请求体内容: " + body.toString());
         
         String question = (String) body.get("question");
-        String options = (String) body.get("options");
-        String[] answer = JSON.parse((String) body.get("answer"));
+        Object optionsObj = body.get("options");
+        String options = optionsObj != null ? optionsObj.toString() : null;
+        
+        Object answerObj = body.get("answer");
+        String[] answer = null;
+        if (answerObj instanceof List) {
+            List<?> answerList = (List<?>) answerObj;
+            answer = answerList.stream()
+                    .map(Object::toString)
+                    .toArray(String[]::new);
+        } else if (answerObj instanceof String) {
+            answer = new String[]{(String) answerObj};
+        }
+        
         String analysis = (String) body.get("analysis");
+        String explanation = (String) body.get("explanation");
+        // 如果analysis为空，使用explanation字段（前端可能使用explanation作为字段名）
+        if (analysis == null || analysis.isEmpty()) {
+            analysis = explanation;
+        }
+        
         String type = (String) body.get("type");
         Object knowledgePointObj = body.get("knowledgePoint");
         
