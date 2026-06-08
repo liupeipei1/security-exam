@@ -385,10 +385,10 @@ export default {
 
 .calculator-display {
     background: #1a1a2e;
-    border-radius: 6px;
-    padding: 12px;
+    border-radius: 8px;
+    padding: 18px;
     margin-bottom: 10px;
-    min-height: 60px;
+    min-height: 100px;
     position: relative;
     z-index: 10;
 }
@@ -403,14 +403,14 @@ export default {
 }
 
 .display-value {
-    font-size: 28px;
+    font-size: 34px;
     font-weight: 700;
     text-align: right;
     color: #ffffff;
     font-family: 'Courier New', monospace;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 36px;
+    line-height: 42px;
     white-space: nowrap;
     position: relative;
     z-index: 11;
