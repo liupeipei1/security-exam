@@ -349,12 +349,12 @@ body {
   cursor: not-allowed;
 }
 
-/* 浮动计算器样式 - 固定在页面右下角 */
+/* 浮动计算器样式 - 固定在页面右侧中间位置 */
 .floating-calculator {
     position: fixed;
-    height: 400px;
-    right: 0;
-    bottom: 450px;
+    height: 60%;
+    right: 20px;
+    bottom: 20%;
     z-index: 1000;
     display: flex;
     flex-direction: column;

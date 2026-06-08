@@ -926,6 +926,7 @@ function createInstance() {
                 
                 // 初始化加载（先加载题库列表，再加载题目）
                 const initLoad = async () => {
+                    console.log('========== initLoad 被调用 ==========');
                     checkLoginStatus();
                     await loadExams();
                     await loadQuestionTypes();
@@ -1010,6 +1011,8 @@ function createInstance() {
                     loadGuide(targetExamCode);
                     // 加载当前题库的题型统计（用于动态显示导航栏）
                     loadExamQuestionTypeStats(targetExamCode);
+                    // 重新加载备注（根据新的考试代码）
+                    loadQuestionNotes();
                 };
 
                 // 获取当前题库名称
@@ -1294,7 +1297,29 @@ function createInstance() {
                 // 设置题目备注（持久化存储）
                 // 保存题目备注（存储到数据库，同时备份到localStorage）
                 const setQuestionNote = async (questionId, note) => {
+                    // 保存光标位置
+                    const selection = window.getSelection();
+                    let savedRange = null;
+                    let noteElement = null;
+                    
+                    if (selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        noteElement = document.getElementById(`note-${currentPage.value}-${questionId}`);
+                        if (noteElement && noteElement.contains(range.commonAncestorContainer)) {
+                            savedRange = range.cloneRange();
+                        }
+                    }
+                    
+                    // 更新响应式数据
                     questionNotes.value[questionId] = note;
+                    
+                    // 恢复光标位置
+                    if (savedRange && noteElement) {
+                        setTimeout(() => {
+                            selection.removeAllRanges();
+                            selection.addRange(savedRange);
+                        }, 0);
+                    }
                     
                     // 始终备份到localStorage，确保刷新后能显示
                     saveNotesToLocalStorage();
@@ -1319,10 +1344,114 @@ function createInstance() {
                     return questionNotes.value[questionId] || '';
                 };
 
-                // 富文本备注输入处理
+                // 防抖函数
+                const debounce = (func, delay = 500) => {
+                    let timer = null;
+                    return function(...args) {
+                        if (timer) clearTimeout(timer);
+                        timer = setTimeout(() => {
+                            func.apply(this, args);
+                        }, delay);
+                    };
+                };
+
+                // 保存光标位置
+                const saveSelection = () => {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount === 0) return null;
+                    const range = selection.getRangeAt(0);
+                    const container = range.commonAncestorContainer;
+                    let offset = 0;
+                    
+                    // 计算光标在文本中的偏移量
+                    const treeWalker = document.createTreeWalker(
+                        container.ownerDocument.body,
+                        NodeFilter.SHOW_TEXT,
+                        null,
+                        false
+                    );
+                    
+                    while (treeWalker.nextNode()) {
+                        if (treeWalker.currentNode === range.startContainer) {
+                            offset += range.startOffset;
+                            break;
+                        }
+                        offset += treeWalker.currentNode.textContent.length;
+                    }
+                    
+                    return offset;
+                };
+
+                // 恢复光标位置
+                const restoreSelection = (element, offset) => {
+                    if (!element || offset === null) return;
+                    
+                    const treeWalker = document.createTreeWalker(
+                        element,
+                        NodeFilter.SHOW_TEXT,
+                        null,
+                        false
+                    );
+                    
+                    let currentOffset = 0;
+                    while (treeWalker.nextNode()) {
+                        const nodeLength = treeWalker.currentNode.textContent.length;
+                        if (currentOffset + nodeLength >= offset) {
+                            const range = document.createRange();
+                            range.setStart(treeWalker.currentNode, offset - currentOffset);
+                            range.collapse(true);
+                            
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            break;
+                        }
+                        currentOffset += nodeLength;
+                    }
+                };
+
+                // 富文本备注输入处理（带防抖）
+                const debouncedSetNote = debounce((questionId, content) => {
+                    setQuestionNote(questionId, content);
+                }, 800);
+
+                // 防抖保存到数据库的函数
+                const debouncedSaveToDb = debounce(async (questionId, note) => {
+                    // 如果用户已登录，同步到后端数据库
+                    if (currentUser.value?.openid && currentExam.value) {
+                        try {
+                            await apiPost('/api/notes', {
+                                openid: currentUser.value.openid,
+                                exam_code: currentExam.value,
+                                question_id: questionId,
+                                note: note
+                            });
+                        } catch (error) {
+                            console.error('保存备注到数据库失败:', error);
+                        }
+                    }
+                }, 800);
+
                 const onNoteInput = (questionId, event) => {
                     const content = event.target.innerHTML;
-                    setQuestionNote(questionId, content);
+                    // 直接保存到 localStorage（不更新响应式数据，避免光标闪烁）
+                    const notes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
+                    notes[questionId] = content;
+                    localStorage.setItem('questionNotes', JSON.stringify(notes));
+                    // 使用防抖延迟保存到数据库（不更新响应式数据）
+                    debouncedSaveToDb(questionId, content);
+                };
+
+                // 初始化备注内容（在聚焦时触发，避免v-html导致光标问题）
+                const initNoteContent = (questionId, event) => {
+                    const element = event.target;
+                    // 只在内容为空且有保存的备注时初始化
+                    if (element.innerHTML.trim() === '' || element.innerHTML === '<br>') {
+                        const savedNote = questionNotes.value[questionId] || '';
+                        if (savedNote) {
+                            element.innerHTML = savedNote;
+                        }
+                    }
                 };
 
                 // 触发图片上传
@@ -1497,8 +1626,16 @@ function createInstance() {
                 const loadQuestionNotes = async () => {
                     let loadedFromDB = false;
                     
+                    console.log('========== loadQuestionNotes 被调用 ==========');
+                    console.log('currentUser.value:', currentUser.value);
+                    console.log('currentExam.value:', currentExam.value);
+                    
                     if (currentUser.value?.openid && currentExam.value) {
                         try {
+                            console.log('调用 /api/notes, 参数:', {
+                                openid: currentUser.value.openid,
+                                exam_code: currentExam.value
+                            });
                             const data = await apiGet('/api/notes', {
                                 openid: currentUser.value.openid,
                                 exam_code: currentExam.value
@@ -1508,7 +1645,8 @@ function createInstance() {
                                 data.data.forEach(item => {
                                     notesMap[item.question_id] = item.note;
                                 });
-                                questionNotes.value = notesMap;
+                                // 合并数据库和本地的备注，避免覆盖用户已添加的备注
+                                questionNotes.value = { ...notesMap, ...questionNotes.value };
                                 loadedFromDB = true;
                                 // 同步到localStorage
                                 saveNotesToLocalStorage();
@@ -2134,7 +2272,7 @@ function createInstance() {
                 const resetAnswers = () => {
                     userAnswers.value = {};
                     showAnswers.value = {}; // 清空所有题目的答案显示状态
-                    questionNotes.value = {}; // 清空所有题目的备注
+                    // 注意：不再清空questionNotes，备注是用户重要数据，应保留
                 };
 
                 const closeResult = () => {
@@ -2180,6 +2318,7 @@ function createInstance() {
                     setQuestionNote,
                     getQuestionNote,
                     onNoteInput,
+                    initNoteContent,
                     insertImage,
                     handleImageUpload,
                     onNotePaste,

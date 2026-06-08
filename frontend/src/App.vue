@@ -295,7 +295,7 @@
                                     data-placeholder="在此输入您的备注，支持文字和图片，方便后续复习..."
                                     @input="onNoteInput(question.id, $event)"
                                     @paste="onNotePaste($event)"
-                                    v-html="getQuestionNote(question.id)"
+                                    @focus="initNoteContent(question.id, $event)"
                                 ></div>
                                 <input 
                                     type="file" 
@@ -1037,7 +1037,7 @@
 
 <script setup>
 import './config/wechat.js'
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 import GuideNotes from './components/GuideNotes.vue'
 import Calculator from './components/Calculator.vue'
@@ -1083,6 +1083,7 @@ const {
   handleImageUpload,
   onNotePaste,
   clearNote,
+  initNoteContent,
   // 解析字段图片上传相关
   insertExplanationImage,
   handleExplanationImageUpload,
@@ -1242,6 +1243,22 @@ const handleImportExamChange = (event) => {
 const handleImportExamInput = () => {
   markExamCodeFromInput();
 };
+
+// 监听当前页面题目变化，自动初始化备注内容
+watch(currentPageQuestions, async (newQuestions) => {
+  if (newQuestions && newQuestions.length > 0) {
+    await nextTick();
+    newQuestions.forEach((question) => {
+      const noteElement = document.getElementById(`note-${currentPage.value}-${question.id}`);
+      if (noteElement && noteElement.innerHTML.trim() === '') {
+        const savedNote = getQuestionNote(question.id);
+        if (savedNote) {
+          noteElement.innerHTML = savedNote;
+        }
+      }
+    });
+  }
+}, { immediate: true });
 
 
 </script>

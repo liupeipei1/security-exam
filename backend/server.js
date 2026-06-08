@@ -1548,9 +1548,12 @@ app.post('/api/speech', async (req, res) => {
 // 获取题目备注
 app.get('/api/notes', async (req, res) => {
   try {
+    console.log('========== /api/notes 接口被调用 ==========');
     const { openid, exam_code, question_id } = req.query;
+    console.log('请求参数 openid:', openid, ', exam_code:', exam_code, ', question_id:', question_id);
     
     if (!openid || !exam_code) {
+      console.log('缺少必要参数');
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
