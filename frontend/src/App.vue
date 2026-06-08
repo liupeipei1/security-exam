@@ -898,6 +898,12 @@
                     <div v-if="loginError" class="login-error">{{ loginError }}</div>
                 </div>
             </div>
+
+        </div>
+        
+        <!-- 浮动计算器面板 - 固定在页面右下角 -->
+        <div class="floating-calculator">
+            <Calculator />
         </div>
 
         <!-- 编辑题目弹窗 -->
@@ -1025,8 +1031,6 @@
                 </div>
             </div>
         </div>
-
-
     </div>
 
 </template>
@@ -1036,6 +1040,7 @@ import './config/wechat.js'
 import { ref, onMounted, nextTick } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 import GuideNotes from './components/GuideNotes.vue'
+import Calculator from './components/Calculator.vue'
 
 const placeholderText = `请输入题目内容...`
 

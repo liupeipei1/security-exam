@@ -349,6 +349,45 @@ body {
   cursor: not-allowed;
 }
 
+/* 浮动计算器样式 - 固定在页面右下角 */
+.floating-calculator {
+    position: fixed;
+    height: 400px;
+    right: 0;
+    bottom: 450px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transform: translateY(0);
+}
+
+/* 计算器侧边栏样式 */
+.calculator-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: transparent;
+    min-width: 300px;
+    flex-shrink: 0;
+    padding-left: 10px;
+}
+
+.container {
+    max-width: 1500px !important;
+}
+
+.main-content {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.content-area {
+    flex: 1;
+    max-width: 60%;
+}
+
 /* 弹窗基础样式 */
 .modal-overlay {
   position: fixed;
