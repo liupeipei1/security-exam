@@ -72,6 +72,252 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- 理财计算器 -->
+            <div class="finance-calculator">
+                <div class="finance-header">
+                    <span class="finance-icon">💰</span>
+                    <span class="finance-title">理财计算器</span>
+                </div>
+                
+                <!-- 选项卡 -->
+                <div class="finance-tabs">
+                    <button 
+                        :class="['finance-tab', { active: financeTab === 'compound' }]" 
+                        @click="financeTab = 'compound'"
+                    >
+                        💰 复利计算
+                    </button>
+                    <button 
+                        :class="['finance-tab', { active: financeTab === 'loan' }]" 
+                        @click="financeTab = 'loan'"
+                    >
+                        🏠 贷款计算
+                    </button>
+                    <button 
+                        :class="['finance-tab', { active: financeTab === 'tvm' }]" 
+                        @click="financeTab = 'tvm'"
+                    >
+                        📊 TVM计算
+                    </button>
+                    <button 
+                        :class="['finance-tab', { active: financeTab === 'deposit' }]" 
+                        @click="financeTab = 'deposit'"
+                    >
+                        💵 存款计算
+                    </button>
+                </div>
+                
+                <!-- 复利计算面板 -->
+                <div v-show="financeTab === 'compound'" class="finance-panel">
+                    <div class="finance-form">
+                        <div class="form-row">
+                            <label>本金（元）</label>
+                            <input v-model.number="compoundParams.principal" type="number" placeholder="10000" />
+                        </div>
+                        <div class="form-row">
+                            <label>年利率（%）</label>
+                            <input v-model.number="compoundParams.rate" type="number" step="0.01" placeholder="5" />
+                        </div>
+                        <div class="form-row">
+                            <label>投资年限（年）</label>
+                            <input v-model.number="compoundParams.years" type="number" step="1" placeholder="5" />
+                        </div>
+                        <div class="form-row">
+                            <label>每年复利次数</label>
+                            <select v-model.number="compoundParams.compoundTimes">
+                                <option :value="1">每年一次</option>
+                                <option :value="2">每半年一次</option>
+                                <option :value="4">每季度一次</option>
+                                <option :value="12">每月一次</option>
+                                <option :value="365">每日一次</option>
+                            </select>
+                        </div>
+                        
+                        <button class="finance-calc-btn" @click="calculateCompound">计算复利</button>
+                        
+                        <div v-if="compoundResult" class="finance-result">
+                            <div class="result-row">
+                                <span>本金</span>
+                                <span class="result-num">¥{{ compoundResult.principal }}</span>
+                            </div>
+                            <div class="result-row">
+                                <span>利息</span>
+                                <span class="result-num profit">¥{{ compoundResult.interest }}</span>
+                            </div>
+                            <div class="result-row total">
+                                <span>本息合计</span>
+                                <span class="result-num">¥{{ compoundResult.amount }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 贷款计算面板 -->
+                <div v-show="financeTab === 'loan'" class="finance-panel">
+                    <div class="finance-form">
+                        <div class="form-row">
+                            <label>贷款金额（元）</label>
+                            <input v-model.number="loanParams.amount" type="number" placeholder="1000000" />
+                        </div>
+                        <div class="form-row">
+                            <label>年利率（%）</label>
+                            <input v-model.number="loanParams.rate" type="number" step="0.01" placeholder="4.2" />
+                        </div>
+                        <div class="form-row">
+                            <label>贷款年限（年）</label>
+                            <input v-model.number="loanParams.years" type="number" step="1" placeholder="30" />
+                        </div>
+                        <div class="form-row">
+                            <label>还款方式</label>
+                            <select v-model="loanParams.type">
+                                <option value="equalPayment">等额本息</option>
+                                <option value="equalPrincipal">等额本金</option>
+                            </select>
+                        </div>
+                        
+                        <button class="finance-calc-btn" @click="calculateLoan">计算贷款</button>
+                        
+                        <div v-if="loanResult" class="finance-result">
+                            <div class="result-row">
+                                <span>还款方式</span>
+                                <span class="result-num">{{ loanResult.type }}</span>
+                            </div>
+                            <div v-if="loanResult.monthlyPayment" class="result-row">
+                                <span>月供</span>
+                                <span class="result-num">¥{{ loanResult.monthlyPayment }}</span>
+                            </div>
+                            <div v-if="loanResult.firstMonthPayment" class="result-row">
+                                <span>首月月供</span>
+                                <span class="result-num">¥{{ loanResult.firstMonthPayment }}</span>
+                            </div>
+                            <div v-if="loanResult.monthlyPrincipal" class="result-row">
+                                <span>每月本金</span>
+                                <span class="result-num">¥{{ loanResult.monthlyPrincipal }}</span>
+                            </div>
+                            <div class="result-row">
+                                <span>总利息</span>
+                                <span class="result-num profit">¥{{ loanResult.totalInterest }}</span>
+                            </div>
+                            <div class="result-row total">
+                                <span>还款总额</span>
+                                <span class="result-num">¥{{ loanResult.totalPayment }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 存款计算面板 -->
+                <div v-show="financeTab === 'deposit'" class="finance-panel">
+                    <div class="finance-form">
+                        <div class="form-row">
+                            <label>存款金额（元）</label>
+                            <input v-model.number="depositParams.principal" type="number" placeholder="10000" />
+                        </div>
+                        <div class="form-row">
+                            <label>年利率（%）</label>
+                            <input v-model.number="depositParams.rate" type="number" step="0.01" placeholder="2.5" />
+                        </div>
+                        <div class="form-row">
+                            <label>存款年限（年）</label>
+                            <input v-model.number="depositParams.years" type="number" step="1" placeholder="3" />
+                        </div>
+                        
+                        <button class="finance-calc-btn" @click="calculateDeposit">计算利息</button>
+                        
+                        <div v-if="depositResult" class="finance-result">
+                            <div class="result-row">
+                                <span>本金</span>
+                                <span class="result-num">¥{{ depositResult.principal }}</span>
+                            </div>
+                            <div class="result-row">
+                                <span>利息</span>
+                                <span class="result-num profit">¥{{ depositResult.interest }}</span>
+                            </div>
+                            <div class="result-row total">
+                                <span>本息合计</span>
+                                <span class="result-num">¥{{ depositResult.amount }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TVM理财计算器 -->
+                <div v-show="financeTab === 'tvm'" class="finance-panel">
+                    <div class="finance-form">
+                        <h3 style="text-align: center; color: #e85d04; margin-bottom: 15px;">理财计算器</h3>
+                        
+                        <!-- 利率输入 -->
+                        <div class="form-row">
+                            <label>利率 (%)</label>
+                            <input type="number" v-model.number="tvmParams.rate" placeholder="利率" />
+                        </div>
+                        
+                        <!-- 期数输入 -->
+                         <div class="form-row">
+                             <label>
+                                 <input type="checkbox" v-model="tvmEnabled.periods" />
+                                 期数
+                             </label>
+                             <input type="number" v-model.number="tvmParams.periods" placeholder="期数" :disabled="!tvmEnabled.periods" />
+                         </div>
+                         
+                         <!-- 现值输入 -->
+                         <div class="form-row">
+                             <label>
+                                 <input type="checkbox" v-model="tvmEnabled.pv" />
+                                 现值
+                             </label>
+                             <input type="number" v-model.number="tvmParams.pv" placeholder="现值" :disabled="!tvmEnabled.pv" />
+                         </div>
+                         
+                         <!-- 终值输入 -->
+                         <div class="form-row">
+                             <label>
+                                 <input type="checkbox" v-model="tvmEnabled.fv" />
+                                 终值
+                             </label>
+                             <input type="number" v-model.number="tvmParams.fv" placeholder="终值" :disabled="!tvmEnabled.fv" />
+                         </div>
+                         
+                         <!-- 每期付款额输入 -->
+                         <div class="form-row">
+                             <label>
+                                 <input type="checkbox" v-model="tvmEnabled.pmt" />
+                                 每期付款额
+                             </label>
+                             <input type="number" v-model.number="tvmParams.pmt" placeholder="每期付款额" :disabled="!tvmEnabled.pmt" />
+                         </div>
+                        
+                        <!-- 期初/期末选择 -->
+                        <div class="form-row payment-type">
+                            <span>付款方式:</span>
+                            <label>
+                                <input type="radio" v-model.number="tvmParams.type" :value="1" />
+                                期初
+                            </label>
+                            <label>
+                                <input type="radio" v-model.number="tvmParams.type" :value="0" />
+                                期末
+                            </label>
+                        </div>
+                        
+                        <!-- 计算结果 -->
+                        <div class="finance-result" v-if="tvmResult">
+                            <div class="result-row">
+                                <span>{{ tvmResult.label }}</span>
+                                <span class="result-num">{{ tvmResult.value }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 按钮 -->
+                        <div style="display: flex; gap: 8px; margin-top: 10px;">
+                            <button class="finance-calc-btn" style="flex: 1; background: #95a5a6;" @click="clearTVM">清空</button>
+                            <button class="finance-calc-btn" style="flex: 1;" @click="calculateTVM">计算</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -117,7 +363,54 @@ export default {
                 price: 101,
                 years: 1
             },
-            bondResult: null
+            bondResult: null,
+            
+            // 理财计算器参数
+            financeTab: 'tvm', // compound, loan, tvm, deposit
+            
+            // 复利计算参数
+            compoundParams: {
+                principal: 10000,
+                rate: 5,
+                years: 5,
+                compoundTimes: 12
+            },
+            compoundResult: null,
+            
+            // 贷款计算参数
+            loanParams: {
+                amount: 1000000,
+                rate: 4.2,
+                years: 30,
+                type: 'equalPayment' // equalPayment: 等额本息, equalPrincipal: 等额本金
+            },
+            loanResult: null,
+            
+            // 存款计算参数
+            depositParams: {
+                principal: 10000,
+                rate: 2.5,
+                years: 3
+            },
+            depositResult: null,
+            
+            // TVM计算器参数
+            tvmParams: {
+                rate: null,      // 利率 (%)
+                periods: null,   // 期数
+                pv: null,        // 现值
+                fv: null,        // 终值
+                pmt: null,       // 每期付款额
+                type: 0          // 0: 期末付款, 1: 期初付款
+            },
+            tvmEnabled: {        // 追踪哪些参数被勾选启用
+                rate: true,      // 利率默认启用
+                periods: false,
+                pv: false,
+                fv: false,
+                pmt: false
+            },
+            tvmResult: null
         }
     },
     methods: {
@@ -250,6 +543,260 @@ export default {
             const yieldToMaturity = ((annualCoupon + (faceValue - price) / years) / price * 100).toFixed(4);
             
             this.bondResult = yieldToMaturity;
+        },
+        
+        // 复利计算
+        calculateCompound() {
+            const { principal, rate, years, compoundTimes } = this.compoundParams;
+            
+            if (!principal || !rate || !years || !compoundTimes) {
+                alert('请填写完整的复利参数');
+                return;
+            }
+            
+            // 复利公式: A = P(1 + r/n)^(nt)
+            const r = rate / 100;
+            const n = compoundTimes;
+            const t = years;
+            
+            const amount = principal * Math.pow(1 + r / n, n * t);
+            const interest = amount - principal;
+            
+            this.compoundResult = {
+                amount: amount.toFixed(2),
+                interest: interest.toFixed(2),
+                principal: principal.toFixed(2)
+            };
+        },
+        
+        // 贷款计算
+        calculateLoan() {
+            const { amount, rate, years, type } = this.loanParams;
+            
+            if (!amount || !rate || !years) {
+                alert('请填写完整的贷款参数');
+                return;
+            }
+            
+            const monthlyRate = rate / 100 / 12;
+            const months = years * 12;
+            
+            if (type === 'equalPayment') {
+                // 等额本息
+                const monthlyPayment = amount * monthlyRate * Math.pow(1 + monthlyRate, months) / (Math.pow(1 + monthlyRate, months) - 1);
+                const totalPayment = monthlyPayment * months;
+                const totalInterest = totalPayment - amount;
+                
+                this.loanResult = {
+                    monthlyPayment: monthlyPayment.toFixed(2),
+                    totalPayment: totalPayment.toFixed(2),
+                    totalInterest: totalInterest.toFixed(2),
+                    type: '等额本息'
+                };
+            } else {
+                // 等额本金
+                const monthlyPrincipal = amount / months;
+                let totalInterest = 0;
+                for (let i = 0; i < months; i++) {
+                    totalInterest += (amount - monthlyPrincipal * i) * monthlyRate;
+                }
+                const totalPayment = amount + totalInterest;
+                const firstMonthPayment = (monthlyPrincipal + amount * monthlyRate).toFixed(2);
+                
+                this.loanResult = {
+                    firstMonthPayment: firstMonthPayment,
+                    monthlyPrincipal: monthlyPrincipal.toFixed(2),
+                    totalPayment: totalPayment.toFixed(2),
+                    totalInterest: totalInterest.toFixed(2),
+                    type: '等额本金'
+                };
+            }
+        },
+        
+        // 存款利息计算
+        calculateDeposit() {
+            const { principal, rate, years } = this.depositParams;
+            
+            if (!principal || !rate || !years) {
+                alert('请填写完整的存款参数');
+                return;
+            }
+            
+            // 单利计算（定期存款通常按单利）
+            const interest = principal * (rate / 100) * years;
+            const amount = principal + interest;
+            
+            this.depositResult = {
+                amount: amount.toFixed(2),
+                interest: interest.toFixed(2),
+                principal: principal.toFixed(2)
+            };
+        },
+        
+        // TVM计算器 - 计算未知值
+        calculateTVM() {
+            const { rate, periods, pv, fv, pmt, type } = this.tvmParams;
+            const { rate: rateEnabled, periods: periodsEnabled, pv: pvEnabled, fv: fvEnabled, pmt: pmtEnabled } = this.tvmEnabled;
+            
+            // 检查有多少个参数被启用（勾选）
+            const enabledCount = [rateEnabled, periodsEnabled, pvEnabled, fvEnabled, pmtEnabled].filter(v => v).length;
+            
+            if (enabledCount !== 4) {
+                alert('请确保勾选且仅勾选4个参数（留下1个未勾选作为待计算项）');
+                return;
+            }
+            
+            // 检查已启用的参数是否都有值
+            if (rateEnabled && (rate === null || rate === undefined || rate === '')) {
+                alert('利率已勾选但未填写数值');
+                return;
+            }
+            if (periodsEnabled && (periods === null || periods === undefined || periods === '')) {
+                alert('期数已勾选但未填写数值');
+                return;
+            }
+            if (pvEnabled && (pv === null || pv === undefined || pv === '')) {
+                alert('现值已勾选但未填写数值');
+                return;
+            }
+            if (fvEnabled && (fv === null || fv === undefined || fv === '')) {
+                alert('终值已勾选但未填写数值');
+                return;
+            }
+            if (pmtEnabled && (pmt === null || pmt === undefined || pmt === '')) {
+                alert('每期付款额已勾选但未填写数值');
+                return;
+            }
+            
+            const r = rate ? rate / 100 / 12 : 0; // 月利率
+            const n = periods || 0;
+            const pvVal = pv || 0;
+            const fvVal = fv || 0;
+            const pmtVal = pmt || 0;
+            const t = type || 0;
+            
+            let result = null;
+            let resultLabel = '';
+            
+            if (!rateEnabled) {
+                // 计算利率
+                result = this.calculateRate(n, pvVal, fvVal, pmtVal, t);
+                resultLabel = '利率';
+            } else if (!periodsEnabled) {
+                // 计算期数
+                result = this.calculatePeriods(r, pvVal, fvVal, pmtVal, t);
+                resultLabel = '期数';
+            } else if (!pvEnabled) {
+                // 计算现值
+                result = this.calculatePV(r, n, fvVal, pmtVal, t);
+                resultLabel = '现值';
+            } else if (!fvEnabled) {
+                // 计算终值
+                result = this.calculateFV(r, n, pvVal, pmtVal, t);
+                resultLabel = '终值';
+            } else if (!pmtEnabled) {
+                // 计算每期付款额
+                result = this.calculatePMT(r, n, pvVal, fvVal, t);
+                resultLabel = '每期付款额';
+            }
+            
+            this.tvmResult = {
+                value: result !== null ? result.toFixed(4) : '计算失败',
+                label: resultLabel
+            };
+        },
+        
+        // 计算利率（牛顿迭代法）
+        calculateRate(n, pv, fv, pmt, type) {
+            let rate = 0.01; // 初始猜测
+            const tolerance = 0.0000001;
+            const maxIterations = 100;
+            
+            for (let i = 0; i < maxIterations; i++) {
+                const pvCalc = this.calculatePV(rate, n, fv, pmt, type);
+                const diff = pvCalc - pv;
+                
+                if (Math.abs(diff) < tolerance) break;
+                
+                // 数值微分计算导数
+                const delta = 0.00001;
+                const pvPlus = this.calculatePV(rate + delta, n, fv, pmt, type);
+                const derivative = (pvPlus - pvCalc) / delta;
+                
+                rate -= diff / derivative;
+            }
+            
+            return rate * 12 * 100; // 转换为年利率百分比
+        },
+        
+        // 计算期数
+        calculatePeriods(r, pv, fv, pmt, type) {
+            if (r === 0) {
+                // 零利率情况
+                const total = pmt * (1 + type) - fv;
+                if (total === 0) return 0;
+                return -pv / total;
+            }
+            
+            const pvIf = type === 1 ? pmt * (1 + r) / r : 0;
+            const numerator = Math.log((pmt * (1 + r * type) - fv * r) / (pv * r + pmt * (1 + r * type)));
+            const denominator = Math.log(1 + r);
+            
+            return numerator / denominator;
+        },
+        
+        // 计算现值
+        calculatePV(r, n, fv, pmt, type) {
+            if (r === 0) {
+                return -fv - pmt * n * (1 + type);
+            }
+            
+            const discount = Math.pow(1 + r, n);
+            const pmtFactor = pmt * (1 + r * type) * (1 - discount) / r;
+            
+            return -fv / discount - pmtFactor;
+        },
+        
+        // 计算终值
+        calculateFV(r, n, pv, pmt, type) {
+            if (r === 0) {
+                return -pv - pmt * n * (1 + type);
+            }
+            
+            const discount = Math.pow(1 + r, n);
+            const pmtFactor = pmt * (1 + r * type) * (discount - 1) / r;
+            
+            return -pv * discount - pmtFactor;
+        },
+        
+        // 计算每期付款额
+        calculatePMT(r, n, pv, fv, type) {
+            if (r === 0) {
+                return -(pv + fv) / n;
+            }
+            
+            const discount = Math.pow(1 + r, n);
+            return -(pv * r * discount + fv * r) / ((1 + r * type) * (discount - 1));
+        },
+        
+        // 清空TVM参数
+        clearTVM() {
+            this.tvmParams = {
+                rate: null,
+                periods: null,
+                pv: null,
+                fv: null,
+                pmt: null,
+                type: 0
+            };
+            this.tvmEnabled = {
+                rate: true,
+                periods: false,
+                pv: false,
+                fv: false,
+                pmt: false
+            };
+            this.tvmResult = null;
         }
     }
 }
@@ -257,15 +804,21 @@ export default {
 
 <style scoped>
 .calculator-container {
-    width: 360px;
+    width: 400px;
+    max-height: calc(100vh - 100px);
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    overflow: visible;
+    overflow: hidden;
     border: 2px solid #4a90d9;
-    position: relative;
-    z-index: 100;
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .calculator-container.collapsed {
@@ -336,6 +889,9 @@ export default {
     padding: 10px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(100vh - 180px);
 }
 
 .history-panel {
@@ -567,5 +1123,143 @@ export default {
     font-size: 16px;
     font-weight: 700;
     color: #27ae60;
+}
+
+/* 理财计算器样式 */
+.finance-calculator {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.finance-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.finance-icon {
+    font-size: 14px;
+}
+
+.finance-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+}
+
+.finance-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.finance-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.finance-tab:hover {
+    border-color: #4a90d9;
+    background: #e8f0fe;
+}
+
+.finance-tab.active {
+    background: #4a90d9;
+    color: white;
+    border-color: #4a90d9;
+}
+
+.finance-panel {
+    background: #fafafa;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.finance-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.finance-form .form-row select {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    background: white;
+}
+
+.finance-form .form-row select:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.finance-calc-btn {
+    padding: 8px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    margin-top: 4px;
+}
+
+.finance-calc-btn:hover {
+    background: #3d7fc4;
+}
+
+.finance-result {
+    margin-top: 10px;
+    padding: 10px;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px dashed #eee;
+}
+
+.result-row:last-child {
+    border-bottom: none;
+}
+
+.result-row.total {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+.result-row span:first-child {
+    color: #666;
+}
+
+.result-num {
+    font-weight: 600;
+    color: #333;
+}
+
+.result-num.profit {
+    color: #27ae60;
+}
+
+.result-row.total .result-num {
+    font-size: 14px;
+    color: #4a90d9;
 }
 </style>
