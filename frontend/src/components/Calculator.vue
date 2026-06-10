@@ -249,7 +249,7 @@
                         
                         <!-- 利率输入 -->
                         <div class="form-row">
-                            <label>利率 (%)</label>
+                            <label>利率 (%) R</label>
                             <input type="number" v-model.number="tvmParams.rate" placeholder="利率" />
                         </div>
                         
@@ -266,7 +266,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.pv" />
-                                 现值
+                                 现值 PV
                              </label>
                              <input type="number" v-model.number="tvmParams.pv" placeholder="现值" :disabled="!tvmEnabled.pv" />
                          </div>
@@ -275,7 +275,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.fv" />
-                                 终值
+                                 终值 FV
                              </label>
                              <input type="number" v-model.number="tvmParams.fv" placeholder="终值" :disabled="!tvmEnabled.fv" />
                          </div>
@@ -284,7 +284,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.pmt" />
-                                 每期付款额
+                                 每期付款额 PMT
                              </label>
                              <input type="number" v-model.number="tvmParams.pmt" placeholder="每期付款额" :disabled="!tvmEnabled.pmt" />
                          </div>
@@ -294,11 +294,11 @@
                             <span>付款方式:</span>
                             <label>
                                 <input type="radio" v-model.number="tvmParams.type" :value="1" />
-                                期初
+                                期初 T
                             </label>
                             <label>
                                 <input type="radio" v-model.number="tvmParams.type" :value="0" />
-                                期末
+                                期末 T
                             </label>
                         </div>
                         
@@ -668,7 +668,7 @@ export default {
                 return;
             }
             
-            const r = rate ? rate / 100 / 12 : 0; // 月利率
+            const r = rate ? rate / 100 : 0; // 每期利率（直接使用输入值，不转换为月利率）
             const n = periods || 0;
             const pvVal = pv || 0;
             const fvVal = fv || 0;
@@ -681,23 +681,23 @@ export default {
             if (!rateEnabled) {
                 // 计算利率
                 result = this.calculateRate(n, pvVal, fvVal, pmtVal, t);
-                resultLabel = '利率';
+                resultLabel = '利率R';
             } else if (!periodsEnabled) {
                 // 计算期数
                 result = this.calculatePeriods(r, pvVal, fvVal, pmtVal, t);
-                resultLabel = '期数';
+                resultLabel = '期数n';
             } else if (!pvEnabled) {
                 // 计算现值
                 result = this.calculatePV(r, n, fvVal, pmtVal, t);
-                resultLabel = '现值';
+                resultLabel = '现值PV';
             } else if (!fvEnabled) {
                 // 计算终值
                 result = this.calculateFV(r, n, pvVal, pmtVal, t);
-                resultLabel = '终值';
+                resultLabel = '终值FV';
             } else if (!pmtEnabled) {
                 // 计算每期付款额
                 result = this.calculatePMT(r, n, pvVal, fvVal, t);
-                resultLabel = '每期付款额';
+                resultLabel = '每期付款额PMT';
             }
             
             this.tvmResult = {
