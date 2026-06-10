@@ -805,7 +805,7 @@ export default {
 <style scoped>
 .calculator-container {
     width: 400px;
-    max-height: calc(100vh - 100px);
+    max-height: calc(100vh - 60px);
     background: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -813,8 +813,9 @@ export default {
     border: 2px solid #4a90d9;
     position: fixed;
     right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 20px;
+    bottom: 20px;
+    transform: none;
     z-index: 1000;
     transition: all 0.3s ease;
     display: flex;
@@ -886,21 +887,23 @@ export default {
 }
 
 .calculator-content {
-    padding: 10px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     flex: 1;
-    max-height: calc(100vh - 180px);
+    max-height: none;
+    min-height: 0;
 }
 
 .history-panel {
     background: #f8f9fa;
     border-radius: 6px;
-    padding: 8px;
-    margin-bottom: 10px;
-    max-height: 120px;
+    padding: 12px;
+    margin-bottom: 12px;
+    max-height: 350px;
     overflow-y: auto;
+    min-height: 60px;
 }
 
 .history-title {
