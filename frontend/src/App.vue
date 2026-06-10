@@ -45,8 +45,13 @@
         </div>
 
         <div class="main-content">
-            <div class="sidebar">
-                <h3>📚 学习导航</h3>
+            <div class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+                <div class="sidebar-header">
+                    <h3 v-if="!sidebarCollapsed">📚 学习导航</h3>
+                    <button class="sidebar-toggle-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+                        {{ sidebarCollapsed ? '▶' : '◀' }}
+                    </button>
+                </div>
                 <ul class="nav-list">
                     <li 
                         v-for="item in navItems" 
@@ -56,14 +61,14 @@
                         @click="currentSection = item.id"
                     >
                         <span class="icon">{{ item.icon }}</span>
-                        <span>{{ item.name }}</span>
+                        <span v-if="!sidebarCollapsed">{{ item.name }}</span>
                         <!-- 显示题型数量（非题型导航项不显示） -->
-                        <span v-if="item.count !== undefined" class="nav-count">{{ item.count }}</span>
+                        <span v-if="!sidebarCollapsed && item.count !== undefined" class="nav-count">{{ item.count }}</span>
                     </li>
 
                 </ul>
 
-                <div class="stats">
+                <div class="stats" v-if="!sidebarCollapsed">
                     <div class="stat-item">
                         <span>总题数</span>
                         <strong>{{ totalQuestions }}</strong>
@@ -1191,6 +1196,13 @@ const {
   loadQuestions
 } = useExamApp()
 
+// 侧边栏收缩状态
+const sidebarCollapsed = ref(false)
+
+// 切换侧边栏收缩状态
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
 
 
 // 更新备考建议内容

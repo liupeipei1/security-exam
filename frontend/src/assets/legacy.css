@@ -134,6 +134,56 @@
             position: sticky;
             top: 20px;
             height: fit-content;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4a90d9;
+        }
+
+        .sidebar-header h3 {
+            color: #1a1a2e;
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .sidebar-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+            color: #666;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: #e8f0fe;
+        }
+
+        .sidebar.collapsed .sidebar-header h3 {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item-text {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-count {
+            display: none;
+        }
+
+        .sidebar.collapsed .stats {
+            display: none;
         }
 
         .sidebar h3 {
