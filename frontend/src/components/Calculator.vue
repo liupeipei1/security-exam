@@ -249,7 +249,7 @@
                         
                         <!-- 利率输入 -->
                         <div class="form-row">
-                            <label>利率 (%) R</label>
+                            <label>利率 (%) R(年利率)</label>
                             <input type="number" v-model.number="tvmParams.rate" placeholder="利率" />
                         </div>
                         
@@ -257,7 +257,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.periods" />
-                                 期数
+                                 期数 N（年）
                              </label>
                              <input type="number" v-model.number="tvmParams.periods" placeholder="期数" :disabled="!tvmEnabled.periods" />
                          </div>
