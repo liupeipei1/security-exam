@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { apiGet, apiPost, apiPut, apiDelete, getStoredUser, setStoredUser, clearStoredUser, addFavorite, removeFavorite, getFavorites, checkFavorite } from '../api/client.js'
 
 // 使用单例模式，确保所有组件共享同一个状态
@@ -255,6 +255,14 @@ function createInstance() {
                     }
                     
                     showEditQuestionModal.value = true;
+                    
+                    // 手动设置解析内容到DOM（不再使用v-html绑定）
+                    nextTick(() => {
+                        const explanationContent = document.getElementById(`explanation-${question.id}`);
+                        if (explanationContent) {
+                            explanationContent.innerHTML = question.explanation || '';
+                        }
+                    });
                 };
                 
                 // 关闭编辑题目弹窗
@@ -358,6 +366,12 @@ function createInstance() {
                     
                     editLoading.value = true;
                     try {
+                        // 从DOM获取解析内容（避免输入时更新导致光标位置丢失）
+                        const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
+                        if (explanationContent) {
+                            editForm.value.explanation = explanationContent.innerHTML;
+                        }
+                        
                         // 准备答案数据
                         let finalAnswer = editForm.value.answer;
                         if (editForm.value.type === 'single') {
@@ -1546,7 +1560,8 @@ function createInstance() {
                             img.style.maxWidth = '100%';
                             img.style.height = 'auto';
                             explanationContent.appendChild(img);
-                            editForm.value.explanation = explanationContent.innerHTML;
+                            // 不再直接更新editForm.explanation，避免光标位置丢失
+                            // 解析内容将在保存时从DOM获取
                         }
                     };
                     reader.readAsDataURL(file);
@@ -1556,57 +1571,8 @@ function createInstance() {
                 };
 
                 const onExplanationInput = () => {
-                    const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
-                    if (explanationContent) {
-                        // 保存当前光标位置
-                        const selection = window.getSelection();
-                        let range = null;
-                        let offset = 0;
-                        
-                        if (selection && selection.rangeCount > 0) {
-                            range = selection.getRangeAt(0);
-                            const tempRange = range.cloneRange();
-                            tempRange.selectNodeContents(explanationContent);
-                            tempRange.setEnd(range.endContainer, range.endOffset);
-                            offset = tempRange.toString().length;
-                        }
-                        
-                        // 更新解析内容
-                        editForm.value.explanation = explanationContent.innerHTML;
-                        
-                        // 恢复光标位置
-                        nextTick(() => {
-                            const updatedContent = document.getElementById(`explanation-${editForm.value.id}`);
-                            if (updatedContent && range) {
-                                const newRange = document.createRange();
-                                const textContent = updatedContent.textContent || '';
-                                const targetOffset = Math.min(offset, textContent.length);
-                                
-                                // 尝试设置光标位置
-                                const walker = document.createTreeWalker(
-                                    updatedContent,
-                                    NodeFilter.SHOW_TEXT,
-                                    null,
-                                    false
-                                );
-                                
-                                let currentOffset = 0;
-                                let currentNode = walker.nextNode();
-                                
-                                while (currentNode) {
-                                    if (currentOffset + currentNode.textContent.length >= targetOffset) {
-                                        newRange.setStart(currentNode, targetOffset - currentOffset);
-                                        newRange.collapse(true);
-                                        selection.removeAllRanges();
-                                        selection.addRange(newRange);
-                                        break;
-                                    }
-                                    currentOffset += currentNode.textContent.length;
-                                    currentNode = walker.nextNode();
-                                }
-                            }
-                        });
-                    }
+                    // 输入时不更新editForm.explanation，避免v-html重新渲染导致光标位置丢失
+                    // 解析内容将在保存时从DOM获取
                 };
 
                 const onExplanationPaste = (event) => {
@@ -1629,11 +1595,8 @@ function createInstance() {
                                         img.style.height = 'auto';
                                         range.deleteContents();
                                         range.insertNode(img);
-                                        // 更新editForm.explanation
-                                        const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
-                                        if (explanationContent) {
-                                            editForm.value.explanation = explanationContent.innerHTML;
-                                        }
+                                        // 不再直接更新editForm.explanation，避免光标位置丢失
+                                        // 解析内容将在保存时从DOM获取
                                     }
                                 };
                                 reader.readAsDataURL(file);

@@ -1009,13 +1009,14 @@
                                 </button>
                             </div>
                             <div 
+                                ref="explanationRef"
                                 :id="'explanation-' + editForm.id"
                                 class="note-content explanation-content"
                                 contenteditable="true"
                                 data-placeholder="请输入解析内容，支持文字和图片..."
+                                v-html="editForm.explanation"
                                 @input="onExplanationInput"
                                 @paste="onExplanationPaste"
-                                v-html="editForm.explanation"
                             ></div>
                             <input 
                                 type="file" 

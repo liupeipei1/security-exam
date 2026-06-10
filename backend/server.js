@@ -70,9 +70,7 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || '298280',
   database: process.env.DB_NAME || 'exam-db',
   charset: 'utf8mb4',
-  connectTimeout: 10000,
-  // 增加数据包大小限制，支持大文件上传（如base64图片）
-  maxAllowedPacket: 104857600 // 100MB
+  connectTimeout: 10000
 };
 
 // 微信配置（从环境变量读取）
@@ -2620,7 +2618,7 @@ app.delete('/api/questions/:exam_code/:id', async (req, res) => {
 app.put('/api/questions/:exam_code/:id', async (req, res) => {
   const { exam_code, id } = req.params;
   const { question, options, answer, explanation, analysis, type, knowledgePoint } = req.body;
-  
+
   // 支持 analysis 和 explanation 两个字段名
   const finalAnalysis = explanation || analysis || '';
   
