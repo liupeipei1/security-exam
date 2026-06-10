@@ -7,7 +7,7 @@ CREATE TABLE bank_banking_law (
     question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
-    analysis BIGTEXT,
+    analysis LONGTEXT COMMENT '分析内容（支持HTML格式，可包含图片标签）',
     bank_code VARCHAR(50) DEFAULT 'banking_law',
     source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

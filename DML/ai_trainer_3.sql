@@ -7,7 +7,7 @@ CREATE TABLE ai_trainer_3 (
     question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
-    analysis BIGTEXT,
+    analysis LONGTEXT COMMENT '分析内容（支持HTML格式，可包含图片标签）',
     bank_code VARCHAR(50) DEFAULT 'ai_trainer_3',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_type (type),

@@ -1558,7 +1558,54 @@ function createInstance() {
                 const onExplanationInput = () => {
                     const explanationContent = document.getElementById(`explanation-${editForm.value.id}`);
                     if (explanationContent) {
+                        // 保存当前光标位置
+                        const selection = window.getSelection();
+                        let range = null;
+                        let offset = 0;
+                        
+                        if (selection && selection.rangeCount > 0) {
+                            range = selection.getRangeAt(0);
+                            const tempRange = range.cloneRange();
+                            tempRange.selectNodeContents(explanationContent);
+                            tempRange.setEnd(range.endContainer, range.endOffset);
+                            offset = tempRange.toString().length;
+                        }
+                        
+                        // 更新解析内容
                         editForm.value.explanation = explanationContent.innerHTML;
+                        
+                        // 恢复光标位置
+                        nextTick(() => {
+                            const updatedContent = document.getElementById(`explanation-${editForm.value.id}`);
+                            if (updatedContent && range) {
+                                const newRange = document.createRange();
+                                const textContent = updatedContent.textContent || '';
+                                const targetOffset = Math.min(offset, textContent.length);
+                                
+                                // 尝试设置光标位置
+                                const walker = document.createTreeWalker(
+                                    updatedContent,
+                                    NodeFilter.SHOW_TEXT,
+                                    null,
+                                    false
+                                );
+                                
+                                let currentOffset = 0;
+                                let currentNode = walker.nextNode();
+                                
+                                while (currentNode) {
+                                    if (currentOffset + currentNode.textContent.length >= targetOffset) {
+                                        newRange.setStart(currentNode, targetOffset - currentOffset);
+                                        newRange.collapse(true);
+                                        selection.removeAllRanges();
+                                        selection.addRange(newRange);
+                                        break;
+                                    }
+                                    currentOffset += currentNode.textContent.length;
+                                    currentNode = walker.nextNode();
+                                }
+                            }
+                        });
                     }
                 };
 

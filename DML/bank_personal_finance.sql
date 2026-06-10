@@ -7,7 +7,7 @@ CREATE TABLE bank_personal_finance (
     question LONGTEXT NOT NULL COMMENT '题目内容（支持HTML格式，可包含图片标签）',
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
-    analysis BIGTEXT,
+    analysis LONGTEXT,
     exam_code VARCHAR(50) DEFAULT 'personal_finance',
     source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

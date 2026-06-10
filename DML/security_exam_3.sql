@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS security_exam_3 (
     options JSON NOT NULL COMMENT '选项列表',
     answer JSON NOT NULL COMMENT '正确答案',
     explanation VARCHAR(500) COMMENT '解析说明',
-    analysis BIGTEXT COMMENT '题目分析',
+    analysis LONGTEXT COMMENT '详细分析（支持HTML格式，可包含图片标签）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_type (type)

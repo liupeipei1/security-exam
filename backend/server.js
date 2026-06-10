@@ -70,7 +70,9 @@ const dbConfig = {
   password: process.env.DB_PASSWORD || '298280',
   database: process.env.DB_NAME || 'exam-db',
   charset: 'utf8mb4',
-  connectTimeout: 10000
+  connectTimeout: 10000,
+  // 增加数据包大小限制，支持大文件上传（如base64图片）
+  maxAllowedPacket: 104857600 // 100MB
 };
 
 // 微信配置（从环境变量读取）
