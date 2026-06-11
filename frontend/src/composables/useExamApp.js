@@ -1358,15 +1358,22 @@ function createInstance() {
                     return questionNotes.value[questionId] || '';
                 };
 
-                // 防抖函数
+                // 防抖函数（支持取消）
                 const debounce = (func, delay = 500) => {
                     let timer = null;
-                    return function(...args) {
+                    const debounced = function(...args) {
                         if (timer) clearTimeout(timer);
                         timer = setTimeout(() => {
                             func.apply(this, args);
                         }, delay);
                     };
+                    debounced.cancel = function() {
+                        if (timer) {
+                            clearTimeout(timer);
+                            timer = null;
+                        }
+                    };
+                    return debounced;
                 };
 
                 // 保存光标位置
@@ -1491,6 +1498,8 @@ function createInstance() {
                             img.style.maxWidth = '100%';
                             img.style.height = 'auto';
                             noteContent.appendChild(img);
+                            // 取消之前的防抖保存，确保图片内容不会被覆盖
+                            debouncedSaveToDb.cancel();
                             setQuestionNote(questionId, noteContent.innerHTML);
                         }
                     };
@@ -1712,6 +1721,20 @@ function createInstance() {
                     // 隐藏答案
                     showAnswers.value = { ...showAnswers.value, [questionId]: false };
                 };
+
+                // 切换所有答案的显示状态
+                const toggleAllAnswers = () => {
+                    const newState = !allAnswersShown.value;
+                    questions.value.forEach(q => {
+                        showAnswers.value = { ...showAnswers.value, [q.id]: newState };
+                    });
+                };
+
+                // 判断是否所有答案都已显示
+                const allAnswersShown = computed(() => {
+                    if (questions.value.length === 0) return false;
+                    return questions.value.every(q => showAnswers.value[q.id] === true);
+                });
 
                 const submitAnswers = () => {
                     const correct = correctCount.value;
@@ -2298,6 +2321,8 @@ function createInstance() {
                     showResult,
                     finalScore,
                     userAnswers,
+                    toggleAllAnswers,
+                    allAnswersShown,
                     navItems,
                     questions,
                     questionTypes,

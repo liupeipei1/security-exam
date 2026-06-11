@@ -249,7 +249,7 @@
                         
                         <!-- 利率输入 -->
                         <div class="form-row">
-                            <label>利率 (%) R(年利率)</label>
+                            <label>利率 (%) R(年利率或者月利率)</label>
                             <input type="number" v-model.number="tvmParams.rate" placeholder="利率" />
                         </div>
                         
@@ -257,7 +257,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.periods" />
-                                 期数 N（年）
+                                 期数 N（年或者月数）
                              </label>
                              <input type="number" v-model.number="tvmParams.periods" placeholder="期数" :disabled="!tvmEnabled.periods" />
                          </div>
@@ -284,7 +284,7 @@
                          <div class="form-row">
                              <label>
                                  <input type="checkbox" v-model="tvmEnabled.pmt" />
-                                 每期付款额 PMT
+                                 每期付款额 PMT（年或者月付款额）
                              </label>
                              <input type="number" v-model.number="tvmParams.pmt" placeholder="每期付款额" :disabled="!tvmEnabled.pmt" />
                          </div>
@@ -668,7 +668,7 @@ export default {
                 return;
             }
             
-            const r = rate ? rate / 100 : 0; // 每期利率（直接使用输入值，不转换为月利率）
+            const r = rate ? rate / 100 : 0; // 将年利率转换为月利率（每期利率）
             const n = periods || 0;
             const pvVal = pv || 0;
             const fvVal = fv || 0;
@@ -745,16 +745,16 @@ export default {
             return numerator / denominator;
         },
         
-        // 计算现值
+        // 计算现值 VM 现值公式应该是： PV = PMT × (1 - (1+r)^(-n))/r - FV/(1+r)^n
         calculatePV(r, n, fv, pmt, type) {
             if (r === 0) {
                 return -fv - pmt * n * (1 + type);
             }
             
             const discount = Math.pow(1 + r, n);
-            const pmtFactor = pmt * (1 + r * type) * (1 - discount) / r;
+            const pmtFactor = pmt * (1 + r * type) * (1 - 1/discount) / r;
             
-            return -fv / discount - pmtFactor;
+            return -fv / discount + pmtFactor;
         },
         
         // 计算终值

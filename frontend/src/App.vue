@@ -265,12 +265,13 @@
 
                         <div v-if="examMode ? showResult : showAnswers[question.id]" class="answer-explanation">
                             <h4>💡 解析</h4>
-                            <textarea 
+                            <div 
                                 class="explanation-input"
-                                :value="getQuestionExplanation(question)"
-                                @input="setQuestionExplanation(question.id, $event.target.value)"
-                                placeholder="在此输入解析内容..."
-                            ></textarea>
+                                contenteditable="true"
+                                data-placeholder="在此输入解析内容..."
+                                v-html="getQuestionExplanation(question)"
+                                @blur="setQuestionExplanation(question.id, $event.target.innerHTML)"
+                            ></div>
                         </div>
 
                         <!-- 备注输入框 -->
@@ -346,9 +347,9 @@
                         <button 
                             v-if="!examMode"
                             class="show-answer-btn" 
-                            @click="showAnswers = !showAnswers"
+                            @click="toggleAllAnswers"
                         >
-                            {{ showAnswers ? '隐藏答案' : '显示答案' }}
+                            {{ allAnswersShown ? '隐藏答案' : '显示答案' }}
                         </button>
                         
                         <button class="submit-btn" @click="submitAnswers">提交全部答案</button>
@@ -1058,6 +1059,8 @@ const {
   showResult,
   finalScore,
   userAnswers,
+  toggleAllAnswers,
+  allAnswersShown,
   navItems,
   questions,
   questionTypes,
