@@ -339,19 +339,24 @@ export default {
                 { label: 'C', value: 'clear', class: 'btn-clear' },
                 { label: '±', value: 'negate', class: 'btn-operator' },
                 { label: '%', value: 'percent', class: 'btn-operator' },
+                { label: '1/x', value: 'reciprocal', class: 'btn-function' },
                 { label: '÷', value: '/', class: 'btn-operator' },
+                { label: 'x²', value: 'square', class: 'btn-function' },
                 { label: '7', value: '7', class: 'btn-number' },
                 { label: '8', value: '8', class: 'btn-number' },
                 { label: '9', value: '9', class: 'btn-number' },
                 { label: '×', value: '*', class: 'btn-operator' },
+                { label: 'x³', value: 'cube', class: 'btn-function' },
                 { label: '4', value: '4', class: 'btn-number' },
                 { label: '5', value: '5', class: 'btn-number' },
                 { label: '6', value: '6', class: 'btn-number' },
                 { label: '-', value: '-', class: 'btn-operator' },
+                { label: '√', value: 'sqrt', class: 'btn-function' },
                 { label: '1', value: '1', class: 'btn-number' },
                 { label: '2', value: '2', class: 'btn-number' },
                 { label: '3', value: '3', class: 'btn-number' },
                 { label: '+', value: '+', class: 'btn-operator' },
+                { label: 'x^y', value: 'power', class: 'btn-function' },
                 { label: '0', value: '0', class: 'btn-number btn-zero' },
                 { label: '.', value: '.', class: 'btn-number' },
                 { label: '=', value: '=', class: 'btn-equals' },
@@ -425,7 +430,17 @@ export default {
                 this.negate();
             } else if (value === 'percent') {
                 this.percent();
-            } else if (['+', '-', '*', '/'].includes(value)) {
+            } else if (value === 'reciprocal') {
+                this.reciprocal();
+            } else if (value === 'square') {
+                this.square();
+            } else if (value === 'cube') {
+                this.cube();
+            } else if (value === 'sqrt') {
+                this.sqrt();
+            } else if (value === 'power') {
+                this.setOperator('^');
+            } else if (['+', '-', '*', '/', '^'].includes(value)) {
                 this.setOperator(value);
             } else if (value === '=') {
                 this.calculate();
@@ -433,6 +448,44 @@ export default {
                 this.addDecimal();
             } else {
                 this.addNumber(value);
+            }
+        },
+        
+        reciprocal() {
+            const val = parseFloat(this.display);
+            if (val !== 0) {
+                this.display = (1 / val).toString();
+                this.addToHistory(this.display, '1/' + val);
+            }
+        },
+        
+        square() {
+            const val = parseFloat(this.display);
+            this.display = (val * val).toString();
+            this.addToHistory(this.display, val + '²');
+        },
+        
+        cube() {
+            const val = parseFloat(this.display);
+            this.display = (val * val * val).toString();
+            this.addToHistory(this.display, val + '³');
+        },
+        
+        sqrt() {
+            const val = parseFloat(this.display);
+            if (val >= 0) {
+                this.display = Math.sqrt(val).toString();
+                this.addToHistory(this.display, '√' + val);
+            }
+        },
+        
+        addToHistory(result, expression) {
+            this.history.unshift({
+                expression: expression,
+                result: result.toString()
+            });
+            if (this.history.length > 10) {
+                this.history.pop();
             }
         },
         
@@ -491,6 +544,9 @@ export default {
                     break;
                 case '/':
                     result = this.previousValue / currentValue;
+                    break;
+                case '^':
+                    result = Math.pow(this.previousValue, currentValue);
                     break;
                 default:
                     return;
@@ -977,7 +1033,7 @@ export default {
 
 .calculator-buttons {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 4px;
     margin-bottom: 10px;
     position: relative;
@@ -1018,6 +1074,15 @@ export default {
 
 .btn-operator:hover {
     background: #3d7fc4;
+}
+
+.btn-function {
+    background: #9b59b6;
+    color: white;
+}
+
+.btn-function:hover {
+    background: #8e44ad;
 }
 
 .btn-clear {
