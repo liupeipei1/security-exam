@@ -1205,6 +1205,17 @@ function createInstance() {
                     if (newSection === 'guide') {
                         loadGuide();
                     }
+                    // 如果切换到我的收藏页面，加载收藏数据
+                    if (newSection === 'favorites') {
+                        loadFavorites();
+                    }
+                });
+
+                // 监听考试切换，如果当前在收藏页面则重新加载
+                watch(currentExam, () => {
+                    if (currentSection.value === 'favorites') {
+                        loadFavorites();
+                    }
                 });
 
                 // 方法
@@ -2278,15 +2289,26 @@ function createInstance() {
 
                 // 加载收藏列表
                 const loadFavorites = async () => {
+                    console.log('========== loadFavorites 被调用 ==========');
+                    console.log('isLoggedIn:', isLoggedIn.value);
+                    console.log('currentUser:', currentUser.value);
+                    console.log('currentUser.openid:', currentUser.value?.openid);
+                    
                     if (!isLoggedIn.value || !currentUser.value.openid) {
+                        console.log('未登录或openid为空，跳过加载收藏');
                         return;
                     }
                     
                     favoritesLoading.value = true;
+                    console.log('开始调用getFavorites，参数：openid=', currentUser.value.openid, ', exam_code=', currentExam.value);
                     const result = await getFavorites(currentUser.value.openid, currentExam.value);
+                    console.log('getFavorites返回结果:', result);
                     if (result.success) {
                         favoritesQuestions.value = result.data;
                         favoriteQuestionIds.value = result.data.map(q => q.id);
+                        console.log('成功加载收藏，共', favoritesQuestions.value.length, '条');
+                    } else {
+                        console.log('加载收藏失败:', result.message);
                     }
                     favoritesLoading.value = false;
                 };
