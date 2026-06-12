@@ -14,6 +14,10 @@ CREATE TABLE ai_trainer_3 (
     INDEX idx_bank_code (bank_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人工智能训练师三级题库';
 
+ALTER TABLE `exam-db`.ai_trainer_3 ADD tags varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '' NULL COMMENT '自定义标签，逗号分隔';
+
+
+
 INSERT INTO ai_trainer_3 (type, question, options, answer) VALUES ('judgment', '道德评价的关键是看其行为是否符合社会道德规范。', '{"对": "正确", "错": "错误"}', '["对"]');
 INSERT INTO ai_trainer_3 (type, question, options, answer) VALUES ('judgment', '人工智能训练师在处理敏感数据时，可以不经用户同意直接使用这些数据进行模型训练。', '{"对": "正确", "错": "错误"}', '["错"]');
 INSERT INTO ai_trainer_3 (type, question, options, answer) VALUES ('judgment', '随着全球化的发展，职业道德也呈现出单一化的趋势，不同国家和地区的职业道德规范不存在差异。', '{"对": "正确", "错": "错误"}', '["错"]');

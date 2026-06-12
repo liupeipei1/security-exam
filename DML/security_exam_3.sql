@@ -9,3 +9,6 @@ CREATE TABLE IF NOT EXISTS security_exam_3 (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_type (type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表';
+
+
+ALTER TABLE `exam-db`.security_exam_3 ADD tags varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '' NULL COMMENT '自定义标签，逗号分隔';

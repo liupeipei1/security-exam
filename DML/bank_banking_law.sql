@@ -15,6 +15,8 @@ CREATE TABLE bank_banking_law (
     INDEX idx_bank_code (bank_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='banking_law';
 
+ALTER TABLE `exam-db`.bank_banking_law ADD tags varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '' NULL COMMENT '自定义标签，逗号分隔';
+
 INSERT INTO bank_banking_law (type, question, options, answer, analysis, source_set) VALUES ('single', '下列选项中，应至少归为次级类的贷款有（）。', '{"A": "本金、利息或收益逾期超过60天", "B": "金融资产已发生信用减值", "C": "债务人逃废银行债务", "D": "项中30%错误。C项应至少归为可疑类，不是次级类，错误。故本题选B。"}', '["B"]', '当出现下列情况的贷款应至少归为次级类：①本金、利息或收益逾期超过90天，A项中60天错误：②金融资产已发生信用减值，B正确；④债务人或 金融资产的外部评级大幅下调，导致债务人的履约能力显著下降：③同一非零售债务人在所有银行的债务中，逾期超过90天的债务已经超过20%，', 1);
 INSERT INTO bank_banking_law (type, question, options, answer, analysis, source_set) VALUES ('single', '（）是指单位类客户在存入款项时不约定存期，支取时需提前通知商业银行，并约定支取存款日期和金额方能支取的存款类型。', '{"A": "单位活期存款", "B": "单位通知存款", "C": "单位协定存款", "D": "单位定期存款"}', '["B"]', '单位通知存款是指单位类客户在存入款项时不约定存期，支取时需提前通知商业银行，并约定支取存款日期和金额方能支取的存款类型。', 1);
 INSERT INTO bank_banking_law (type, question, options, answer, analysis, source_set) VALUES ('single', '在风险监管的各个环节中，最基础的是（）。', '{"A": "监测风险", "B": "处置风险", "C": "预警风险", "D": "识别风险"}', '["D"]', '风险监管方式的核心是监管当局能够识别、监测、预警和处置风险，识别风险是各个环节的基础。故本题选D。', 1);
