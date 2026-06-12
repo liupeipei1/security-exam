@@ -277,6 +277,7 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px solid #eee;
+            gap: 20px;
         }
 
         .quiz-title {

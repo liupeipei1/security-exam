@@ -87,6 +87,9 @@ function createInstance() {
                 const questions = ref([]);
                 const loading = ref(true);
                 
+                // 搜索关键词
+                const searchKeyword = ref('');
+                
                 // 题型列表
                 const questionTypes = ref([]);
                 
@@ -1132,24 +1135,48 @@ function createInstance() {
                 // 每页显示的题目数量
                 const pageSize = 10;
 
-                // 计算属性 - 根据当前选中的题型过滤题目
+                // 计算属性 - 根据当前选中的题型和搜索关键词过滤题目
                 const filteredQuestions = computed(() => {
                     // 确保 questions.value 是数组
                     if (!questions.value || !Array.isArray(questions.value)) {
                         return [];
                     }
+                    
+                    // 先按题型过滤
+                    let result = questions.value;
                     if (currentSection.value === 'single') {
-                        return questions.value.filter(q => q.type === 'single');
+                        result = result.filter(q => q.type === 'single');
                     } else if (currentSection.value === 'multiple') {
-                        return questions.value.filter(q => q.type === 'multiple');
+                        result = result.filter(q => q.type === 'multiple');
                     } else if (currentSection.value === 'judgment') {
-                        return questions.value.filter(q => q.type === 'judgment');
+                        result = result.filter(q => q.type === 'judgment');
                     } else if (currentSection.value === 'essay') {
-                        return questions.value.filter(q => q.type === 'essay');
+                        result = result.filter(q => q.type === 'essay');
                     } else if (currentSection.value === 'programming') {
-                        return questions.value.filter(q => q.type === 'programming');
+                        result = result.filter(q => q.type === 'programming');
                     }
-                    return questions.value;
+                    
+                    // 再按搜索关键词过滤
+                    if (searchKeyword.value.trim()) {
+                        const keyword = searchKeyword.value.toLowerCase().trim();
+                        result = result.filter(q => {
+                            // 在题目内容、选项、答案中搜索
+                            const questionMatch = q.question && q.question.toLowerCase().includes(keyword);
+                            const optionsMatch = q.options && q.options.some(opt => opt && opt.toLowerCase().includes(keyword));
+                            // 处理答案可能是数组或字符串的情况
+                            let answerMatch = false;
+                            if (q.answer) {
+                                if (Array.isArray(q.answer)) {
+                                    answerMatch = q.answer.some(ans => ans && ans.toLowerCase().includes(keyword));
+                                } else if (typeof q.answer === 'string') {
+                                    answerMatch = q.answer.toLowerCase().includes(keyword);
+                                }
+                            }
+                            return questionMatch || optionsMatch || answerMatch;
+                        });
+                    }
+                    
+                    return result;
                 });
 
                 const totalQuestions = computed(() => filteredQuestions.value.length);
@@ -2501,7 +2528,9 @@ function createInstance() {
                     deleteQuestion,
                     deleteExam,
                     // 刷新题库相关
-                    loadQuestions
+                    loadQuestions,
+                    // 搜索相关
+                    searchKeyword
                 };
 }
 

@@ -188,6 +188,23 @@
                             <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
                             <span>共 {{ totalQuestions }} 题</span>
                         </div>
+                        <!-- 搜索框 -->
+                        <div class="quiz-search">
+                            <input 
+                                type="text" 
+                                v-model="searchKeyword" 
+                                placeholder="🔍 搜索题目内容、选项或答案..."
+                                class="search-input"
+                                @keyup.enter="handleSearch"
+                            />
+                            <button 
+                                v-if="searchKeyword" 
+                                class="clear-search-btn" 
+                                @click="searchKeyword = ''"
+                            >
+                                ✕
+                            </button>
+                        </div>
                     </div>
 
                     <div 
@@ -1197,7 +1214,9 @@ const {
   deleteQuestion,
   deleteExam,
   // 刷新题库相关
-  loadQuestions
+  loadQuestions,
+  // 搜索相关
+  searchKeyword
 } = useExamApp()
 
 // 侧边栏收缩状态
@@ -1206,6 +1225,12 @@ const sidebarCollapsed = ref(false)
 // 切换侧边栏收缩状态
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+// 处理搜索（回车触发）
+const handleSearch = () => {
+  // 搜索已通过v-model实时实现，此方法用于支持回车键触发
+  // 如果需要额外的搜索逻辑，可以在这里添加
 }
 
 
