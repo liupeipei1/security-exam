@@ -695,6 +695,41 @@ app.get('/api/questions/types', async (req, res) => {
   }
 });
 
+// 获取所有已存在的标签列表（免费）
+app.get('/api/questions/tags', async (req, res) => {
+  const { exam_code } = req.query;
+  
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 获取考试配置
+    const exam = exam_code ? await getExamByCode(connection, exam_code) : await getDefaultExam(connection);
+    const tableName = exam ? exam.table_name : 'security_exam_3';
+    
+    // 获取所有tags字段不为空的记录
+    const [rows] = await connection.execute(
+      `SELECT tags FROM ${tableName} WHERE tags IS NOT NULL AND tags != ''`
+    );
+    await connection.end();
+    
+    // 解析所有标签，去重
+    const tagSet = new Set();
+    rows.forEach(row => {
+      if (row.tags) {
+        const tags = row.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        tags.forEach(tag => tagSet.add(tag));
+      }
+    });
+    
+    const tags = Array.from(tagSet).sort();
+    
+    res.json({ success: true, data: tags });
+  } catch (error) {
+    console.error('数据库查询失败:', error);
+    res.status(500).json({ success: false, message: '服务器内部错误' });
+  }
+});
+
 // 获取题目数量统计（免费）
 app.get('/api/questions/count', async (req, res) => {
   const { exam_code } = req.query;
@@ -2304,9 +2339,19 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
     }
     console.log(`处理了 ${savedImages.length} 张图片（直接嵌入到内容中）`);
     
-    // 解析题目内容
-    const questions = parseQuestionContent(finalContent);
-    console.log(`解析出 ${questions.length} 道题目`);
+    // 解析题目内容：支持JSON格式和文本格式
+    let questions = [];
+    try {
+      // 尝试解析为JSON格式
+      const jsonContent = JSON.parse(finalContent);
+      // 如果是数组，直接使用；如果是单个对象，包装成数组
+      questions = Array.isArray(jsonContent) ? jsonContent : [jsonContent];
+      console.log(`JSON格式解析出 ${questions.length} 道题目`);
+    } catch (e) {
+      // JSON解析失败，使用文本解析
+      questions = parseQuestionContent(finalContent);
+      console.log(`文本格式解析出 ${questions.length} 道题目`);
+    }
     console.log('解析的题目详情:', JSON.stringify(questions, null, 2));
     
     if (questions.length === 0) {
@@ -2349,24 +2394,40 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
         }
         
         // 将答案转换为JSON数组格式
-        const answerArray = Array.isArray(q.answer) ? q.answer : [q.answer];
+        // 如果答案是字符串（如"AD"），需要拆分成单个字符的数组
+        let answerArray;
+        if (Array.isArray(q.answer)) {
+          answerArray = q.answer;
+        } else if (typeof q.answer === 'string' && q.answer.length > 0) {
+          // 将字符串拆分成单个字符的数组，如 "AD" -> ["A", "D"]
+          answerArray = q.answer.split('');
+        } else {
+          answerArray = [];
+        }
+        
+        // 支持两种格式的字段名：JSON格式(question)和文本解析格式(question_text)
+        const questionText = q.question || q.question_text || '';
+        const analysisText = q.explanation || q.analysis || '';
         
         await connection.execute(
-          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code, source_set) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO ${targetTable} (question, options, answer, analysis, type, exam_code, source_set, tags) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            q.question_text,
+            questionText,
             JSON.stringify(q.options),
             JSON.stringify(answerArray),
-            q.analysis || '',
+            analysisText,
             type,
             exam_code || 'default',
-            source_set || 0
+            source_set || 0,
+            q.tags || ''
           ]
         );
         successCount++;
       } catch (err) {
-        errors.push({ index: i + 1, question: q.question_text, error: err.message });
+        // 支持两种格式的字段名用于错误信息
+        const questionText = q.question || q.question_text || '未知题目';
+        errors.push({ index: i + 1, question: questionText, error: err.message });
         console.error(`第 ${i + 1} 题导入失败:`, err.message);
       }
     }
@@ -2617,7 +2678,7 @@ app.delete('/api/questions/:exam_code/:id', async (req, res) => {
 // 更新题目接口
 app.put('/api/questions/:exam_code/:id', async (req, res) => {
   const { exam_code, id } = req.params;
-  const { question, options, answer, explanation, analysis, type, knowledgePoint } = req.body;
+  const { question, options, answer, explanation, analysis, type, knowledgePoint, tags } = req.body;
 
   // 支持 analysis 和 explanation 两个字段名
   const finalAnalysis = explanation || analysis || '';
@@ -2676,6 +2737,12 @@ app.put('/api/questions/:exam_code/:id', async (req, res) => {
     if (knowledgePoint && columnNames.includes('knowledge_point')) {
       updateFields.push('knowledge_point = ?');
       updateValues.push(knowledgePoint);
+    }
+    
+    // 如果有标签字段，添加更新（始终更新，即使是空字符串）
+    if (columnNames.includes('tags')) {
+      updateFields.push('tags = ?');
+      updateValues.push(tags !== undefined ? tags : '');
     }
     
     // 更新题目

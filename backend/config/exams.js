@@ -102,6 +102,7 @@ async function createQuestionTable(connection, tableName) {
       analysis LONGTEXT COMMENT '题目分析（支持HTML格式，可包含图片标签）',
       exam_code VARCHAR(50) COMMENT '考试代码',
       source_set TINYINT DEFAULT 0 COMMENT '来源套卷编号',
+      tags VARCHAR(500) DEFAULT '' COMMENT '自定义标签，逗号分隔',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_type (type),

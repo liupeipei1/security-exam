@@ -188,22 +188,54 @@
                             <span>第 {{ currentPage }} / {{ totalPages }} 页</span>
                             <span>共 {{ totalQuestions }} 题</span>
                         </div>
-                        <!-- 搜索框 -->
-                        <div class="quiz-search">
-                            <input 
-                                type="text" 
-                                v-model="searchKeyword" 
-                                placeholder="🔍 搜索题目内容、选项或答案..."
-                                class="search-input"
-                                @keyup.enter="handleSearch"
-                            />
+                        
+                        <!-- 顶部分页控制 -->
+                        <div class="top-pagination">
                             <button 
-                                v-if="searchKeyword" 
-                                class="clear-search-btn" 
-                                @click="searchKeyword = ''"
+                                class="top-page-btn"
+                                :disabled="currentPage === 1"
+                                @click="currentPage = currentPage - 1"
                             >
-                                ✕
+                                ⬅️
                             </button>
+                            <span class="top-page-info">{{ currentPage }}/{{ totalPages }}</span>
+                            <button 
+                                class="top-page-btn"
+                                :disabled="currentPage === totalPages"
+                                @click="currentPage = currentPage + 1"
+                            >
+                                ➡️
+                            </button>
+                        </div>
+                        <!-- 搜索和筛选区域 -->
+                        <div class="search-filter-area">
+                            <!-- 搜索框 -->
+                            <div class="quiz-search">
+                                <input 
+                                    type="text" 
+                                    v-model="searchKeyword" 
+                                    placeholder="🔍 搜索题目内容、选项或答案..."
+                                    class="search-input"
+                                    @keyup.enter="handleSearch"
+                                />
+                                <button 
+                                    v-if="searchKeyword" 
+                                    class="clear-search-btn" 
+                                    @click="searchKeyword = ''"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            <!-- 标签筛选 -->
+                            <div class="tag-filter">
+                                <select v-model="selectedTag" class="tag-filter-select">
+                                    <option value="">📌 全部标签</option>
+                                    <option v-for="tag in tagsList" :key="tag" :value="tag">
+                                        📌 {{ tag }}
+                                    </option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -246,6 +278,18 @@
                             </div>
                         </div>
                         <div class="question-text" v-html="question.question"></div>
+                        
+                        <!-- 题目标签 -->
+                        <div v-if="question.tags && question.tags.length > 0" class="question-tags">
+                            <span class="tags-label">🏷️ 标签:</span>
+                            <span 
+                                v-for="(tag, index) in question.tags.split(',')" 
+                                :key="index" 
+                                class="tag-item"
+                            >
+                                {{ tag.trim() }}
+                            </span>
+                        </div>
                         
                         <!-- 解答文字题显示输入框 -->
                         <div v-if="question.type === 'essay'" class="essay-answer-area">
@@ -955,6 +999,69 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>自定义标签</label>
+                        <!-- 可编辑的标签下拉框 -->
+                        <div class="editable-tag-dropdown">
+                            <div class="editable-tag-input-wrapper">
+                                <input 
+                                    v-model="newTagInput" 
+                                    class="form-input editable-tag-input"
+                                    placeholder="选择或输入标签"
+                                    @focus="showTagDropdown = true"
+                                    @blur="handleTagInputBlur"
+                                    @keydown.enter.prevent="addNewTag"
+                                    @keydown.esc="showTagDropdown = false"
+                                />
+                                <button 
+                                    class="tag-dropdown-toggle" 
+                                    @click="showTagDropdown = !showTagDropdown"
+                                >
+                                    ▼
+                                </button>
+                            </div>
+                            <!-- 下拉选项列表 -->
+                            <div class="editable-tag-options" v-if="showTagDropdown">
+                                <!-- 搜索过滤 -->
+                                <input 
+                                    v-model="tagSearchKeyword" 
+                                    class="tag-search-input"
+                                    placeholder="搜索标签..."
+                                />
+                                <!-- 可选择的已有标签 -->
+                                <div 
+                                    v-for="tag in filteredTags" 
+                                    :key="tag"
+                                    class="editable-tag-option"
+                                    @click="selectTag(tag)"
+                                >
+                                    {{ tag }}
+                                </div>
+                                <!-- 添加新标签选项 -->
+                                <div 
+                                    v-if="newTagInput.trim() && !editForm.tags.split(',').includes(newTagInput.trim())" 
+                                    class="editable-tag-option add-new-tag"
+                                    @click="addNewTag"
+                                >
+                                    + 添加新标签: {{ newTagInput }}
+                                </div>
+                                <div v-if="filteredTags.length === 0 && !newTagInput.trim()" class="tag-options-empty">
+                                    暂无已存在的标签
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 已选择的标签芯片 -->
+                        <div class="tag-chips" v-if="editForm.tags">
+                            <span 
+                                v-for="(tag, index) in editForm.tags.split(',').filter(t => t.trim())" 
+                                :key="index" 
+                                class="tag-chip"
+                            >
+                                {{ tag.trim() }}
+                                <span class="tag-chip-remove" @click="removeTag(index)">×</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>题目内容</label>
                         <textarea 
                             v-model="editForm.question" 
@@ -1061,7 +1168,7 @@
 
 <script setup>
 import './config/wechat.js'
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useExamApp } from './composables/useExamApp.js'
 import GuideNotes from './components/GuideNotes.vue'
 import Calculator from './components/Calculator.vue'
@@ -1158,6 +1265,10 @@ const {
   currentExamConfig,
   knowledgePoints,
   knowledgeLoading,
+  // 标签相关
+  tagsList,
+  tagsLoading,
+  loadTags,
   guideData,
   guideLoading,
   guideEditing,
@@ -1216,11 +1327,86 @@ const {
   // 刷新题库相关
   loadQuestions,
   // 搜索相关
-  searchKeyword
+  searchKeyword,
+  selectedTag
 } = useExamApp()
 
 // 侧边栏收缩状态
 const sidebarCollapsed = ref(false)
+
+// 标签下拉框显示状态
+const showTagDropdown = ref(false)
+
+// 新标签输入框
+const newTagInput = ref('')
+
+// 标签搜索关键词
+const tagSearchKeyword = ref('')
+
+// 计算可用标签（排除已选择的标签）
+const availableTags = computed(() => {
+  const selectedTags = editForm.value.tags ? 
+    editForm.value.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+  return tagsList.value.filter(tag => !selectedTags.includes(tag));
+})
+
+// 过滤后的标签列表（支持搜索）
+const filteredTags = computed(() => {
+  if (!tagSearchKeyword.value.trim()) {
+    return availableTags.value;
+  }
+  const keyword = tagSearchKeyword.value.toLowerCase();
+  return availableTags.value.filter(tag => tag.toLowerCase().includes(keyword));
+})
+
+// 选择标签
+const selectTag = (tag) => {
+  if (editForm.value.tags) {
+    const existingTags = editForm.value.tags.split(',').map(t => t.trim()).filter(t => t);
+    if (!existingTags.includes(tag)) {
+      editForm.value.tags = [...existingTags, tag].join(',');
+    }
+  } else {
+    editForm.value.tags = tag;
+  }
+  // 清空输入框
+  newTagInput.value = '';
+  tagSearchKeyword.value = '';
+}
+
+// 添加新标签
+const addNewTag = () => {
+  const newTag = newTagInput.value.trim();
+  if (newTag) {
+    if (editForm.value.tags) {
+      const existingTags = editForm.value.tags.split(',').map(t => t.trim()).filter(t => t);
+      if (!existingTags.includes(newTag)) {
+        editForm.value.tags = [...existingTags, newTag].join(',');
+      }
+    } else {
+      editForm.value.tags = newTag;
+    }
+    // 清空输入框
+    newTagInput.value = '';
+    tagSearchKeyword.value = '';
+    showTagDropdown.value = false;
+  }
+}
+
+// 处理标签输入框失焦
+const handleTagInputBlur = () => {
+  // 延迟关闭，以便点击下拉选项
+  setTimeout(() => {
+    showTagDropdown.value = false;
+  }, 200);
+}
+
+// 移除标签
+const removeTag = (index) => {
+  const tags = editForm.value.tags.split(',').map(t => t.trim()).filter(t => t);
+  tags.splice(index, 1);
+  editForm.value.tags = tags.join(',');
+}
 
 // 切换侧边栏收缩状态
 const toggleSidebar = () => {

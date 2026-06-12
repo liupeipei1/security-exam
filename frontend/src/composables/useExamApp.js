@@ -90,6 +90,9 @@ function createInstance() {
                 // 搜索关键词
                 const searchKeyword = ref('');
                 
+                // 标签筛选
+                const selectedTag = ref('');
+                
                 // 题型列表
                 const questionTypes = ref([]);
                 
@@ -99,6 +102,10 @@ function createInstance() {
                 // 知识要点数据
                 const knowledgePoints = ref([]);
                 const knowledgeLoading = ref(false);
+                
+                // 标签列表数据
+                const tagsList = ref([]);
+                const tagsLoading = ref(false);
                 
                 // 考试指南数据
                 const guideData = ref({});
@@ -219,7 +226,8 @@ function createInstance() {
                     knowledgePoint: '',
                     imageSize: '100%', // 图片大小设置
                     singleAnswer: 0,
-                    multipleAnswers: []
+                    multipleAnswers: [],
+                    tags: '' // 自定义标签，逗号分隔
                 });
                 
                 // 打开编辑题目弹窗
@@ -234,7 +242,8 @@ function createInstance() {
                         knowledgePoint: question.knowledgePoint || question.knowledge_point || '',
                         imageSize: '100%', // 默认图片大小
                         singleAnswer: 0,
-                        multipleAnswers: []
+                        multipleAnswers: [],
+                        tags: question.tags || '' // 加载题目标签
                     };
                     
                     // 解析答案
@@ -281,7 +290,8 @@ function createInstance() {
                         knowledgePoint: '',
                         imageSize: '100%', // 默认图片大小
                         singleAnswer: 0,
-                        multipleAnswers: []
+                        multipleAnswers: [],
+                        tags: '' // 重置标签
                     };
                 };
                 
@@ -413,7 +423,8 @@ function createInstance() {
                             answer: finalAnswer,
                             explanation: editForm.value.explanation,
                             type: editForm.value.type,
-                            knowledgePoint: editForm.value.knowledgePoint
+                            knowledgePoint: editForm.value.knowledgePoint,
+                            tags: editForm.value.tags // 保存标签
                         });
                         
                         if (data && data.success === true) {
@@ -984,6 +995,29 @@ function createInstance() {
                     }
                 };
                 
+                // 加载标签列表
+                const loadTags = async (examCode = null) => {
+                    const targetExamCode = examCode || currentExam.value || undefined;
+                    console.log('loadTags called with examCode:', examCode, ', currentExam.value:', currentExam.value, ', targetExamCode:', targetExamCode);
+                    const params = { exam_code: targetExamCode };
+                    tagsLoading.value = true;
+                    try {
+                        const data = await apiGet('/api/questions/tags', params);
+                        console.log('标签API返回数据:', data);
+                        if (data && data.success === true && Array.isArray(data.data)) {
+                            tagsList.value = data.data;
+                            console.log('成功加载标签:', tagsList.value.length, '条');
+                        } else {
+                            tagsList.value = [];
+                        }
+                    } catch (error) {
+                        console.error('加载标签失败:', error);
+                        tagsList.value = [];
+                    } finally {
+                        tagsLoading.value = false;
+                    }
+                };
+                
                 // 加载考试指南
                 const loadGuide = async (examCode = null) => {
                     const targetExamCode = examCode || currentExam.value || undefined;
@@ -1022,9 +1056,10 @@ function createInstance() {
                     console.log('switchExam called - param examCode:', examCode, ', targetExamCode:', targetExamCode);
                     currentExam.value = targetExamCode;
                     console.log('switchExam - currentExam.value set to:', currentExam.value);
-                    // 无论是否登录都加载题目、知识要点和考试指南
+                    // 无论是否登录都加载题目、知识要点、标签和考试指南
                     loadQuestions(targetExamCode);
                     loadKnowledgePoints(targetExamCode);
+                    loadTags(targetExamCode);
                     loadGuide(targetExamCode);
                     // 加载当前题库的题型统计（用于动态显示导航栏）
                     loadExamQuestionTypeStats(targetExamCode);
@@ -1160,7 +1195,7 @@ function createInstance() {
                     if (searchKeyword.value.trim()) {
                         const keyword = searchKeyword.value.toLowerCase().trim();
                         result = result.filter(q => {
-                            // 在题目内容、选项、答案中搜索
+                            // 在题目内容、选项、答案、标签中搜索
                             const questionMatch = q.question && q.question.toLowerCase().includes(keyword);
                             const optionsMatch = q.options && q.options.some(opt => opt && opt.toLowerCase().includes(keyword));
                             // 处理答案可能是数组或字符串的情况
@@ -1172,7 +1207,16 @@ function createInstance() {
                                     answerMatch = q.answer.toLowerCase().includes(keyword);
                                 }
                             }
-                            return questionMatch || optionsMatch || answerMatch;
+                            // 在标签中搜索
+                            const tagsMatch = q.tags && q.tags.toLowerCase().includes(keyword);
+                            return questionMatch || optionsMatch || answerMatch || tagsMatch;
+                        });
+                    }
+                    
+                    // 按选中的标签过滤
+                    if (selectedTag.value) {
+                        result = result.filter(q => {
+                            return q.tags && q.tags.includes(selectedTag.value);
                         });
                     }
                     
@@ -2457,6 +2501,10 @@ function createInstance() {
                     // 知识要点相关
                     knowledgePoints,
                     knowledgeLoading,
+                    // 标签相关
+                    tagsList,
+                    tagsLoading,
+                    loadTags,
                     // 考试指南相关
                     guideData,
                     guideLoading,
@@ -2530,7 +2578,8 @@ function createInstance() {
                     // 刷新题库相关
                     loadQuestions,
                     // 搜索相关
-                    searchKeyword
+                    searchKeyword,
+                    selectedTag
                 };
 }
 

@@ -281,14 +281,14 @@
         }
 
         .quiz-title {
-            font-size: 1.5rem;
+            font-size: 14px;
             color: #1a1a2e;
         }
 
         .quiz-info {
             display: flex;
             gap: 20px;
-            font-size: 0.95rem;
+            font-size: 14px;
             color: #666;
         }
 
