@@ -802,3 +802,114 @@ body {
 .tag-chip-remove:hover {
   color: #e53e3e;
 }
+
+/* 批量操作区域样式 */
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #5a6a8a;
+  cursor: pointer;
+  user-select: none;
+}
+
+.select-all-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.batch-tag-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #4a90d9;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4a90d9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-tag-btn:hover:not(:disabled) {
+  background: #e8f0fe;
+}
+
+.batch-tag-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 题目卡片选择样式 */
+.question-card {
+  position: relative;
+  padding-left: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.question-card.selected {
+  background-color: #f8fafc;
+  border-color: #4a90d9;
+}
+
+.question-checkbox {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+}
+
+.question-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* 批量设置标签弹窗样式 */
+.batch-tag-modal {
+  max-width: 480px;
+}
+
+.selected-count {
+  padding: 10px 12px;
+  background: #f0f5ff;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #357abd;
+  font-weight: 500;
+}
+
+.existing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #e0e6ed;
+  border-radius: 6px;
+}
+
+.tag-item {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #e8f0fe 0%, #d0e0ff 100%);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #357abd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-item:hover {
+  background: linear-gradient(135deg, #d0e0ff 0%, #b8cfff 100%);
+  transform: scale(1.05);
+}

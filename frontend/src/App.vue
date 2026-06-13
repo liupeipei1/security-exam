@@ -236,6 +236,25 @@
                                     </option>
                                 </select>
                             </div>
+                            
+                            <!-- 批量操作区域 -->
+                            <div class="batch-actions">
+                                <label class="select-all-label">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="selectedQuestionIds.length === currentPageQuestions.length && currentPageQuestions.length > 0"
+                                        @change="toggleSelectAll"
+                                    />
+                                    全选 ({{ selectedQuestionIds.length }})
+                                </label>
+                                <button 
+                                    class="batch-tag-btn"
+                                    :disabled="selectedQuestionIds.length === 0"
+                                    @click="openBatchTagModal"
+                                >
+                                    📌 批量设置标签
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -243,7 +262,15 @@
                         v-for="question in currentPageQuestions" 
                         :key="question.id" 
                         class="question-card"
+                        :class="{ 'selected': selectedQuestionIds.includes(question.id) }"
                     >
+                        <div class="question-checkbox">
+                            <input 
+                                type="checkbox" 
+                                :checked="selectedQuestionIds.includes(question.id)"
+                                @change="toggleSelectQuestion(question.id)"
+                            />
+                        </div>
                         <div class="question-header">
                             <span 
                                 class="question-type" 
@@ -1156,8 +1183,52 @@
                 </div>
                 <div class="modal-footer">
                     <button class="cancel-btn" @click="closeEditQuestion">取消</button>
-                    <button class="save-btn" @click="saveEditQuestion" :disabled="editLoading">
+                    <button class="save-btn" @click="handleSaveQuestion" :disabled="editLoading">
                         {{ editLoading ? '保存中...' : '保存' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量设置标签弹窗 -->
+        <div v-if="showBatchTagModal" class="modal-overlay" @click.self="showBatchTagModal = false">
+            <div class="modal-content batch-tag-modal">
+                <div class="modal-header">
+                    <h3>📌 批量设置标签</h3>
+                    <button class="close-btn" @click="showBatchTagModal = false">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>已选择题目数量</label>
+                        <div class="selected-count">{{ selectedQuestionIds.length }} 道题目</div>
+                    </div>
+                    <div class="form-group">
+                        <label>标签（多个标签用逗号分隔）</label>
+                        <input 
+                            v-model="batchTagInput" 
+                            type="text" 
+                            class="form-input"
+                            placeholder="例如：重要, 易错, 重点"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label>现有标签</label>
+                        <div class="existing-tags">
+                            <span 
+                                v-for="tag in tagsList" 
+                                :key="tag" 
+                                class="tag-item"
+                                @click="batchTagInput = batchTagInput ? batchTagInput + ',' + tag : tag"
+                            >
+                                {{ tag }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="cancel-btn" @click="showBatchTagModal = false">取消</button>
+                    <button class="save-btn" @click="handleBatchUpdateTags">
+                        确定设置
                     </button>
                 </div>
             </div>
@@ -1328,11 +1399,59 @@ const {
   loadQuestions,
   // 搜索相关
   searchKeyword,
-  selectedTag
+  selectedTag,
+  // 批量更新标签
+  batchUpdateTags
 } = useExamApp()
 
 // 侧边栏收缩状态
 const sidebarCollapsed = ref(false)
+
+// 批量选择相关
+const selectedQuestionIds = ref([])
+const batchTagInput = ref('')
+const showBatchTagModal = ref(false)
+
+// 切换全选
+const toggleSelectAll = () => {
+  if (selectedQuestionIds.value.length === currentPageQuestions.length) {
+    selectedQuestionIds.value = []
+  } else {
+    selectedQuestionIds.value = currentPageQuestions.map(q => q.id)
+  }
+}
+
+// 切换单个题目选择
+const toggleSelectQuestion = (questionId) => {
+  const index = selectedQuestionIds.value.indexOf(questionId)
+  if (index > -1) {
+    selectedQuestionIds.value.splice(index, 1)
+  } else {
+    selectedQuestionIds.value.push(questionId)
+  }
+}
+
+// 打开批量设置标签弹窗
+const openBatchTagModal = () => {
+  if (selectedQuestionIds.value.length === 0) {
+    alert('请先选择要设置标签的题目')
+    return
+  }
+  showBatchTagModal.value = true
+}
+
+// 执行批量设置标签
+const handleBatchUpdateTags = async () => {
+  const tags = batchTagInput.value.trim()
+  if (!tags) {
+    alert('请输入标签')
+    return
+  }
+  await batchUpdateTags(selectedQuestionIds.value, tags)
+  showBatchTagModal.value = false
+  batchTagInput.value = ''
+  selectedQuestionIds.value = []
+}
 
 // 标签下拉框显示状态
 const showTagDropdown = ref(false)
@@ -1406,6 +1525,17 @@ const removeTag = (index) => {
   const tags = editForm.value.tags.split(',').map(t => t.trim()).filter(t => t);
   tags.splice(index, 1);
   editForm.value.tags = tags.join(',');
+}
+
+// 处理保存题目（在保存前自动将输入框中的标签添加到editForm.tags）
+const handleSaveQuestion = () => {
+  // 如果输入框中有未添加的标签，先添加到editForm.tags
+  const pendingTag = newTagInput.value.trim();
+  if (pendingTag) {
+    addNewTag();
+  }
+  // 调用实际的保存函数
+  saveEditQuestion();
 }
 
 // 切换侧边栏收缩状态

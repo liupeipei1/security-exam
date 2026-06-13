@@ -417,7 +417,10 @@ function createInstance() {
                             }
                         );
                         
-                        const data = await apiPut(`/api/questions/${currentExam.value}/${editForm.value.id}`, {
+                        // 清理 currentExam.value，确保只包含纯 exam_code（移除可能的路径前缀）
+                        const cleanExamCode = currentExam.value.replace(/^.*\//, '');
+                        
+                        const data = await apiPut(`/api/questions/${cleanExamCode}/${editForm.value.id}`, {
                             question: questionContent,
                             options: editForm.value.options,
                             answer: finalAnswer,
@@ -443,6 +446,34 @@ function createInstance() {
                     }
                 };
                 
+                // 批量更新题目标签
+                const batchUpdateTags = async (questionIds, tags) => {
+                    try {
+                        // 清理 currentExam.value，确保只包含纯 exam_code（移除可能的路径前缀）
+                        const cleanExamCode = currentExam.value.replace(/^.*\//, '');
+                        const data = await apiPut(`/api/questions/${cleanExamCode}/tags/batch`, {
+                            questionIds,
+                            tags
+                        });
+                        
+                        if (data && data.success === true) {
+                            alert('批量更新标签成功');
+                            // 重新加载题库
+                            await loadQuestions(currentExam.value);
+                            // 重新加载标签列表，确保新标签能显示在批量标签弹窗中
+                            await loadTags(currentExam.value);
+                            return true;
+                        } else {
+                            alert(data.message || '批量更新失败');
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error('批量更新标签失败:', error);
+                        alert('批量更新失败：' + (error.message || '未知错误'));
+                        return false;
+                    }
+                };
+
                 // 删除题目
                 const deleteQuestion = async (question) => {
                     if (!confirm(`确定要删除题目【${question.question.substring(0, 30)}...】吗？`)) {
@@ -450,7 +481,9 @@ function createInstance() {
                     }
                     
                     try {
-                        const data = await apiDelete(`/api/questions/${currentExam.value}/${question.id}`);
+                        // 清理 currentExam.value，确保只包含纯 exam_code（移除可能的路径前缀）
+                        const cleanExamCode = currentExam.value.replace(/^.*\//, '');
+                        const data = await apiDelete(`/api/questions/${cleanExamCode}/${question.id}`);
                         
                         if (data && data.success === true) {
                             alert('删除成功');
@@ -2575,6 +2608,7 @@ function createInstance() {
                     saveEditQuestion,
                     deleteQuestion,
                     deleteExam,
+                    batchUpdateTags,
                     // 刷新题库相关
                     loadQuestions,
                     // 搜索相关
