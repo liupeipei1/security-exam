@@ -850,6 +850,24 @@ body {
   cursor: not-allowed;
 }
 
+.batch-clear-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #e74c3c;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #e74c3c;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-clear-btn:hover {
+  background: #fdecea;
+}
+
 /* 题目卡片选择样式 */
 .question-card {
   position: relative;

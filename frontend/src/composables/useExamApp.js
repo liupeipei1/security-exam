@@ -469,6 +469,34 @@ function createInstance() {
                         }
                     } catch (error) {
                         console.error('批量更新标签失败:', error);
+                        alert('批量更新标签失败');
+                        return false;
+                    }
+                };
+                
+                // 批量更新题目类型
+                const batchUpdateQuestionTypes = async (questionIds, questionType) => {
+                    try {
+                        // 清理 currentExam.value，确保只包含纯 exam_code（移除可能的路径前缀）
+                        const cleanExamCode = currentExam.value.replace(/^.*\//, '');
+                        const data = await apiPut(`/api/questions/${cleanExamCode}/type/batch`, {
+                            questionIds,
+                            questionType
+                        });
+                        
+                        if (data && data.success === true) {
+                            alert('批量更新题目类型成功');
+                            // 重新加载题库
+                            await loadQuestions(currentExam.value);
+                            // 重新加载题型统计，刷新侧边栏显示
+                            await loadExamQuestionTypeStats(currentExam.value);
+                            return true;
+                        } else {
+                            alert(data.message || '批量更新失败');
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error('批量更新标签失败:', error);
                         alert('批量更新失败：' + (error.message || '未知错误'));
                         return false;
                     }
@@ -2609,6 +2637,7 @@ function createInstance() {
                     deleteQuestion,
                     deleteExam,
                     batchUpdateTags,
+                    batchUpdateQuestionTypes,
                     // 刷新题库相关
                     loadQuestions,
                     // 搜索相关

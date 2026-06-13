@@ -2722,6 +2722,53 @@ app.put('/api/questions/:exam_code/tags/batch', async (req, res) => {
   }
 });
 
+// 批量更新题目类型接口
+app.put('/api/questions/:exam_code/type/batch', async (req, res) => {
+  const { exam_code } = req.params;
+  const { questionIds, questionType } = req.body;
+
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    
+    // 获取考试配置
+    const exam = await getExamByCode(connection, exam_code);
+    if (!exam) {
+      await connection.end();
+      return res.status(404).json({ success: false, message: '题库不存在' });
+    }
+    
+    const tableName = exam.table_name;
+    
+    // 查询表结构，检查是否有type字段（题目类型字段）
+    const [columns] = await connection.execute(`DESCRIBE ${tableName}`);
+    const columnNames = columns.map(col => col.Field);
+    
+    if (!columnNames.includes('type')) {
+      await connection.end();
+      return res.status(400).json({ success: false, message: '该题库不支持题目类型功能' });
+    }
+    
+    // 批量更新题目
+    if (questionIds && questionIds.length > 0) {
+      const placeholders = questionIds.map(() => '?').join(',');
+      await connection.execute(
+        `UPDATE ${tableName} SET type = ? WHERE id IN (${placeholders})`,
+        [questionType || '', ...questionIds]
+      );
+    }
+    
+    await connection.end();
+    
+    // 清除缓存
+    await cacheQuestions(exam_code, null);
+    
+    res.json({ success: true, message: '批量更新题目类型成功' });
+  } catch (error) {
+    console.error('批量更新题目类型失败:', error);
+    res.status(500).json({ success: false, message: '批量更新题目类型失败' });
+  }
+});
+
 // 更新题目接口
 app.put('/api/questions/:exam_code/:id', async (req, res) => {
   const { exam_code, id } = req.params;

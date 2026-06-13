@@ -245,14 +245,21 @@
                                         :checked="selectedQuestionIds.length === currentPageQuestions.length && currentPageQuestions.length > 0"
                                         @change="toggleSelectAll"
                                     />
-                                    全选 ({{ selectedQuestionIds.length }})
+                                    当页全选 ({{ selectedQuestionIds.length }}/{{ currentPageQuestions.length }})
                                 </label>
+                                <button 
+                                    v-if="selectedQuestionIds.length > 0"
+                                    class="batch-clear-btn"
+                                    @click="selectedQuestionIds = []"
+                                >
+                                    ✖️ 取消全选
+                                </button>
                                 <button 
                                     class="batch-tag-btn"
                                     :disabled="selectedQuestionIds.length === 0"
                                     @click="openBatchTagModal"
                                 >
-                                    📌 批量设置标签
+                                    📌 批量设置
                                 </button>
                             </div>
                         </div>
@@ -1190,11 +1197,11 @@
             </div>
         </div>
 
-        <!-- 批量设置标签弹窗 -->
+        <!-- 批量设置弹窗 -->
         <div v-if="showBatchTagModal" class="modal-overlay" @click.self="showBatchTagModal = false">
             <div class="modal-content batch-tag-modal">
                 <div class="modal-header">
-                    <h3>📌 批量设置标签</h3>
+                    <h3>📌 批量设置</h3>
                     <button class="close-btn" @click="showBatchTagModal = false">✕</button>
                 </div>
                 <div class="modal-body">
@@ -1203,7 +1210,16 @@
                         <div class="selected-count">{{ selectedQuestionIds.length }} 道题目</div>
                     </div>
                     <div class="form-group">
-                        <label>标签（多个标签用逗号分隔）</label>
+                        <label>题目类型（可选）</label>
+                        <select v-model="batchQuestionType" class="form-select">
+                            <option value="">不修改题型</option>
+                            <option v-for="qType in questionTypes" :key="qType.type_code" :value="qType.type_code">
+                                {{ qType.type_name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>标签（多个标签用逗号分隔，可选）</label>
                         <input 
                             v-model="batchTagInput" 
                             type="text" 
@@ -1227,7 +1243,7 @@
                 </div>
                 <div class="modal-footer">
                     <button class="cancel-btn" @click="showBatchTagModal = false">取消</button>
-                    <button class="save-btn" @click="handleBatchUpdateTags">
+                    <button class="save-btn" @click="handleBatchUpdate">
                         确定设置
                     </button>
                 </div>
@@ -1400,8 +1416,9 @@ const {
   // 搜索相关
   searchKeyword,
   selectedTag,
-  // 批量更新标签
-  batchUpdateTags
+  // 批量更新相关
+  batchUpdateTags,
+  batchUpdateQuestionTypes
 } = useExamApp()
 
 // 侧边栏收缩状态
@@ -1410,15 +1427,22 @@ const sidebarCollapsed = ref(false)
 // 批量选择相关
 const selectedQuestionIds = ref([])
 const batchTagInput = ref('')
+const batchQuestionType = ref('')
 const showBatchTagModal = ref(false)
 
 // 切换全选
 const toggleSelectAll = () => {
-  if (selectedQuestionIds.value.length === currentPageQuestions.length) {
+  console.log('全选触发 - 当前页题目数:', currentPageQuestions.value.length)
+  console.log('全选触发 - 当前已选数量:', selectedQuestionIds.value.length)
+  if (selectedQuestionIds.value.length === currentPageQuestions.value.length) {
     selectedQuestionIds.value = []
+    console.log('取消全选')
   } else {
-    selectedQuestionIds.value = currentPageQuestions.map(q => q.id)
+    const questionIds = currentPageQuestions.value.map(q => q.id)
+    console.log('全选题目ID:', questionIds)
+    selectedQuestionIds.value = questionIds
   }
+  console.log('全选后已选数量:', selectedQuestionIds.value.length)
 }
 
 // 切换单个题目选择
@@ -1431,25 +1455,41 @@ const toggleSelectQuestion = (questionId) => {
   }
 }
 
-// 打开批量设置标签弹窗
+// 打开批量设置弹窗
 const openBatchTagModal = () => {
   if (selectedQuestionIds.value.length === 0) {
-    alert('请先选择要设置标签的题目')
+    alert('请先选择要批量设置的题目')
     return
   }
+  // 重置表单
+  batchTagInput.value = ''
+  batchQuestionType.value = ''
   showBatchTagModal.value = true
 }
 
-// 执行批量设置标签
-const handleBatchUpdateTags = async () => {
+// 执行批量设置
+const handleBatchUpdate = async () => {
   const tags = batchTagInput.value.trim()
-  if (!tags) {
-    alert('请输入标签')
+  const questionType = batchQuestionType.value
+  
+  if (!tags && !questionType) {
+    alert('请至少选择一项要修改的内容（标签或题目类型）')
     return
   }
-  await batchUpdateTags(selectedQuestionIds.value, tags)
+  
+  // 批量更新标签
+  if (tags) {
+    await batchUpdateTags(selectedQuestionIds.value, tags)
+  }
+  
+  // 批量更新题目类型
+  if (questionType) {
+    await batchUpdateQuestionTypes(selectedQuestionIds.value, questionType)
+  }
+  
   showBatchTagModal.value = false
   batchTagInput.value = ''
+  batchQuestionType.value = ''
   selectedQuestionIds.value = []
 }
 
