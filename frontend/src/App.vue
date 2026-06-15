@@ -758,6 +758,17 @@
                             </div>
                             
                             <div class="form-group">
+                                <label>🏷️ 标签（可选，多个标签用逗号分隔）</label>
+                                <input 
+                                    v-model="importTags" 
+                                    type="text" 
+                                    class="import-input"
+                                    placeholder="输入标签，多个标签用逗号分隔（如：2026年6月,第一套）"
+                                />
+                                <small style="color: #666; font-size: 0.8rem;">标签将应用于所有导入的题目</small>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label>📁 目标题库代码</label>
                                 <div class="select-input-container">
                                     <select 
@@ -1380,6 +1391,7 @@ const {
   importExamCode,
   importExamName,
   importQuestionType,
+  importTags,
   importLoading,
   importResult,
   importSuccess,

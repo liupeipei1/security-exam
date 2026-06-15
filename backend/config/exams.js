@@ -105,7 +105,7 @@ async function createQuestionTable(connection, tableName) {
       tags VARCHAR(500) DEFAULT '' COMMENT '自定义标签，逗号分隔',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_type (type),
+      INDEX idx_type (type)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表'
   `;
   

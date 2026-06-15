@@ -128,6 +128,7 @@ function createInstance() {
                 const importExamCode = ref('');
                 const importExamName = ref('');
                 const importQuestionType = ref('');
+                const importTags = ref(''); // 标签输入
                 const importLoading = ref(false);
                 const importResult = ref('');
                 const importSuccess = ref(false);
@@ -248,7 +249,18 @@ function createInstance() {
                     
                     // 解析答案
                     if (question.type === 'judgment') {
-                        editForm.value.answer = String(question.answer);
+                        // 判断题：将数据库中的答案格式转换为编辑页面需要的 "true"/"false" 格式
+                        let answer = question.answer;
+                        // 如果是数组，取第一个元素
+                        if (Array.isArray(answer)) {
+                            answer = answer[0];
+                        }
+                        // 兼容多种答案格式："对"/"错"、"正确"/"错误"、"A"/"B"、"true"/"false"
+                        if (answer === 'A' || answer === '对' || answer === '正确' || answer === 'true') {
+                            editForm.value.answer = 'true';
+                        } else {
+                            editForm.value.answer = 'false';
+                        }
                     } else if (question.type === 'single' && question.answer) {
                         // 单选题：解析正确答案索引
                         const answerIndex = (typeof question.answer === 'string') 
@@ -576,6 +588,9 @@ function createInstance() {
                         if (importQuestionType.value) {
                             formData.append('question_type', importQuestionType.value);
                         }
+                        if (importTags.value) {
+                            formData.append('tags', importTags.value);
+                        }
                         
                         // 使用原生fetch发送multipart/form-data请求
                         const API_BASE = import.meta.env.VITE_API_BASE || '';
@@ -610,6 +625,7 @@ function createInstance() {
                     importExamCode.value = '';
                     importExamName.value = '';
                     importQuestionType.value = '';
+                    importTags.value = '';
                     importResult.value = '';
                     importSuccess.value = false;
                     uploadedImages.value = [];
@@ -1408,14 +1424,23 @@ function createInstance() {
                 const formatAnswer = (question) => {
                     if (!question || !question.answer) return '暂无答案';
                     
-                    // 兼容字符串和数组类型的 answer
-                    const answer = Array.isArray(question.answer) ? question.answer : question.answer.split('');
-                    
                     if (question.type === 'judgment') {
-                        // 判断题：直接显示正确/错误
-                        return answer.join('、');
+                        // 判断题：处理多种答案格式
+                        let answer = question.answer;
+                        // 如果是数组，取第一个元素
+                        if (Array.isArray(answer)) {
+                            answer = answer[0];
+                        }
+                        // 兼容数据库中的多种答案格式："对"/"错" 或 "正确"/"错误" 或 "A"/"B" 或 "true"/"false"
+                        if (answer === '对' || answer === '正确' || answer === 'A' || answer === 'true') {
+                            return '正确';
+                        } else if (answer === '错' || answer === '错误' || answer === 'B' || answer === 'false') {
+                            return '错误';
+                        }
+                        return answer;
                     } else {
                         // 单选题和多选题：显示选项标签（A、B、C、D）
+                        const answer = Array.isArray(question.answer) ? question.answer : question.answer.split('');
                         return answer.join('、');
                     }
                 };
@@ -2592,6 +2617,7 @@ function createInstance() {
                     importExamCode,
                     importExamName,
                     importQuestionType,
+                    importTags,
                     importLoading,
                     importResult,
                     importSuccess,

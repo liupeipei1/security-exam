@@ -403,9 +403,11 @@ app.get('/api/questions/type/:type', async (req, res) => {
     );
     await connection.end();
     
-    // 处理数据，添加explanation字段映射
+    // 处理数据，添加explanation字段映射，并解析options和answer字段
     const processedData = rows.map(row => ({
       ...row,
+      options: parseArrayString(row.options),
+      answer: parseArrayString(row.answer),
       explanation: row.analysis || row.explanation || ''
     }));
     
@@ -2236,6 +2238,7 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
     const exam_name = req.body.exam_name;
     const question_type = req.body.question_type;
     const source_set = req.body.source_set;
+    const tags = req.body.tags; // 从前端传递的标签
     
     console.log('收到的content内容:', content);
     console.log('content长度:', content.length);
@@ -2420,7 +2423,7 @@ app.post('/api/questions/import', importUpload.array('images', 10), async (req, 
             type,
             exam_code || 'default',
             source_set || 0,
-            q.tags || ''
+            tags || q.tags || '' // 优先使用前端传递的标签，其次使用题目本身的标签
           ]
         );
         successCount++;
@@ -2504,14 +2507,15 @@ function parseQuestionContent(content) {
     // 4. 遇到答案行且已经有题目内容
     // 5. 遇到选项A且已经有题目内容且没有当前题目
     // 支持多种格式："第61题"、"61题"、"61 题"、"第 61 题"、"(1)"、"(123)"
-const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
+// 只有明确识别到题目开始标记时才创建新题目
+    const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
     const newFormatMatch = line.match(/^(单选|多选|判断|判断题|单选题|多选题)\s*\d+/);
     const bracketMatch = line.match(/^\((\d+)\)/);
+    const dotMatch = line.match(/^(\d+)[．.](\s*)/); // 支持"77."或"77．"格式，空格可选
     const isAnswerLine = line.match(/^(正确答案|答案)\s*[：:]/);
     const isOptionA = line.match(/^A[．.、]\s*/);
     
-    // 只有明确识别到题目开始标记时才创建新题目
-    if (questionMatch || newFormatMatch || bracketMatch) {
+    if (questionMatch || newFormatMatch || bracketMatch || dotMatch) {
       // 如果有当前题目，先保存
       if (currentQuestion && currentQuestion.question_text) {
         questions.push(currentQuestion);
@@ -2543,6 +2547,14 @@ const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
       // 如果是括号格式，提取括号后面的内容作为题目文本的开始
       if (bracketMatch) {
         const remainingText = line.replace(/^\(\d+\)\s*/, '');
+        if (remainingText && remainingText.length > 0) {
+          currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + remainingText;
+        }
+      }
+      
+      // 如果是"77."格式，提取点号后面的内容作为题目文本的开始
+      if (dotMatch) {
+        const remainingText = line.replace(/^\d+[．.]\s*/, ''); // 移除题号和可能的空格
         if (remainingText && remainingText.length > 0) {
           currentQuestion.question_text += (currentQuestion.question_text ? '\n' : '') + remainingText;
         }
@@ -2611,8 +2623,32 @@ const questionMatch = line.match(/^(第)?\s*(\d+)\s*题/);
       continue;
     }
     
-    // 如果有答案了，后面的内容可能是解析（即使没有"解析"开头）
+    // 如果有答案了，检查是否是新题目的开始
     if (currentQuestion.answer) {
+      // 检测是否是新题目的内容（不是选项、答案、解析相关）
+      const isNewQuestionStart = !optionMatch && !answerMatch && 
+                                 !line.startsWith('回答错误') && 
+                                 !line.startsWith('我的答案') && 
+                                 line !== '未作答' &&
+                                 !line.startsWith('名师解析') && 
+                                 !line.startsWith('解析');
+      
+      if (isNewQuestionStart) {
+        // 保存当前题目
+        questions.push(currentQuestion);
+        
+        // 创建新题目，将当前行作为新题目的内容
+        currentQuestion = {
+          question_text: line,
+          options: [],
+          answer: '',
+          analysis: ''
+        };
+        inAnalysis = false;
+        continue;
+      }
+      
+      // 否则是解析内容
       inAnalysis = true;
       currentQuestion.analysis += (currentQuestion.analysis ? '\n' : '') + line;
       continue;
