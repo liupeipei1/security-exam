@@ -1,7 +1,7 @@
-package com.example.exam.service;
+package com.exam.question.service;
 
-import com.example.exam.entity.ExamGuideEntity;
-import com.example.exam.repository.GuideRepository;
+import com.exam.question.entity.ExamGuideEntity;
+import com.exam.question.repository.GuideRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,12 +18,8 @@ import java.util.Optional;
 @Service
 public class GuideService {
 
-    private final GuideRepository guideRepository;
-
     @Autowired
-    public GuideService(GuideRepository guideRepository) {
-        this.guideRepository = guideRepository;
-    }
+    private GuideRepository guideRepository;
 
     /**
      * 根据考试代码获取指南详情

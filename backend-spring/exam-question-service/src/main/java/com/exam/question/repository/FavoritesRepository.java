@@ -1,6 +1,6 @@
 package com.exam.question.repository;
 
-import com.exam.question.entity.FavoritesEntity;
+import com.exam.common.entity.FavoritesEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 收藏夹Repository
+ * 收藏夹Repository接口
  */
 @Repository
 public interface FavoritesRepository extends JpaRepository<FavoritesEntity, Long> {

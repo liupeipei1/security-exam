@@ -6,8 +6,8 @@ spring:
     name: exam-exam-service
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:exam-db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:123456}
+    username: ${DB_USER:peipei}
+    password: ${DB_PASSWORD:298280}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

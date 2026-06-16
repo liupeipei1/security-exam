@@ -50,7 +50,7 @@ public class ExamConfigController {
         Map<String, Object> result = examConfigService.createExam(body);
         
         if ((Boolean) result.get("success")) {
-            return ResponseEntity.ok(ApiResult.ok(result.get("data"), (String) result.get("message")));
+            return ResponseEntity.ok(ApiResult.ok(result.get("data")));
         } else {
             return ResponseEntity.status(400).body(ApiResult.fail((String) result.get("message")));
         }
@@ -65,7 +65,7 @@ public class ExamConfigController {
         Map<String, Object> result = examConfigService.updateExam(examCode, body);
         
         if ((Boolean) result.get("success")) {
-            return ResponseEntity.ok(ApiResult.ok(result.get("data"), (String) result.get("message")));
+            return ResponseEntity.ok(ApiResult.ok(result.get("data")));
         } else {
             return ResponseEntity.status(404).body(ApiResult.fail((String) result.get("message")));
         }

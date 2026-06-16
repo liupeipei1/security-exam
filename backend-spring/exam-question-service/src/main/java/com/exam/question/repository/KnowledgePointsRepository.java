@@ -1,4 +1,4 @@
-package com.example.exam.repository;
+package com.exam.question.repository;
 
 import com.exam.question.entity.KnowledgePointsEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

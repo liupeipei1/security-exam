@@ -1,6 +1,6 @@
-package com.example.exam.repository;
+package com.exam.question.repository;
 
-import com.example.exam.entity.ExamGuideEntity;
+import com.exam.question.entity.ExamGuideEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

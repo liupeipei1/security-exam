@@ -16,5 +16,8 @@ Thumbs.db
 .idea/
 *.iml
 
-# 忽略答案文件夹
-答案/
+# 忽略 build 目录和 Gradle 缓存
+backend-spring/**/build/
+backend-spring/**/.gradle/
+backend-spring/build/
+backend-spring/.gradle/

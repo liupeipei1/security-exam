@@ -2,6 +2,7 @@ package com.exam.question.service;
 
 import com.exam.question.entity.BankConfigEntity;
 import com.exam.question.repository.BankConfigRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -13,7 +14,8 @@ import java.util.Optional;
 @Service
 public class BankService {
 
-    private final BankConfigRepository bankConfigRepository;
+    @Autowired
+    private  BankConfigRepository bankConfigRepository;
 
     public BankService(BankConfigRepository bankConfigRepository) {
         this.bankConfigRepository = bankConfigRepository;

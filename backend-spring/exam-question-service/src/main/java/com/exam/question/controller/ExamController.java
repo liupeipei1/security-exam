@@ -4,6 +4,7 @@ import com.exam.common.api.ApiResult;
 import com.exam.question.service.ExamCacheService;
 import com.exam.question.util.OpenidContext;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,11 +14,9 @@ import java.util.Map;
 @RequestMapping("/api/exam")
 public class ExamController {
 
-    private final ExamCacheService examCacheService;
+    @Autowired
+    private  ExamCacheService examCacheService;
 
-    public ExamController(ExamCacheService examCacheService) {
-        this.examCacheService = examCacheService;
-    }
 
     @GetMapping("/records")
     public ApiResult<List<Map<String, Object>>> records(HttpServletRequest request,

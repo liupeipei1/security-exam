@@ -280,6 +280,125 @@ public class QuestionService {
     }
 
     /**
+     * 获取所有标签列表
+     * @param bankCode 题库代码
+     * @return 标签列表
+     */
+    public List<String> getTags(String bankCode) {
+        String table = validateTable(bankService.resolveTableName(bankCode));
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT tags FROM " + table + " WHERE tags IS NOT NULL AND tags != ''"
+        );
+        
+        Set<String> tagSet = new java.util.HashSet<>();
+        for (Map<String, Object> row : rows) {
+            Object tagsObj = row.get("tags");
+            if (tagsObj != null) {
+                String tags = tagsObj.toString();
+                String[] tagArray = tags.split(",");
+                for (String tag : tagArray) {
+                    String trimmedTag = tag.trim();
+                    if (!trimmedTag.isEmpty()) {
+                        tagSet.add(trimmedTag);
+                    }
+                }
+            }
+        }
+        
+        List<String> result = new java.util.ArrayList<>(tagSet);
+        java.util.Collections.sort(result);
+        return result;
+    }
+
+    /**
+     * 批量更新题目标签
+     * @param bankCode 题库代码
+     * @param questionIds 题目ID列表
+     * @param tags 标签（逗号分隔）
+     * @return 是否成功
+     */
+    public boolean batchUpdateTags(String bankCode, List<Long> questionIds, String tags) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return false;
+        }
+        
+        String table = validateTable(bankService.resolveTableName(bankCode));
+        
+        // 检查表是否有tags字段
+        try {
+            List<Map<String, Object>> columns = jdbcTemplate.queryForList("DESCRIBE " + table);
+            boolean hasTags = columns.stream()
+                    .anyMatch(col -> "tags".equals(col.get("Field")));
+            
+            if (!hasTags) {
+                throw new IllegalArgumentException("该题库不支持标签功能");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("该题库不支持标签功能");
+        }
+        
+        StringBuilder sql = new StringBuilder("UPDATE " + table + " SET tags = ? WHERE id IN (");
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(tags != null ? tags : "");
+        
+        for (int i = 0; i < questionIds.size(); i++) {
+            if (i > 0) {
+                sql.append(",");
+            }
+            sql.append("?");
+            params.add(questionIds.get(i));
+        }
+        sql.append(")");
+        
+        int updated = jdbcTemplate.update(sql.toString(), params.toArray());
+        return updated > 0;
+    }
+
+    /**
+     * 批量更新题目类型
+     * @param bankCode 题库代码
+     * @param questionIds 题目ID列表
+     * @param questionType 题目类型
+     * @return 是否成功
+     */
+    public boolean batchUpdateType(String bankCode, List<Long> questionIds, String questionType) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return false;
+        }
+        
+        String table = validateTable(bankService.resolveTableName(bankCode));
+        
+        // 检查表是否有type字段
+        try {
+            List<Map<String, Object>> columns = jdbcTemplate.queryForList("DESCRIBE " + table);
+            boolean hasType = columns.stream()
+                    .anyMatch(col -> "type".equals(col.get("Field")));
+            
+            if (!hasType) {
+                throw new IllegalArgumentException("该题库不支持题目类型功能");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("该题库不支持题目类型功能");
+        }
+        
+        StringBuilder sql = new StringBuilder("UPDATE " + table + " SET type = ? WHERE id IN (");
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(questionType != null ? questionType : "");
+        
+        for (int i = 0; i < questionIds.size(); i++) {
+            if (i > 0) {
+                sql.append(",");
+            }
+            sql.append("?");
+            params.add(questionIds.get(i));
+        }
+        sql.append(")");
+        
+        int updated = jdbcTemplate.update(sql.toString(), params.toArray());
+        return updated > 0;
+    }
+
+    /**
      * 解析题目内容
      */
     private List<Map<String, Object>> parseQuestionContent(String content) {

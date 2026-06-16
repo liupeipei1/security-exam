@@ -2,7 +2,7 @@
 # 构建: docker build -f backend-spring/docker/Dockerfile --build-arg MODULE=exam-gateway -t exam-gateway backend-spring
 ARG MODULE=exam-gateway
 
-FROM gradle:8.7-jdk17 AS build
+FROM gradle:8.14-jdk17 AS build
 WORKDIR /build
 ARG MODULE=exam-gateway
 
@@ -11,9 +11,10 @@ COPY settings.gradle build.gradle gradle.properties ./
 COPY exam-common/build.gradle exam-common/
 COPY exam-registry/build.gradle exam-registry/
 COPY exam-gateway/build.gradle exam-gateway/
-COPY exam-auth-service/build.gradle exam-auth-service/
-COPY exam-user-service/build.gradle exam-user-service/
+COPY exam-account-service/build.gradle exam-account-service/
+COPY exam-user-center-service/build.gradle exam-user-center-service/
 COPY exam-question-service/build.gradle exam-question-service/
+COPY exam-exam-service/build.gradle exam-exam-service/
 RUN gradle :exam-common:build :${MODULE}:bootJar -x test --no-daemon || true
 
 COPY . .

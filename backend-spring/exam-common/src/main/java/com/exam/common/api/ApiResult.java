@@ -1,8 +1,10 @@
 package com.exam.common.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Data
 public class ApiResult<T> {
 
     private boolean success;
@@ -10,10 +12,17 @@ public class ApiResult<T> {
     private T data;
     private Boolean need_vip;
 
+
     public static <T> ApiResult<T> ok(T data) {
         ApiResult<T> r = new ApiResult<>();
         r.success = true;
         r.data = data;
+        return r;
+    }
+
+    public static <T> ApiResult<T> ok(T data, String message) {
+        ApiResult<T> r = ok(data);
+        r.message = message;
         return r;
     }
 

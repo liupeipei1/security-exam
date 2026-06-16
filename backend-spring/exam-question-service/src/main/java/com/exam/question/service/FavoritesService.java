@@ -1,9 +1,8 @@
 package com.exam.question.service;
 
-import com.exam.question.entity.FavoritesEntity;
+import com.exam.common.entity.FavoritesEntity;
 import com.exam.question.repository.FavoritesRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

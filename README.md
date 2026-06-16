@@ -8,7 +8,7 @@
 
 | 目录 | 说明 |
 |------|------|
-| [backend-spring/](backend-spring/README.md) | 微服务后端（Gateway + Auth + User + Question） |
+| [backend-spring/](backend-spring/README.md) | 微服务后端（Gateway + Account + User-Center + Question + Exam） |
 | [frontend/](frontend/README.md) | Vue 3 + Vite Web 前端 |
 | [miniprogram/](miniprogram/) | 微信小程序（API 指向网关 `:8080`） |
 
@@ -41,6 +41,8 @@
 |------|------|------|
 | 前端 | Vue 3 + Vite | 现代前端框架 |
 | 后端 | Node.js + Express | RESTful API |
+| 后端-spring | Spring Boot + Spring Cloud | RESTful API |
+
 | 数据库 | MySQL 8.0 | 题库数据存储 |
 | 容器 | Docker + Docker Compose | 一键部署 |
 | 样式 | Tailwind CSS | 响应式布局 |
@@ -153,9 +155,10 @@ security-exam/
 │   └── config/         # 配置文件
 ├── backend-spring/     # Spring Cloud 后端（推荐）
 │   ├── exam-gateway/   # API网关
-│   ├── exam-auth-service/   # 认证服务
-│   ├── exam-user-service/   # 用户服务
-│   ├── exam-question-service/ # 题库服务
+│   ├── exam-account-service/   # 账户服务（认证+用户）
+│   ├── exam-user-center-service/   # 用户中心（收藏+笔记）
+│   ├── exam-question-service/ # 题库服务（含上传）
+│   ├── exam-exam-service/   # 考试服务
 │   └── exam-registry/  # Eureka注册中心
 ├── frontend/           # Vue 3 前端应用
 │   ├── index.html      # 入口HTML

@@ -2,6 +2,7 @@ package com.exam.question.controller;
 
 import com.exam.common.api.ApiResult;
 import com.exam.question.service.FavoritesService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +17,8 @@ import java.util.Map;
 @RequestMapping("/api/favorites")
 public class FavoritesController {
 
-    private final FavoritesService favoritesService;
-
-    public FavoritesController(FavoritesService favoritesService) {
-        this.favoritesService = favoritesService;
-    }
+    @Autowired
+    private  FavoritesService favoritesService;
 
     /**
      * 添加收藏

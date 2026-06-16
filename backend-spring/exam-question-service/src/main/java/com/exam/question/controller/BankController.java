@@ -2,6 +2,7 @@ package com.exam.question.controller;
 
 import com.exam.common.api.ApiResult;
 import com.exam.question.service.BankService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,11 +14,9 @@ import java.util.Map;
 @RequestMapping("/api/banks")
 public class BankController {
 
-    private final BankService bankService;
+    @Autowired
+    private  BankService bankService;
 
-    public BankController(BankService bankService) {
-        this.bankService = bankService;
-    }
 
     @GetMapping
     public ApiResult<List<Map<String, Object>>> list() {

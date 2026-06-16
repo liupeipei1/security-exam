@@ -66,9 +66,20 @@ public class QuestionController {
         return ApiResult.ok(questionService.byType(bankCode, type));
     }
 
+    /**
+     * 获取题目类型列表
+     */
     @GetMapping("/types")
-    public ApiResult<List<String>> types(@RequestParam(name = "bank_code", required = false) String bankCode) {
+    public ApiResult<List<String>> getQuestionTypes(@RequestParam("bank") String bankCode) {
         return ApiResult.ok(questionService.types(bankCode));
+    }
+
+    /**
+     * 获取所有标签列表
+     */
+    @GetMapping("/tags")
+    public ApiResult<List<String>> getTags(@RequestParam("bank") String bankCode) {
+        return ApiResult.ok(questionService.getTags(bankCode));
     }
 
     @GetMapping("/count")
@@ -186,6 +197,72 @@ public class QuestionController {
     }
 
     /**
+     * 批量更新题目标签
+     * PUT /api/questions/{bank_code}/tags/batch
+     */
+    @PutMapping("/{bank_code}/tags/batch")
+    public ApiResult<Void> batchUpdateTags(
+            @PathVariable("bank_code") String bankCode,
+            @RequestBody Map<String, Object> body) {
+        List<?> questionIdsObj = (List<?>) body.get("question_ids");
+        String tags = (String) body.get("tags");
+        
+        if (questionIdsObj == null || questionIdsObj.isEmpty()) {
+            return ApiResult.fail("题目ID列表不能为空");
+        }
+        
+        List<Long> questionIds = questionIdsObj.stream()
+                .map(obj -> {
+                    if (obj instanceof Number) {
+                        return ((Number) obj).longValue();
+                    }
+                    return Long.parseLong(obj.toString());
+                })
+                .toList();
+        
+        boolean success = questionService.batchUpdateTags(bankCode, questionIds, tags);
+        
+        if (success) {
+            return ApiResult.okMessage("更新成功");
+        } else {
+            return ApiResult.fail("更新失败");
+        }
+    }
+
+    /**
+     * 批量更新题目类型
+     * PUT /api/questions/{bank_code}/type/batch
+     */
+    @PutMapping("/{bank_code}/type/batch")
+    public ApiResult<Void> batchUpdateType(
+            @PathVariable("bank_code") String bankCode,
+            @RequestBody Map<String, Object> body) {
+        List<?> questionIdsObj = (List<?>) body.get("question_ids");
+        String questionType = (String) body.get("question_type");
+        
+        if (questionIdsObj == null || questionIdsObj.isEmpty()) {
+            return ApiResult.fail("题目ID列表不能为空");
+        }
+        
+        List<Long> questionIds = questionIdsObj.stream()
+                .map(obj -> {
+                    if (obj instanceof Number) {
+                        return ((Number) obj).longValue();
+                    }
+                    return Long.parseLong(obj.toString());
+                })
+                .toList();
+        
+        boolean success = questionService.batchUpdateType(bankCode, questionIds, questionType);
+        
+        if (success) {
+            return ApiResult.okMessage("更新成功");
+        } else {
+            return ApiResult.fail("更新失败");
+        }
+    }
+
+    /**
      * 导入题目
      */
     @PostMapping("/import")
@@ -207,7 +284,7 @@ public class QuestionController {
         Map<String, Object> result = questionService.importQuestions(content, bankCode, questionType, guideId, knowledgePointId);
         
         if ((Boolean) result.get("success")) {
-            return ApiResult.success(result);
+            return ApiResult.ok(result);
         } else {
             return ApiResult.fail((String) result.get("message"));
         }

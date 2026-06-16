@@ -16,12 +16,12 @@
          │ exam-gateway   │  :8080  API 网关
          └───────┬────────┘
                  │ Eureka 服务发现
-    ┌────────────┼────────────┐
-    ▼            ▼            ▼
- exam-auth   exam-user   exam-question
-  :8081       :8082        :8083
-    │            │            │
-    └────────────┴────────────┘
+    ┌────────────┼────────────┬─────────────┐
+    ▼            ▼            ▼             ▼
+ exam-account exam-user-center exam-question exam-exam
+  :8081       :8082           :8083        :8084
+    │            │               │            │
+    └────────────┴───────────────┴────────────┘
                  │
          MySQL (exam-db) + Redis
 ```
@@ -30,14 +30,15 @@
 |------|------|------|
 | exam-registry | 8761 | Eureka 注册中心 |
 | exam-gateway | 8080 | 统一入口、CORS、路由 |
-| exam-auth-service | 8081 | 微信登录、扫码登录 |
-| exam-user-service | 8082 | VIP、用户资料 |
-| exam-question-service | 8083 | 题库、题目、做题缓存 |
+| exam-account-service | 8081 | 微信登录、扫码登录、VIP、用户资料 |
+| exam-user-center-service | 8082 | 收藏、笔记管理 |
+| exam-question-service | 8083 | 题库、题目、做题缓存、文件上传 |
+| exam-exam-service | 8084 | 考试管理 |
 
 ## 环境要求
 
 - JDK 17+
-- Gradle 8.7+（或使用项目 Gradle Wrapper）
+- Gradle 8.14+（或使用项目 Gradle Wrapper）
 - MySQL 8（库名 `exam-db`，沿用 `backend/DML/` 脚本）
 - Redis 7
 
@@ -72,9 +73,10 @@ gradle :exam-registry:bootRun
 
 # 终端 2（等 Eureka 就绪后）
 gradle :exam-gateway:bootRun
-gradle :exam-auth-service:bootRun
-gradle :exam-user-service:bootRun
+gradle :exam-account-service:bootRun
+gradle :exam-user-center-service:bootRun
 gradle :exam-question-service:bootRun
+gradle :exam-exam-service:bootRun
 ```
 
 生成可执行 jar：`gradle :exam-gateway:bootJar`（产物在 `exam-gateway/build/libs/app.jar`）。
@@ -126,8 +128,18 @@ npm run dev
 docker compose up -d --build
 ```
 
-服务：MySQL、Redis、Eureka、Gateway、Auth、User、Question。
+服务：MySQL、Redis、Eureka、Gateway、Account、User-Center、Question、Exam。
 
 ## 原 Node 后端
 
 `backend/server.js` 保留作对照，新开发请以 `backend-spring` 为准。
+
+## 服务合并说明
+
+为优化服务架构，已对部分服务进行合并：
+
+| 合并前 | 合并后 | 说明 |
+|--------|--------|------|
+| exam-auth-service + exam-user-service | exam-account-service | 账户相关服务合并 |
+| exam-favorites-service + exam-note-service | exam-user-center-service | 用户中心服务合并 |
+| exam-upload-service | exam-question-service | 文件上传功能并入题库服务 |

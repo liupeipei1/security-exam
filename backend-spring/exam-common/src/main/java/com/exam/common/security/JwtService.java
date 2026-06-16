@@ -3,11 +3,14 @@ package com.exam.common.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+@Configuration
 public class JwtService {
 
     public static final String HEADER_OPENID = "X-Openid";
@@ -16,7 +19,9 @@ public class JwtService {
     private final SecretKey key;
     private final long expirationMs;
 
-    public JwtService(String secret, long expirationHours) {
+    public JwtService(
+            @Value("${jwt.secret:exam-secret-key-2024}") String secret,
+            @Value("${jwt.expiration:86400000}") long expirationMs) {
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
             byte[] padded = new byte[32];
@@ -24,7 +29,7 @@ public class JwtService {
             bytes = padded;
         }
         this.key = Keys.hmacShaKeyFor(bytes);
-        this.expirationMs = expirationHours * 3600_000L;
+        this.expirationMs = expirationMs;
     }
 
     public String generateToken(String openid) {

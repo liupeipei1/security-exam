@@ -1,13 +1,12 @@
 package com.exam.question.controller;
 
-import com.example.exam.service.GuideService;
+import com.exam.question.service.GuideService;
 import com.exam.common.api.ApiResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
