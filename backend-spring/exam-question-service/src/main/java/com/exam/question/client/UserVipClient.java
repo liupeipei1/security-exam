@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "exam-user-service")
+@FeignClient(name = "exam-user-center-service")
 public interface UserVipClient {
 
     @GetMapping("/api/user/internal/vip")

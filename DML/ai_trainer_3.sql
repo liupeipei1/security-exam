@@ -8,10 +8,10 @@ CREATE TABLE ai_trainer_3 (
     options TEXT NOT NULL,
     answer VARCHAR(100) NOT NULL,
     analysis LONGTEXT COMMENT '分析内容（支持HTML格式，可包含图片标签）',
-    bank_code VARCHAR(50) DEFAULT 'ai_trainer_3',
+    exam_code VARCHAR(50) DEFAULT 'ai_trainer_3',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_type (type),
-    INDEX idx_bank_code (bank_code)
+    INDEX idx_exam_code (exam_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='人工智能训练师三级题库';
 
 ALTER TABLE `exam-db`.ai_trainer_3 ADD tags varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT '' NULL COMMENT '自定义标签，逗号分隔';

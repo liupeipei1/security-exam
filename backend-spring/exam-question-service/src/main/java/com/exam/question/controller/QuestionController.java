@@ -28,7 +28,7 @@ public class QuestionController {
     public ApiResult<List<Map<String, Object>>> list(
             HttpServletRequest request,
             @RequestParam(required = false) String openid,
-            @RequestParam(name = "bank_code", required = false) String bankCode) {
+            @RequestParam(name = "exam_code", required = false) String bankCode) {
         vipGuardService.requireVip(OpenidContext.resolve(request, openid));
         return ApiResult.ok(questionService.listAll(bankCode, true));
     }
@@ -37,7 +37,7 @@ public class QuestionController {
     public ApiResult<Map<String, Object>> randomOne(
             HttpServletRequest request,
             @RequestParam(required = false) String openid,
-            @RequestParam(name = "bank_code", required = false) String bankCode) {
+            @RequestParam(name = "exam_code", required = false) String bankCode) {
         vipGuardService.requireVip(OpenidContext.resolve(request, openid));
         Map<String, Object> q = questionService.randomOne(bankCode);
         if (q == null) {
@@ -50,7 +50,7 @@ public class QuestionController {
     public ApiResult<List<Map<String, Object>>> randomMany(
             HttpServletRequest request,
             @RequestParam(required = false) String openid,
-            @RequestParam(name = "bank_code", required = false) String bankCode,
+            @RequestParam(name = "exam_code", required = false) String bankCode,
             @PathVariable int count) {
         vipGuardService.requireVip(OpenidContext.resolve(request, openid));
         return ApiResult.ok(questionService.random(bankCode, count <= 0 ? 10 : count));
@@ -60,7 +60,7 @@ public class QuestionController {
     public ApiResult<List<Map<String, Object>>> byType(
             HttpServletRequest request,
             @RequestParam(required = false) String openid,
-            @RequestParam(name = "bank_code", required = false) String bankCode,
+            @RequestParam(name = "exam_code", required = false) String bankCode,
             @PathVariable String type) {
         vipGuardService.requireVip(OpenidContext.resolve(request, openid));
         return ApiResult.ok(questionService.byType(bankCode, type));
@@ -83,7 +83,7 @@ public class QuestionController {
     }
 
     @GetMapping("/count")
-    public ApiResult<Map<String, Object>> count(@RequestParam(name = "bank_code", required = false) String bankCode) {
+    public ApiResult<Map<String, Object>> count(@RequestParam(name = "exam_code", required = false) String bankCode) {
         return ApiResult.ok(questionService.countStats(bankCode));
     }
 
@@ -96,7 +96,7 @@ public class QuestionController {
             @RequestBody Map<String, Object> body) {
         System.out.println("========== /api/questions/explanation 接口被调用 ==========");
         
-        String bankCode = (String) body.get("bank_code");
+        String bankCode = (String) body.get("exam_code");
         Object questionIdObj = body.get("question_id");
         String explanation = (String) body.get("explanation");
         
@@ -198,11 +198,11 @@ public class QuestionController {
 
     /**
      * 批量更新题目标签
-     * PUT /api/questions/{bank_code}/tags/batch
+     * PUT /api/questions/{exam_code}/tags/batch
      */
-    @PutMapping("/{bank_code}/tags/batch")
+    @PutMapping("/{exam_code}/tags/batch")
     public ApiResult<Void> batchUpdateTags(
-            @PathVariable("bank_code") String bankCode,
+            @PathVariable("exam_code") String bankCode,
             @RequestBody Map<String, Object> body) {
         List<?> questionIdsObj = (List<?>) body.get("question_ids");
         String tags = (String) body.get("tags");
@@ -231,11 +231,11 @@ public class QuestionController {
 
     /**
      * 批量更新题目类型
-     * PUT /api/questions/{bank_code}/type/batch
+     * PUT /api/questions/{exam_code}/type/batch
      */
-    @PutMapping("/{bank_code}/type/batch")
+    @PutMapping("/{exam_code}/type/batch")
     public ApiResult<Void> batchUpdateType(
-            @PathVariable("bank_code") String bankCode,
+            @PathVariable("exam_code") String bankCode,
             @RequestBody Map<String, Object> body) {
         List<?> questionIdsObj = (List<?>) body.get("question_ids");
         String questionType = (String) body.get("question_type");
@@ -268,7 +268,7 @@ public class QuestionController {
     @PostMapping("/import")
     public ApiResult importQuestions(@RequestBody Map<String, Object> body) {
         String content = (String) body.get("content");
-        String bankCode = (String) body.get("bank_code");
+        String bankCode = (String) body.get("exam_code");
         String questionType = (String) body.get("question_type");
         Long guideId = body.get("guide_id") != null ? ((Number) body.get("guide_id")).longValue() : null;
         Long knowledgePointId = body.get("knowledge_point_id") != null ? ((Number) body.get("knowledge_point_id")).longValue() : null;

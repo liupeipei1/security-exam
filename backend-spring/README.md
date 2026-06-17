@@ -140,6 +140,6 @@ docker compose up -d --build
 
 | 合并前 | 合并后 | 说明 |
 |--------|--------|------|
-| exam-auth-service + exam-user-service | exam-account-service | 账户相关服务合并 |
+| exam-auth-service + exam-user-center-service | exam-account-service | 账户相关服务合并 |
 | exam-favorites-service + exam-note-service | exam-user-center-service | 用户中心服务合并 |
 | exam-upload-service | exam-question-service | 文件上传功能并入题库服务 |

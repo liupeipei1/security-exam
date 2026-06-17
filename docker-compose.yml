@@ -86,13 +86,13 @@ services:
       exam-registry:
         condition: service_started
 
-  exam-user-service:
+  exam-account-service:
     build:
       context: ./backend-spring
       dockerfile: docker/Dockerfile
       args:
-        MODULE: exam-user-service
-    container_name: exam-user-service
+        MODULE: exam-account-service
+    container_name: exam-account-service
     environment:
       SERVER_PORT: 8082
       DB_HOST: mysql
@@ -129,7 +129,7 @@ services:
         condition: service_started
       exam-registry:
         condition: service_started
-      exam-user-service:
+      exam-account-service:
         condition: service_started
 
   exam-web:

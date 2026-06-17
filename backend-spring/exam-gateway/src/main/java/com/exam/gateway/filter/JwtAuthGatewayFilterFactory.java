@@ -37,8 +37,8 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
     );
 
     private static final List<String> VIP_PATH_PREFIXES = List.of(
-            "/api/questions",
-            "/api/exam",
+            "/api/questions/**",
+            "/api/exams/**",
             "/api/question"
     );
 

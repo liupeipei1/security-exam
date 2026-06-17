@@ -13,7 +13,7 @@
 | [miniprogram/](miniprogram/) | 微信小程序（API 指向网关 `:8080`） |
 
 - **API 网关**：`http://localhost:8080`（原 Node 版为 `:3001`）
-- **启动**：`start-spring.bat` 或见 [backend-spring/README.md](backend-spring/README.md)
+- **启动**：`start-backend-springstart-spring.bat` 或见 [backend-spring/README.md](backend-spring/README.md)
 - **基础设施**：`docker compose -f docker-compose.spring.yml up -d`
 
 原 Node.js 后端保留在 `backend/`，仅供对照。
@@ -84,10 +84,12 @@ npm run dev
 
 ### 访问地址
 
-| 服务 | 地址 |
-|------|------|
+| 服务 | 地址                    |
+|------|-----------------------|
 | 前端页面 | http://localhost:8000 |
 | 后端API | http://localhost:3001 |
+| 后端API | http://localhost:8080 |
+
 
 ## 🔌 API 接口
 

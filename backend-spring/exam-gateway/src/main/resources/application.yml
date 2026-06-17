@@ -24,22 +24,27 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
-        - id: auth-service
-          uri: lb://exam-auth-service
+        ### user +auth 权限
+        - id: account-service
+          uri: lb://exam-account-service
           predicates:
             - Path=/api/auth/**
-        - id: user-service
-          uri: lb://exam-user-service
+    ##找打用户下的favorite +note
+        - id: user-auth-service
+          uri: lb://exam-user-center-service
           predicates:
-            - Path=/api/user/**
+            - Path=/api/favorites/**
+            - Path=/api/notes/**
+   ### question
         - id: question-service
           uri: lb://exam-question-service
           predicates:
             - Path=/api/banks/**,/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/notes/**,/api/speech/**
+  ###考试题目
         - id: exam-service
           uri: lb://exam-exam-service
           predicates:
-            - Path=/api/exam/**
+            - Path=/api/exam/**,/api/exams/**
 
 eureka:
   client:
