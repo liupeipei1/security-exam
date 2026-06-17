@@ -19,16 +19,16 @@ start "exam-gateway" cmd /k gradlew.bat :exam-gateway:bootRun
 timeout /t 8 /nobreak >nul
 
 echo [4/6] Starting Account Service :8081
-start "exam-account" cmd /k gradlew.bat :exam-account-service:bootRun
+start "exam-account" cmd /k gradlew.bat :exam-account-auth:bootRun
 timeout /t 8 /nobreak >nul
 
 echo [5/6] Starting User Service :8082
-start "exam-user" cmd /k gradlew.bat :exam-user-center-service:bootRun
+start "exam-user" cmd /k gradlew.bat :exam-user-center:bootRun
 timeout /t 8 /nobreak >nul
 
 echo [6/6] Starting Question ^& Exam Services
-start "exam-question" cmd /k gradlew.bat :exam-question-service:bootRun
-start "exam-exam" cmd /k gradlew.bat :exam-exam-service:bootRun
+start "exam-question" cmd /k gradlew.bat :exam-question:bootRun
+start "exam-exam" cmd /k gradlew.bat :exam-core-service:bootRun
 
 echo All services started in separate windows.
 echo Gateway: http://localhost:8080

@@ -157,10 +157,10 @@ security-exam/
 │   └── config/         # 配置文件
 ├── backend-spring/     # Spring Cloud 后端（推荐）
 │   ├── exam-gateway/   # API网关
-│   ├── exam-account-service/   # 账户服务（认证+用户）
-│   ├── exam-user-center-service/   # 用户中心（收藏+笔记）
-│   ├── exam-question-service/ # 题库服务（含上传）
-│   ├── exam-exam-service/   # 考试服务
+│   ├── exam-account-auth/   # 账户服务（认证+用户）
+│   ├── exam-user-center/   # 用户中心（收藏+笔记）
+│   ├── exam-question/ # 题库服务（含上传）
+│   ├── exam-core-service/   # 考试服务
 │   └── exam-registry/  # Eureka注册中心
 ├── frontend/           # Vue 3 前端应用
 │   ├── index.html      # 入口HTML

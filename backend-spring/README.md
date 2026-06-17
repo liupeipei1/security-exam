@@ -30,10 +30,10 @@
 |------|------|------|
 | exam-registry | 8761 | Eureka 注册中心 |
 | exam-gateway | 8080 | 统一入口、CORS、路由 |
-| exam-account-service | 8081 | 微信登录、扫码登录、VIP、用户资料 |
-| exam-user-center-service | 8082 | 收藏、笔记管理 |
-| exam-question-service | 8083 | 题库、题目、做题缓存、文件上传 |
-| exam-exam-service | 8084 | 考试管理 |
+| exam-account-auth | 8081 | 微信登录、扫码登录、VIP、用户资料 |
+| exam-user-center | 8082 | 收藏、笔记管理 |
+| exam-question | 8083 | 题库、题目、做题缓存、文件上传 |
+| exam-core-service | 8084 | 考试管理 |
 
 ## 环境要求
 
@@ -73,10 +73,10 @@ gradle :exam-registry:bootRun
 
 # 终端 2（等 Eureka 就绪后）
 gradle :exam-gateway:bootRun
-gradle :exam-account-service:bootRun
-gradle :exam-user-center-service:bootRun
-gradle :exam-question-service:bootRun
-gradle :exam-exam-service:bootRun
+gradle :exam-account-auth:bootRun
+gradle :exam-user-center:bootRun
+gradle :exam-question:bootRun
+gradle :exam-core-service:bootRun
 ```
 
 生成可执行 jar：`gradle :exam-gateway:bootJar`（产物在 `exam-gateway/build/libs/app.jar`）。
@@ -140,6 +140,6 @@ docker compose up -d --build
 
 | 合并前 | 合并后 | 说明 |
 |--------|--------|------|
-| exam-auth-service + exam-user-center-service | exam-account-service | 账户相关服务合并 |
-| exam-favorites-service + exam-note-service | exam-user-center-service | 用户中心服务合并 |
-| exam-upload-service | exam-question-service | 文件上传功能并入题库服务 |
+| exam-auth-service + exam-user-center | exam-account-auth | 账户相关服务合并 |
+| exam-favorites-service + exam-note-service | exam-user-center | 用户中心服务合并 |
+| exam-upload-service | exam-question | 文件上传功能并入题库服务 |

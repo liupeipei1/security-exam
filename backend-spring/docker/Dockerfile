@@ -11,10 +11,10 @@ COPY settings.gradle build.gradle gradle.properties ./
 COPY exam-common/build.gradle exam-common/
 COPY exam-registry/build.gradle exam-registry/
 COPY exam-gateway/build.gradle exam-gateway/
-COPY exam-account-service/build.gradle exam-account-service/
-COPY exam-user-center-service/build.gradle exam-user-center-service/
-COPY exam-question-service/build.gradle exam-question-service/
-COPY exam-exam-service/build.gradle exam-exam-service/
+COPY exam-account-auth/build.gradle exam-account-auth/
+COPY exam-user-center/build.gradle exam-user-center/
+COPY exam-question/build.gradle exam-question/
+COPY exam-core-service/build.gradle exam-core-service/
 RUN gradle :exam-common:build :${MODULE}:bootJar -x test --no-daemon || true
 
 COPY . .
