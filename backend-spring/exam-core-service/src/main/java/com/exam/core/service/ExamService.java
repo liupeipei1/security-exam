@@ -1,7 +1,7 @@
-package com.exam.exam.service;
+package com.exam.core.service;
 
-import com.exam.exam.entity.ExamRecordEntity;
-import com.exam.exam.repository.ExamRecordRepository;
+import com.exam.core.entity.ExamRecordEntity;
+import com.exam.core.repository.ExamRecordRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -56,7 +56,7 @@ public class ExamService {
     public Map<String, Object> saveExamRecord(String openid, Map<String, Object> data) {
         ExamRecordEntity record = new ExamRecordEntity();
         record.setOpenid(openid);
-        record.setBankCode((String) data.get("bank_code"));
+        record.setExamCode((String) data.get("exam_code"));
         record.setQuestionIds((String) data.get("question_ids"));
         record.setUserAnswers((String) data.get("user_answers"));
         record.setCorrectAnswers((String) data.get("correct_answers"));
@@ -186,7 +186,7 @@ public class ExamService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", record.getId());
         map.put("openid", record.getOpenid());
-        map.put("bank_code", record.getBankCode());
+        map.put("exam_code", record.getExamCode());
         map.put("question_ids", record.getQuestionIds());
         map.put("user_answers", record.getUserAnswers());
         map.put("correct_answers", record.getCorrectAnswers());

@@ -1,7 +1,7 @@
-package com.exam.exam.controller;
+package com.exam.core.controller;
 
 import com.exam.common.api.ApiResult;
-import com.exam.exam.service.ExamConfigService;
+import com.exam.core.service.ExamConfigService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
