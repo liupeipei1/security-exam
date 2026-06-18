@@ -2457,12 +2457,24 @@ function createInstance() {
                     }
                     
                     favoritesLoading.value = true;
+                    
+                    // 确保题目已加载
+                    if (questions.value.length === 0) {
+                        console.log('题目未加载，先加载题目');
+                        await loadQuestions(currentExam.value);
+                    }
+                    
                     console.log('开始调用getFavorites，参数：openid=', currentUser.value.openid, ', exam_code=', currentExam.value);
                     const result = await getFavorites(currentUser.value.openid, currentExam.value);
                     console.log('getFavorites返回结果:', result);
                     if (result.success) {
-                        favoritesQuestions.value = result.data;
-                        favoriteQuestionIds.value = result.data.map(q => q.id);
+                        // result.data 是收藏记录列表，每条记录有 questionId
+                        const favoriteRecords = result.data || [];
+                        const favoriteQuestionIdsList = favoriteRecords.map(f => f.questionId);
+                        favoriteQuestionIds.value = favoriteQuestionIdsList;
+                        
+                        // 用 questionId 去 questions 中查找对应的题目详情
+                        favoritesQuestions.value = questions.value.filter(q => favoriteQuestionIdsList.includes(q.id));
                         console.log('成功加载收藏，共', favoritesQuestions.value.length, '条');
                     } else {
                         console.log('加载收藏失败:', result.message);
