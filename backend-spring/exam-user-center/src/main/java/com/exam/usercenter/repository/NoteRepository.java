@@ -10,6 +10,7 @@ import java.util.List;
  * 笔记Repository
  */
 @Repository
+@Deprecated
 public interface NoteRepository extends JpaRepository<NoteEntity, Long> {
 
     /**

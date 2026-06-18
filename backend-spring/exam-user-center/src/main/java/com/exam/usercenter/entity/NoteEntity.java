@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "notes")
 @Data
+@Deprecated
 public class NoteEntity {
 
     @Id

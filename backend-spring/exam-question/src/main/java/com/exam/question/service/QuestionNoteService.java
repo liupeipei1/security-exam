@@ -22,24 +22,24 @@ public class QuestionNoteService {
     /**
      * 保存或更新题目备注
      */
-    public Map<String, Object> saveNote(String openid, Integer questionId, String examCode, String content) {
+    public Map<String, Object> saveNote(String openid, Integer questionId, String examCode, String note) {
         Optional<QuestionNotesEntity> existing = questionNoteRepository.findByOpenidAndQuestionId(openid, questionId);
         
-        QuestionNotesEntity note;
+        QuestionNotesEntity questionNotesEntity;
         if (existing.isPresent()) {
-            note = existing.get();
-            note.setNote(content);
-            note.setExamCode(examCode);
+            questionNotesEntity = existing.get();
+            questionNotesEntity.setNote(note);
+            questionNotesEntity.setExamCode(examCode);
         } else {
-            note = new QuestionNotesEntity();
-            note.setOpenid(openid);
-            note.setQuestionId(questionId);
-            note.setExamCode(examCode);
-            note.setNote(content);
+            questionNotesEntity = new QuestionNotesEntity();
+            questionNotesEntity.setOpenid(openid);
+            questionNotesEntity.setQuestionId(questionId);
+            questionNotesEntity.setExamCode(examCode);
+            questionNotesEntity.setNote(note);
         }
         
-        note = questionNoteRepository.save(note);
-        return entityToMap(note);
+        questionNotesEntity = questionNoteRepository.save(questionNotesEntity);
+        return entityToMap(questionNotesEntity);
     }
 
     /**

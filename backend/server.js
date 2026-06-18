@@ -1583,9 +1583,9 @@ app.post('/api/speech', async (req, res) => {
 // ==================== 题目备注相关接口 ====================
 
 // 获取题目备注
-app.get('/api/notes', async (req, res) => {
+app.get('/api/questions/note/get', async (req, res) => {
   try {
-    console.log('========== /api/notes 接口被调用 ==========');
+    console.log('========== /api/questions/note 接口被调用 ==========');
     const { openid, exam_code, question_id } = req.query;
     console.log('请求参数 openid:', openid, ', exam_code:', exam_code, ', question_id:', question_id);
     
@@ -1615,7 +1615,7 @@ app.get('/api/notes', async (req, res) => {
 });
 
 // 保存或更新题目备注
-app.post('/api/notes', async (req, res) => {
+app.post('/api/questions/notes/save', async (req, res) => {
   try {
     const { openid, exam_code, question_id, note } = req.body;
     
@@ -1664,19 +1664,19 @@ app.post('/api/notes', async (req, res) => {
 });
 
 // 删除题目备注
-app.delete('/api/notes', async (req, res) => {
+app.delete('/api/questions/notes/delete', async (req, res) => {
   try {
-    const { openid, exam_code, question_id } = req.query;
+    const { openid, question_id } = req.query;
     
-    if (!openid || !exam_code || question_id === undefined) {
+    if (!openid  || question_id === undefined) {
       return res.status(400).json({ success: false, message: '缺少必要参数' });
     }
     
     const connection = await mysql.createConnection(dbConfig);
     
     await connection.execute(
-      'DELETE FROM question_notes WHERE openid = ? AND exam_code = ? AND question_id = ?',
-      [openid, exam_code, question_id]
+      'DELETE FROM question_notes WHERE openid = ?  AND question_id = ?',
+      [openid, question_id]
     );
     
     await connection.end();

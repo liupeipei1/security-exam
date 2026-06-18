@@ -1509,11 +1509,11 @@ function createInstance() {
                     // 如果用户已登录，同步到后端数据库
                     if (currentUser.value?.openid && currentExam.value) {
                         try {
-                            await apiPost('/api/notes', {
+                            await apiPost('/api/questions/note/save', {
                                 openid: currentUser.value.openid,
                                 exam_code: currentExam.value,
                                 question_id: questionId,
-                                note: note
+                                content: note
                             });
                         } catch (error) {
                             console.error('保存备注到数据库失败:', error);
@@ -1609,11 +1609,11 @@ function createInstance() {
                     // 如果用户已登录，同步到后端数据库
                     if (currentUser.value?.openid && currentExam.value) {
                         try {
-                            await apiPost('/api/notes', {
+                            await apiPost('/api/questions/note/save', {
                                 openid: currentUser.value.openid,
                                 exam_code: currentExam.value,
                                 question_id: questionId,
-                                note: note
+                                content: note
                             });
                         } catch (error) {
                             console.error('保存备注到数据库失败:', error);
@@ -1819,18 +1819,18 @@ function createInstance() {
                     
                     if (currentUser.value?.openid && currentExam.value) {
                         try {
-                            console.log('调用 /api/notes, 参数:', {
+                            console.log('调用 /api/questions/note/list, 参数:', {
                                 openid: currentUser.value.openid,
                                 exam_code: currentExam.value
                             });
-                            const data = await apiGet('/api/notes', {
+                            const data = await apiGet('/api/questions/note/list', {
                                 openid: currentUser.value.openid,
                                 exam_code: currentExam.value
                             });
                             if (data.success && data.data && data.data.length > 0) {
                                 const notesMap = {};
                                 data.data.forEach(item => {
-                                    notesMap[item.question_id] = item.note;
+                                    notesMap[item.questionId] = item.note;
                                 });
                                 // 合并数据库和本地的备注，避免覆盖用户已添加的备注
                                 questionNotes.value = { ...notesMap, ...questionNotes.value };

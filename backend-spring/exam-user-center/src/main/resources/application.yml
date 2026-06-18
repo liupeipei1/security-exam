@@ -17,10 +17,11 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
-  redis:
-    host: localhost
-    port: 6379
-    password:
+  data:
+    redis:
+      host: localhost
+      password:
+      port: 6379
 
 eureka:
   client:

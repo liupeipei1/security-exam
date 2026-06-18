@@ -27,7 +27,7 @@ public class QuestionNoteController {
         String openid = (String) body.get("openid");
         Integer questionId = (Integer) body.get("question_id");
         String exam_code = (String) body.get("exam_code");
-        String content = (String) body.get("content");
+        String note = (String) body.get("note");
 
         if (openid == null || openid.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
@@ -36,7 +36,7 @@ public class QuestionNoteController {
             return ResponseEntity.badRequest().body(Map.of("message", "缺少question_id参数"));
         }
 
-        Map<String, Object> saved = questionNoteService.saveNote(openid, questionId, exam_code, content);
+        Map<String, Object> saved = questionNoteService.saveNote(openid, questionId, exam_code, note);
         return ResponseEntity.ok(ApiResult.ok(saved));
     }
 
@@ -45,13 +45,14 @@ public class QuestionNoteController {
      * GET /api/questions/note/get?openid=xxx&question_id=xxx
      */
     @GetMapping("/get")
-    public ResponseEntity<?> getNote(@RequestParam String openid, @RequestParam Integer question_id) {
+    public ResponseEntity<?> getNote(@RequestParam String openid, @RequestParam Integer exam_code,@RequestParam Integer question_id) {
         if (openid == null || openid.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
         }
         if (question_id == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "缺少question_id参数"));
         }
+
 
         Map<String, Object> note = questionNoteService.getNote(openid, question_id);
         if (note == null) {

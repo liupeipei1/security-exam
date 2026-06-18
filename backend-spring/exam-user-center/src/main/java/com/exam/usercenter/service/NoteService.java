@@ -14,6 +14,7 @@ import java.util.Map;
  * 考试指南的备注 题库级别的 不是单个题的level
  */
 @Service
+@Deprecated
 public class NoteService {
 
     @Autowired

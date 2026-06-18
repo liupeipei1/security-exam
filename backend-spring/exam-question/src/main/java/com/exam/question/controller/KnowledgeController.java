@@ -2,6 +2,7 @@ package com.exam.question.controller;
 import com.exam.common.api.ApiResult;
 import com.exam.question.entity.KnowledgePointsEntity;
 import com.exam.question.service.KnowledgeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/knowledge")
+@Tag(name = "知识要点", description = "知识要点相关接口")
 public class KnowledgeController {
 
     @Autowired

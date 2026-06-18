@@ -14,6 +14,7 @@ import java.util.Map;
  * 笔记控制 */
 @RestController
 @RequestMapping("/api/notes")
+@Deprecated
 public class NoteController {
 
     @Autowired
@@ -24,12 +25,22 @@ public class NoteController {
 
     /**
      * 获取用户笔记列表
+     * 支持通过 Authorization 头部或 openid 查询参数获取
      */
     @GetMapping
     public ApiResult<List<NoteEntity>> getNotes(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(value = "type", required = false) String type) {
-        String openid = jwtService.parseOpenid(token);
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestParam(value = "openid", required = false) String openidParam,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "exam_code") String examCode) {
+        String openid;
+        if (openidParam != null && !openidParam.isEmpty()) {
+            openid = openidParam;
+        } else if (token != null && !token.isEmpty()) {
+            openid = jwtService.parseOpenid(token);
+        } else {
+            return ApiResult.fail("缺少必要参数：openid 或 Authorization");
+        }
         return noteService.getNotes(openid, type);
     }
 
