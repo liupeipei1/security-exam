@@ -238,9 +238,8 @@ public class QuestionImportService {
 
         // 文本格式解析
         content = content.replaceAll("([A-Ea-e])([．.、])", "\n$1$2");
-        content = content.replaceAll("([^\\n])(正确答案)\\s*[：:]", "$1\n$2：");
-        content = content.replaceAll("([^\\n])(名师\\s*解析)\\s*[：:]", "$1\n$2：");
-        content = content.replaceAll("([^\\n])(解析)\\s*[：:]", "$1\n$2：");
+        content = content.replaceAll("([^\\n])(正确答案|答案|Answer|ANSWER)\\s*[：:]", "$1\n$2：");
+        content = content.replaceAll("([^\\n])(名师\\s*解析|解析|Analysis|ANALYSIS|Explanation|EXPLANATION)\\s*[：:]", "$1\n$2：");
         content = content.replaceAll("([^\\n])(回答错误|我的答案)", "$1\n$2");
         content = content.replaceAll("^\\s*", "");
 
@@ -256,12 +255,21 @@ public class QuestionImportService {
         Map<String, Object> currentQuestion = null;
         boolean inAnalysis = false;
 
-        Pattern questionNumberPattern = Pattern.compile("^(第)?\\s*(\\d+)\\s*题\\s*");
+        Pattern questionNumberPattern = Pattern.compile("^(第)?\\s*(\\d+)\\s*题\\s*|^Q\\s*(\\d+)\\s*");
         Pattern bracketPattern = Pattern.compile("^\\((\\d+)\\)");
         Pattern optionPattern = Pattern.compile("^([A-Ea-e])[．.、]\\s*");
+        Pattern answerPattern = Pattern.compile("^(正确答案|答案|Answer|ANSWER)\\s*[：:]");
+        Pattern analysisPattern = Pattern.compile("^(名师)?解析\\s*[：:]|^(Analysis|ANALYSIS|Explanation|EXPLANATION)\\s*[：:]");
 
         for (String line : trimmedLines) {
-            if (questionNumberPattern.matcher(line).matches() || bracketPattern.matcher(line).find()) {
+            Matcher questionMatcher = questionNumberPattern.matcher(line);
+            Matcher bracketMatcher = bracketPattern.matcher(line);
+            Matcher optionMatcher = optionPattern.matcher(line);
+            Matcher answerMatcher = answerPattern.matcher(line);
+            Matcher analysisMatcher = analysisPattern.matcher(line);
+            
+            if (questionMatcher.find() || bracketMatcher.find()) {
+                // 遇到题号，开始新题目
                 if (currentQuestion != null && !currentQuestion.isEmpty()) {
                     questions.add(currentQuestion);
                 }
@@ -269,51 +277,83 @@ public class QuestionImportService {
                 currentQuestion.put("options", new ArrayList<String>());
                 inAnalysis = false;
 
-                String questionText = questionNumberPattern.matcher(line).replaceAll("").trim();
+                String questionText = questionMatcher.replaceAll("").trim();
                 questionText = bracketPattern.matcher(questionText).replaceAll("").trim();
                 if (!questionText.isEmpty()) {
                     currentQuestion.put("question", questionText);
                 }
-            } else if (line.startsWith("正确答案") || line.startsWith("答案")) {
+            } else if (answerMatcher.find()) {
+                // 遇到答案行
                 if (currentQuestion != null) {
-                    String answer = line.replaceAll("^(正确答案|答案)\\s*[：:]", "").trim().toUpperCase();
+                    String answer = answerMatcher.replaceAll("").trim().toUpperCase();
+                    currentQuestion.put("answer", answer);
+                    inAnalysis = false;
+                } else {
+                    // 如果没有当前题目，创建一个新的空题目
+                    currentQuestion = new HashMap<>();
+                    currentQuestion.put("options", new ArrayList<String>());
+                    String answer = answerMatcher.replaceAll("").trim().toUpperCase();
                     currentQuestion.put("answer", answer);
                     inAnalysis = false;
                 }
-            } else if (line.startsWith("解析") || line.startsWith("名师解析")) {
+            } else if (analysisMatcher.find()) {
+                // 遇到解析行
                 if (currentQuestion != null) {
-                    String analysis = line.replaceAll("^(名师)?解析\\s*[：:]", "").trim();
+                    String analysis = analysisMatcher.replaceAll("").trim();
+                    currentQuestion.put("analysis", analysis);
+                    inAnalysis = true;
+                } else {
+                    // 如果没有当前题目，创建一个新的空题目
+                    currentQuestion = new HashMap<>();
+                    currentQuestion.put("options", new ArrayList<String>());
+                    String analysis = analysisMatcher.replaceAll("").trim();
                     currentQuestion.put("analysis", analysis);
                     inAnalysis = true;
                 }
-            } else if (optionPattern.matcher(line).find()) {
-                if (currentQuestion != null) {
-                    Matcher matcher = optionPattern.matcher(line);
-                    if (matcher.find()) {
-                        String optionText = line.substring(matcher.end()).trim();
-                        @SuppressWarnings("unchecked")
-                        List<String> options = (List<String>) currentQuestion.get("options");
-                        options.add(optionText);
-                    }
+            } else if (optionMatcher.find()) {
+                // 遇到选项行
+                if (currentQuestion == null) {
+                    // 如果没有当前题目，创建一个新题目
+                    currentQuestion = new HashMap<>();
+                    currentQuestion.put("options", new ArrayList<String>());
                     inAnalysis = false;
                 }
+                String optionText = optionMatcher.replaceAll("").trim();
+                @SuppressWarnings("unchecked")
+                List<String> options = (List<String>) currentQuestion.get("options");
+                options.add(optionText);
+                inAnalysis = false;
             } else if (inAnalysis && currentQuestion != null) {
+                // 解析内容继续
                 String existingAnalysis = (String) currentQuestion.get("analysis");
                 if (existingAnalysis == null) {
                     existingAnalysis = "";
                 }
                 currentQuestion.put("analysis", existingAnalysis + "\n" + line);
             } else if (currentQuestion != null && !line.matches("^[A-Ea-e][．.、].*")) {
+                // 添加到题目内容
                 String existingQuestion = (String) currentQuestion.get("question");
                 if (existingQuestion == null) {
                     existingQuestion = "";
                 }
                 currentQuestion.put("question", existingQuestion + "\n" + line);
+            } else if (currentQuestion == null) {
+                // 没有题号，第一行是题目内容
+                currentQuestion = new HashMap<>();
+                currentQuestion.put("options", new ArrayList<String>());
+                currentQuestion.put("question", line);
+                inAnalysis = false;
             }
         }
 
         if (currentQuestion != null && !currentQuestion.isEmpty()) {
-            questions.add(currentQuestion);
+            // 检查是否至少有题目内容或选项
+            String questionText = (String) currentQuestion.get("question");
+            @SuppressWarnings("unchecked")
+            List<String> options = (List<String>) currentQuestion.get("options");
+            if ((questionText != null && !questionText.isEmpty()) || (options != null && !options.isEmpty())) {
+                questions.add(currentQuestion);
+            }
         }
 
         return questions;
