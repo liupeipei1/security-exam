@@ -1,6 +1,6 @@
 package com.exam.question.repository;
 
-import com.exam.question.entity.QuestionNoteEntity;
+import com.exam.question.entity.QuestionNotesEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface QuestionNoteRepository extends JpaRepository<QuestionNoteEntity, Long> {
+public interface QuestionNoteRepository extends JpaRepository<QuestionNotesEntity, Long> {
 
-    List<QuestionNoteEntity> findByOpenid(String openid);
+    List<QuestionNotesEntity> findByOpenid(String openid);
 
-    List<QuestionNoteEntity> findByOpenidAndExamCode(String openid, String examCode);
+    List<QuestionNotesEntity> findByOpenidAndExamCode(String openid, String examCode);
 
-    Optional<QuestionNoteEntity> findByOpenidAndQuestionId(String openid, Integer questionId);
+    Optional<QuestionNotesEntity> findByOpenidAndQuestionId(String openid, Integer questionId);
 
     boolean existsByOpenidAndQuestionId(String openid, Integer questionId);
 

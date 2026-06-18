@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 笔记控制�? */
+ * 笔记控制 */
 @RestController
 @RequestMapping("/api/notes")
 public class NoteController {

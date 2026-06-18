@@ -1,14 +1,17 @@
 package com.exam.question.controller;
 
 import com.exam.common.api.ApiResult;
+import com.exam.question.service.QuestionImportService;
 import com.exam.question.service.QuestionService;
 import com.exam.question.service.VipGuardService;
 import com.exam.question.util.OpenidContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -19,9 +22,13 @@ public class QuestionController {
     private final QuestionService questionService;
     private final VipGuardService vipGuardService;
 
-    public QuestionController(QuestionService questionService, VipGuardService vipGuardService) {
+    private final QuestionImportService questionImportService;
+
+    public QuestionController(QuestionService questionService, VipGuardService vipGuardService,
+                             QuestionImportService questionImportService) {
         this.questionService = questionService;
         this.vipGuardService = vipGuardService;
+        this.questionImportService = questionImportService;
     }
 
     /*
@@ -83,7 +90,7 @@ public class QuestionController {
     }
 
     /**
-     * 获取所有标签列表
+     * 获取所有标签列表 不需要VIP校验
      */
     @GetMapping("/tags")
     public ApiResult<List<String>> getTags(@RequestParam("exam_code") String examCode) {
@@ -272,29 +279,45 @@ public class QuestionController {
 
     /**
      * 导入题目
+     * POST /api/questions/import
+     * 支持两种格式：multipart/form-data 和 application/json
      */
-    @PostMapping("/import")
-    public ApiResult importQuestions(@RequestBody Map<String, Object> body) {
-        String content = (String) body.get("content");
-        String examCode = (String) body.get("exam_code");
-        String questionType = (String) body.get("question_type");
-        Long guideId = body.get("guide_id") != null ? ((Number) body.get("guide_id")).longValue() : null;
-        Long knowledgePointId = body.get("knowledge_point_id") != null ? ((Number) body.get("knowledge_point_id")).longValue() : null;
+    @PostMapping(value = "/import", consumes = {"multipart/form-data", "application/json"})
+    public ApiResult importQuestions(
+            @RequestParam(value = "content", required = false) String content,
+            @RequestParam(value = "exam_code", required = false) String examCode,
+            @RequestParam(value = "table_name", required = false) String tableName,
+            @RequestParam(value = "exam_name", required = false) String examName,
+            @RequestParam(value = "question_type", required = false) String questionType,
+            @RequestParam(value = "source_set", required = false) Integer sourceSet,
+            @RequestParam(value = "tags", required = false) String tags,
+            @RequestParam(value = "images", required = false) MultipartFile[] images,
+            @RequestBody(required = false) Map<String, Object> body) {
         
-        if (content == null || content.trim().isEmpty()) {
-            return ApiResult.fail("题目内容不能为空");
+        System.out.println("========== /api/questions/import 接口被调用 ==========");
+        
+        // 如果是application/json格式，从body中获取参数
+        if (content == null && body != null) {
+            content = (String) body.get("content");
+            examCode = (String) body.get("exam_code");
+            tableName = (String) body.get("table_name");
+            examName = (String) body.get("exam_name");
+            questionType = (String) body.get("question_type");
+            sourceSet = body.get("source_set") != null ? ((Number) body.get("source_set")).intValue() : null;
+            tags = (String) body.get("tags");
         }
         
-        if (examCode == null || examCode.trim().isEmpty()) {
-            return ApiResult.fail("题库代码不能为空");
-        }
-        
-        Map<String, Object> result = questionService.importQuestions(content, examCode, questionType, guideId, knowledgePointId);
-        
-        if ((Boolean) result.get("success")) {
-            return ApiResult.ok(result);
-        } else {
-            return ApiResult.fail((String) result.get("message"));
+        try {
+            Map<String, Object> result = questionImportService.importQuestions(
+                    content, examCode, tableName, examName, questionType, sourceSet, tags, images);
+            
+            if ((Boolean) result.get("success")) {
+                return ApiResult.ok(result);
+            } else {
+                return ApiResult.fail((String) result.get("message"));
+            }
+        } catch (IOException e) {
+            return ApiResult.fail("文件处理失败: " + e.getMessage());
         }
     }
 }

@@ -90,7 +90,7 @@ public class QuestionNoteController {
             return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
         }
 
-        List<Map<String, Object>> notes;
+        List<?> notes;
         if (exam_code == null || exam_code.isBlank()) {
             notes = questionNoteService.getNotesByOpenid(openid);
         } else {

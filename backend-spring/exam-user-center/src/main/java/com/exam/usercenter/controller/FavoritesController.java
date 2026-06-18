@@ -28,9 +28,8 @@ public class FavoritesController {
      */
     @GetMapping
     public ApiResult<List<FavoritesEntity>> getFavorites(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(value = "exam_code", required = false) String examCode) {
-        String openid = jwtService.parseOpenid(token);
+            @RequestParam(value = "openid") String openid,
+            @RequestParam(value = "exam_code") String examCode) {
         return favoritesService.getFavorites(openid, examCode);
     }
 

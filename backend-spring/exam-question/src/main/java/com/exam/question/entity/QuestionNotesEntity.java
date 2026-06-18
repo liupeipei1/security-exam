@@ -23,7 +23,7 @@ public class QuestionNotesEntity {
     private String examCode;
 
     @Column(name = "question_id", nullable = false)
-    private Long questionId;
+    private Integer questionId;
 
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;

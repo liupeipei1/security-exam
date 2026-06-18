@@ -21,7 +21,7 @@ public interface QuestionNotesRepository extends JpaRepository<QuestionNotesEnti
     /**
      * 根据openid、exam_code和question_id查询备注
      */
-    Optional<QuestionNotesEntity> findByOpenidAndExamCodeAndQuestionId(String openid, String examCode, Long questionId);
+    Optional<QuestionNotesEntity> findByOpenidAndExamCodeAndQuestionId(String openid, String examCode, Integer questionId);
 
     /**
      * 根据openid、exam_code和question_id删除备注

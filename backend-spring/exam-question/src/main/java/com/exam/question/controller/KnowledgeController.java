@@ -15,7 +15,7 @@ import java.util.Map;
  * 处理知识要点相关的API请求
  */
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/knowledge")
 public class KnowledgeController {
 
     @Autowired
@@ -28,7 +28,7 @@ public class KnowledgeController {
      * @param examCode 考试代码（可选）
      * @return 知识要点列表
      */
-    @GetMapping("/knowledge/list")
+    @GetMapping("/list")
     public ResponseEntity<Map<String, Object>> getKnowledgeList(
             @RequestParam(value = "exam_code", required = false) String examCode) {
 
@@ -48,23 +48,4 @@ public class KnowledgeController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 获取知识要点列表
-     * GET /api/knowledge
-     * 和上面接口重复
-     */
-    @GetMapping("/knowledge")
-    public ApiResult<List<KnowledgePointsEntity>> getKnowledge(@RequestParam String exam_code) {
-        System.out.println("========== /api/knowledge 接口被调用 ==========");
-        System.out.println("请求参数 exam_code: " + exam_code);
-
-        if (exam_code == null || exam_code.isEmpty()) {
-            return ApiResult.fail("缺少必要参数 exam_code");
-        }
-
-        List<KnowledgePointsEntity> points = knowledgeService.getKnowledgePointsByExamCode(exam_code);
-        System.out.println("查询到知识要点数量: " + points.size());
-
-        return ApiResult.ok(points);
-    }
 }

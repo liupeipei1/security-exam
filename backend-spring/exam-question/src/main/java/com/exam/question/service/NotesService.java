@@ -29,7 +29,7 @@ public class NotesService {
      * @param questionId 题目ID（可选）
      * @return 备注列表
      */
-    public List<QuestionNotesEntity> getNotes(String openid, String examCode, Long questionId) {
+    public List<QuestionNotesEntity> getNotes(String openid, String examCode, Integer questionId) {
         if (questionId != null) {
             Optional<QuestionNotesEntity> note = notesRepository.findByOpenidAndExamCodeAndQuestionId(openid, examCode, questionId);
             return note.map(List::of).orElse(List.of());
@@ -46,7 +46,7 @@ public class NotesService {
      * @param note       备注内容
      * @return 操作结果
      */
-    public Map<String, Object> saveNote(String openid, String examCode, Long questionId, String note) {
+    public Map<String, Object> saveNote(String openid, String examCode, Integer questionId, String note) {
         Map<String, Object> result = new HashMap<>();
 
         Optional<QuestionNotesEntity> existing = notesRepository.findByOpenidAndExamCodeAndQuestionId(openid, examCode, questionId);

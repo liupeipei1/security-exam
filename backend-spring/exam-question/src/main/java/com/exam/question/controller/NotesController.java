@@ -30,7 +30,7 @@ public class NotesController {
     public ResponseEntity<?> getNotes(
             @RequestParam String openid,
             @RequestParam String exam_code,
-            @RequestParam(required = false) Long question_id) {
+            @RequestParam(required = false) Integer question_id) {
         
         if (openid == null || openid.isEmpty() || exam_code == null || exam_code.isEmpty()) {
             return ResponseEntity.status(400).body(ApiResult.fail("缺少必要参数"));
@@ -48,17 +48,8 @@ public class NotesController {
     public ResponseEntity<?> saveNote(@RequestBody Map<String, Object> body) {
         String openid = (String) body.get("openid");
         String examCode = (String) body.get("exam_code");
-        Object questionIdObj = body.get("question_id");
+        Integer questionId = (Integer) body.get("question_id");
         String note = (String) body.get("note");
-
-        Long questionId = null;
-        if (questionIdObj != null) {
-            if (questionIdObj instanceof Number) {
-                questionId = ((Number) questionIdObj).longValue();
-            } else {
-                questionId = Long.parseLong(questionIdObj.toString());
-            }
-        }
 
         if (openid == null || openid.isEmpty() || examCode == null || examCode.isEmpty() || questionId == null) {
             return ResponseEntity.status(400).body(ApiResult.fail("缺少必要参数"));

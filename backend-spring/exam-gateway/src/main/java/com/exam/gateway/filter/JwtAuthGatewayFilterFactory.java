@@ -25,8 +25,6 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
             "/api/auth/qrcode",
             "/api/auth/qrcode/callback",
             "/api/auth/qrcode/check",
-          //  "/api/banks",
-          //  "/api/banks/**",
             "/api/questions/types",
             "/api/questions/count",
             "/api/user/pay/notify",
@@ -39,7 +37,7 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
     private static final List<String> VIP_PATH_PREFIXES = List.of(
             "/api/questions/**",
             "/api/exams/**",
-            "/api/question"
+            "/api/favorites/**"
     );
 
     private final JwtService jwtService;
@@ -94,7 +92,8 @@ public class JwtAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<Ob
         if (path.startsWith("/api/user/vip-status")
                 || path.startsWith("/api/user/buy-vip")
                 || path.startsWith("/api/user/pay/")
-                || path.startsWith("/api/user/update")) {
+                || path.startsWith("/api/user/")
+                || path.startsWith("/api/questions/tags")) {
             return false;
         }
         return VIP_PATH_PREFIXES.stream().anyMatch(path::startsWith);

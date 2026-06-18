@@ -18,10 +18,6 @@ public interface GuideRepository extends JpaRepository<ExamGuideEntity, Long> {
      */
     Optional<ExamGuideEntity> findByExamCode(String examCode);
 
-    /**
-     * 根据别名查询指南
-     */
-    Optional<ExamGuideEntity> findByAlias(String alias);
 
     /**
      * 获取所有考试指南列表
