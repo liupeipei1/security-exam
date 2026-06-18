@@ -5,7 +5,6 @@ import com.exam.common.entity.FavoritesEntity;
 import com.exam.common.security.JwtService;
 import com.exam.usercenter.service.FavoritesService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,15 +47,17 @@ public class FavoritesController {
     }
 
     /**
-     * 添加收藏
+     * 添加收藏 - 兼容 Node.js 接口
      */
-    @PostMapping
+    @PostMapping("/add")
     public ApiResult<FavoritesEntity> addFavorite(
-            @RequestHeader("Authorization") String token,
             @RequestBody Map<String, Object> data) {
-        // String openid = jwtService.parseOpenid(token);
         String openid = (String) data.get("openid");
+        // 兼容 bank_code 和 exam_code 两种参数名
         String examCode = (String) data.get("exam_code");
+        if (examCode == null || examCode.isEmpty()) {
+            examCode = (String) data.get("bank_code");
+        }
         Long questionId = ((Number) data.get("question_id")).longValue();
         return favoritesService.addFavorite(openid, examCode, questionId);
     }
@@ -70,6 +71,22 @@ public class FavoritesController {
             @RequestParam("exam_code") String examCode,
             @RequestParam("question_id") Long questionId) {
         String openid = jwtService.parseOpenid(token);
+        return favoritesService.removeFavorite(openid, examCode, questionId);
+    }
+
+    /**
+     * 取消收藏 - 兼容 Node.js 接口
+     */
+    @PostMapping("/remove")
+    public ApiResult<Void> removeFavoriteNode(
+            @RequestBody Map<String, Object> data) {
+        String openid = (String) data.get("openid");
+        // 兼容 bank_code 和 exam_code 两种参数名
+        String examCode = (String) data.get("exam_code");
+        if (examCode == null || examCode.isEmpty()) {
+            examCode = (String) data.get("bank_code");
+        }
+        Long questionId = ((Number) data.get("question_id")).longValue();
         return favoritesService.removeFavorite(openid, examCode, questionId);
     }
 

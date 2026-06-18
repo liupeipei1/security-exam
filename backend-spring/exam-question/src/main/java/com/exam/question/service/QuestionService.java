@@ -3,6 +3,8 @@ package com.exam.question.service;
 import com.exam.common.entity.ExamConfigEntity;
 import com.exam.common.repository.ExamConfigRepository;
 import com.exam.common.util.QuestionAnswerUtil;
+import com.exam.question.entity.QuestionType;
+import com.exam.question.repository.QuestionTypeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -23,14 +25,24 @@ public class QuestionService {
     @Autowired
     private ExamConfigRepository examConfigRepository;
 
+    @Autowired
+    private QuestionTypeRepository questionTypeRepository;
+
+
+    private static final String DEFAULT_TABLE = "security_exam_3";
 
     public String getTable(String examCode) {
-        String table = "";
+        if (examCode == null || examCode.isEmpty()) {
+            return DEFAULT_TABLE;
+        }
         Optional<ExamConfigEntity> optionalExamConfigEntity = examConfigRepository.findByExamCode(examCode);
         if (optionalExamConfigEntity.isPresent()) {
-            table = optionalExamConfigEntity.get().getTableName();
+            String table = optionalExamConfigEntity.get().getTableName();
+            if (table != null && !table.isEmpty()) {
+                return table;
+            }
         }
-        return table;
+        return DEFAULT_TABLE;
     }
 
     public QuestionService(JdbcTemplate jdbcTemplate) {
@@ -69,6 +81,54 @@ public class QuestionService {
                 "SELECT DISTINCT type FROM " + table + " WHERE type IS NOT NULL",
                 String.class
         );
+    }
+
+    /**
+     * 获取所有题目类型（从 question_types 配置表获取，兼容Node.js接口）
+     */
+    public List<Map<String, Object>> getAllQuestionTypes() {
+        List<QuestionType> types = questionTypeRepository.findByEnabledTrueOrderBySortOrder();
+        return types.stream().map(type -> convertToMap(type)).toList();
+    }
+
+    /**
+     * 根据题库代码获取该题库中实际存在的题型
+     */
+    public List<Map<String, Object>> getQuestionTypesByExam(String examCode) {
+        String table = getTable(examCode);
+        // 查询该题库中实际存在的题型
+        List<String> existingTypes = jdbcTemplate.queryForList(
+                "SELECT DISTINCT type FROM " + table + " WHERE type IS NOT NULL",
+                String.class
+        );
+        
+        // 获取所有配置的题型
+        List<QuestionType> allTypes = questionTypeRepository.findByEnabledTrueOrderBySortOrder();
+        
+        // 过滤出该题库中存在的题型，并添加数量统计
+        return allTypes.stream()
+                .filter(type -> existingTypes.contains(type.getTypeCode()))
+                .map(type -> {
+                    Map<String, Object> map = convertToMap(type);
+                    // 添加该题型在题库中的数量
+                    Integer count = jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM " + table + " WHERE type = ?",
+                            Integer.class,
+                            type.getTypeCode()
+                    );
+                    map.put("count", count != null ? count : 0);
+                    return map;
+                })
+                .toList();
+    }
+
+    private Map<String, Object> convertToMap(QuestionType type) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type_code", type.getTypeCode());
+        map.put("type_name", type.getTypeName());
+        map.put("type_description", type.getTypeDescription());
+        map.put("type_icon", type.getTypeIcon());
+        return map;
     }
 
     public Map<String, Object> countStats(String examCode) {

@@ -24,6 +24,9 @@ public class QuestionController {
         this.vipGuardService = vipGuardService;
     }
 
+    /*
+     GET /api/questions?exam_code=**&openid=**
+     */
     @GetMapping
     public ApiResult<List<Map<String, Object>>> list(
             HttpServletRequest request,
@@ -68,17 +71,22 @@ public class QuestionController {
 
     /**
      * 获取题目类型列表
+     * 如果传入 examCode，则返回该题库中实际存在的题型；否则返回所有配置的题型
      */
     @GetMapping("/types")
-    public ApiResult<List<String>> getQuestionTypes(@RequestParam("examCode") String examCode) {
-        return ApiResult.ok(questionService.types(examCode));
+    public ApiResult<List<Map<String, Object>>> getQuestionTypes(
+            @RequestParam(value = "examCode", required = false) String examCode) {
+        if (examCode != null && !examCode.isEmpty()) {
+            return ApiResult.ok(questionService.getQuestionTypesByExam(examCode));
+        }
+        return ApiResult.ok(questionService.getAllQuestionTypes());
     }
 
     /**
      * 获取所有标签列表
      */
     @GetMapping("/tags")
-    public ApiResult<List<String>> getTags(@RequestParam("examCode") String examCode) {
+    public ApiResult<List<String>> getTags(@RequestParam("exam_code") String examCode) {
         return ApiResult.ok(questionService.getTags(examCode));
     }
 
