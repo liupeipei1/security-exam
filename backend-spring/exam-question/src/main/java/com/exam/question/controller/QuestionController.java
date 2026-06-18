@@ -295,17 +295,6 @@ public class QuestionController {
         
         System.out.println("========== /api/questions/import 接口被调用 ==========");
         
-        // 如果是application/json格式，从body中获取参数
-        if (content == null && body != null) {
-            content = (String) body.get("content");
-            examCode = (String) body.get("exam_code");
-            tableName = (String) body.get("table_name");
-            examName = (String) body.get("exam_name");
-            questionType = (String) body.get("question_type");
-            sourceSet = body.get("source_set") != null ? ((Number) body.get("source_set")).intValue() : null;
-            tags = (String) body.get("tags");
-        }
-        
         // 打印接收到的参数用于调试
         System.out.println("content: " + content);
         System.out.println("examCode: " + examCode);
