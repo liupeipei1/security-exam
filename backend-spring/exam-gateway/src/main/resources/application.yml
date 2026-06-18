@@ -9,6 +9,13 @@ exam:
 spring:
   application:
     name: exam-gateway
+  codec:
+    max-in-memory-size: 50MB
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
   cloud:
     gateway:
       default-filters:
@@ -29,7 +36,7 @@ spring:
           uri: lb://exam-account-auth
           predicates:
             - Path=/api/auth/**
-    ##找打用户下的favorite +note
+    ##找打用户下的favorite
         - id: exam-user-center
           uri: lb://exam-user-center
           predicates:
@@ -38,7 +45,7 @@ spring:
         - id: exam-question
           uri: lb://exam-question
           predicates:
-            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/exam/**,/api/upload/**,/api/notes/**
+            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/exam/**,/api/upload/**
   ###考试题目
         - id: exam-core-service
           uri: lb://exam-core-service

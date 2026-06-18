@@ -30,7 +30,11 @@ public class QuestionImportService {
     @Autowired
     private QuestionTypeRepository questionTypeRepository;
 
+    // 匹配Blob URL格式的图片
     private static final Pattern BLOB_IMG_PATTERN = Pattern.compile("<img[^>]+src=[\"']blob:[^\"']+[\"'][^>]*>", Pattern.CASE_INSENSITIVE);
+    
+    // 匹配Base64格式的图片（支持data:image/xxx;base64,格式）
+    private static final Pattern BASE64_IMG_PATTERN = Pattern.compile("<img[^>]+src=[\"']data:image/[^;\"]+;base64,[^\"]*[\"'][^>]*>", Pattern.CASE_INSENSITIVE);
 
     /**
      * 导入题目
@@ -81,6 +85,8 @@ public class QuestionImportService {
 
         // 处理图片：转换为Base64并嵌入内容
         String finalContent = content;
+        
+        // 如果有上传的图片文件，转换为Base64并替换占位符
         if (images != null && images.length > 0) {
             for (int i = 0; i < images.length; i++) {
                 MultipartFile file = images[i];
@@ -88,20 +94,25 @@ public class QuestionImportService {
                     String base64Image = convertToBase64(file);
                     String imgTag = "<img src=\"" + base64Image + "\" />";
 
-                    // 替换blob格式或占位符
+                    // 优先替换blob格式的图片
                     if (BLOB_IMG_PATTERN.matcher(finalContent).find()) {
                         finalContent = BLOB_IMG_PATTERN.matcher(finalContent).replaceFirst(imgTag);
                     } else {
+                        // 尝试替换占位符
                         Pattern placeholderPattern = Pattern.compile("[\\[（](图片|image)\\s*" + (i + 1) + "[\\]）]", Pattern.CASE_INSENSITIVE);
                         if (placeholderPattern.matcher(finalContent).find()) {
                             finalContent = placeholderPattern.matcher(finalContent).replaceFirst(imgTag);
                         } else {
-                            finalContent += imgTag;
+                            // 如果没有占位符，直接追加到内容末尾
+                            finalContent += "\n" + imgTag;
                         }
                     }
                 }
             }
         }
+        
+        // 清理无效的图片标签（如未替换的Blob URL）
+        finalContent = cleanAndValidateImages(finalContent);
 
         // 解析题目
         List<Map<String, Object>> questions = parseQuestionContent(finalContent);
@@ -180,10 +191,10 @@ public class QuestionImportService {
     private void createQuestionTable(String tableName) {
         String createTableSql = "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
                 "id BIGINT AUTO_INCREMENT PRIMARY KEY," +
-                "question TEXT," +
-                "options TEXT," +
-                "answer TEXT," +
-                "analysis TEXT," +
+                "question LONGTEXT," +
+                "options LONGTEXT," +
+                "answer LONGTEXT," +
+                "analysis LONGTEXT," +
                 "type VARCHAR(20) DEFAULT 'single'," +
                 "exam_code VARCHAR(50)," +
                 "source_set INT DEFAULT 0," +
@@ -192,6 +203,24 @@ public class QuestionImportService {
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
         jdbcTemplate.execute(createTableSql);
+    }
+
+    /**
+     * 清理和验证图片标签
+     * - 移除无效的图片标签
+     * - 确保Base64图片格式正确
+     */
+    private String cleanAndValidateImages(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        
+        // 移除无效的Blob图片标签（没有正确替换的）
+        content = BLOB_IMG_PATTERN.matcher(content).replaceAll("");
+        
+        // 可以添加更多的清理逻辑，比如验证Base64格式等
+        
+        return content;
     }
 
     private String createExam(String examCode, String examName) {

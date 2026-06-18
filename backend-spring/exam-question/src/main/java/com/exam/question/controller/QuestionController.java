@@ -148,8 +148,15 @@ public class QuestionController {
         System.out.println("请求体内容: " + body.toString());
         
         String question = (String) body.get("question");
+        
+        // 正确处理 options 参数（前端传入的是数组）
         Object optionsObj = body.get("options");
-        String options = optionsObj != null ? optionsObj.toString() : null;
+        String options = null;
+        if (optionsObj instanceof List) {
+            options = com.alibaba.fastjson2.JSON.toJSONString(optionsObj);
+        } else if (optionsObj != null) {
+            options = optionsObj.toString();
+        }
         
         Object answerObj = body.get("answer");
         String[] answer = null;
@@ -160,6 +167,8 @@ public class QuestionController {
                     .toArray(String[]::new);
         } else if (answerObj instanceof String) {
             answer = new String[]{(String) answerObj};
+        } else if (answerObj instanceof Number) {
+            answer = new String[]{answerObj.toString()};
         }
         
         String analysis = (String) body.get("analysis");
