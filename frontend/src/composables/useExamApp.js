@@ -2506,7 +2506,6 @@ function createInstance() {
                     questions,
                     questionTypes,
                     loading,
-                    exams,
                     currentExam,
                     currentExamName,
                     currentExamConfig,

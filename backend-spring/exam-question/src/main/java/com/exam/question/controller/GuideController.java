@@ -68,50 +68,59 @@ public class GuideController {
         map.put("id", guide.getId());
         map.put("examCode", guide.getExamCode());
         map.put("title", guide.getTitle());
-        map.put("exam_overview", guide.getExam_overview());
+        map.put("examOverview", guide.getExam_overview());
         
         // 解析 exam_content（JSON 数组字符串）
         if (guide.getExam_content() != null && !guide.getExam_content().isEmpty()) {
             try {
                 List<String> examContent = JSON.parseObject(guide.getExam_content(), new TypeReference<List<String>>() {});
-                map.put("exam_content", examContent);
+                map.put("examContent", examContent);
             } catch (Exception e) {
-                map.put("exam_content", guide.getExam_content());
+                map.put("examContent", guide.getExam_content());
             }
         } else {
-            map.put("exam_content", new ArrayList<>());
+            map.put("examContent", new ArrayList<>());
         }
         
         // 解析 question_type_distribution（JSON 数组字符串）
         if (guide.getQuestion_type_distribution() != null && !guide.getQuestion_type_distribution().isEmpty()) {
             try {
                 List<Map<String, Object>> distribution = JSON.parseObject(guide.getQuestion_type_distribution(), new TypeReference<List<Map<String, Object>>>() {});
-                map.put("question_type_distribution", distribution);
+                // 将内部字段也转换为驼峰命名
+                List<Map<String, Object>> formattedDistribution = new ArrayList<>();
+                for (Map<String, Object> item : distribution) {
+                    Map<String, Object> formattedItem = new LinkedHashMap<>();
+                    formattedItem.put("type", item.get("type"));
+                    formattedItem.put("count", item.get("count"));
+                    formattedItem.put("score", item.get("score"));
+                    formattedDistribution.add(formattedItem);
+                }
+                map.put("questionTypeDistribution", formattedDistribution);
             } catch (Exception e) {
-                map.put("question_type_distribution", guide.getQuestion_type_distribution());
+                map.put("questionTypeDistribution", guide.getQuestion_type_distribution());
             }
         } else {
-            map.put("question_type_distribution", new ArrayList<>());
+            map.put("questionTypeDistribution", new ArrayList<>());
         }
         
         // 解析 preparation_tips（JSON 数组字符串）
         if (guide.getPreparation_tips() != null && !guide.getPreparation_tips().isEmpty()) {
             try {
                 List<String> tips = JSON.parseObject(guide.getPreparation_tips(), new TypeReference<List<String>>() {});
-                map.put("preparation_tips", tips);
+                map.put("preparationTips", tips);
             } catch (Exception e) {
-                map.put("preparation_tips", guide.getPreparation_tips());
+                map.put("preparationTips", guide.getPreparation_tips());
             }
         } else {
-            map.put("preparation_tips", new ArrayList<>());
+            map.put("preparationTips", new ArrayList<>());
         }
         map.put("content", guide.getContent());
-        map.put("exam_tips", guide.getExam_tips());
-        map.put("exam_duration", guide.getExam_duration());
-        map.put("total_score", guide.getTotal_score());
-        map.put("pass_score", guide.getPass_score());
+        map.put("examTips", guide.getExam_tips());
+        map.put("examDuration", guide.getExam_duration());
+        map.put("totalScore", guide.getTotal_score());
+        map.put("passScore", guide.getPass_score());
         map.put("enabled", guide.getEnabled());
-        map.put("sort_order", guide.getSort_order());
+        map.put("sortOrder", guide.getSort_order());
         map.put("createdAt", guide.getCreatedAt());
         map.put("updatedAt", guide.getUpdatedAt());
         
