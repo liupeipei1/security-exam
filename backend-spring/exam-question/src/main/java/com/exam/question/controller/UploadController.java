@@ -27,7 +27,7 @@ public class UploadController {
      * POST /api/upload/image
      * 
      * @param file 上传的图片文件
-     * @param exam_code 可选参数，用于将图片保存到考试指南
+     * @param examCode 可选参数，用于将图片保存到考试指南
      */
     @PostMapping("/image")
     public ResponseEntity<?> uploadImage(

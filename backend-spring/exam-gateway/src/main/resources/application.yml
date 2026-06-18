@@ -38,7 +38,7 @@ spring:
         - id: exam-question
           uri: lb://exam-question
           predicates:
-            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/exam/**
+            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/exam/**,/api/upload/**,/api/notes/**
   ###考试题目
         - id: exam-core-service
           uri: lb://exam-core-service

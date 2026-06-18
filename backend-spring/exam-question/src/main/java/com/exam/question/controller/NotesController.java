@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 笔记控制器
+ * 笔记控制器  考试指南的备注
  */
 @RestController
 @RequestMapping("/api/notes")

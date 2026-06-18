@@ -278,12 +278,12 @@ public class QuestionController {
     }
 
     /**
-     * 导入题目
+     * 导入题目（表单格式）
      * POST /api/questions/import
-     * 支持两种格式：multipart/form-data 和 application/json
+     * 支持 multipart/form-data 和 application/x-www-form-urlencoded
      */
-    @PostMapping(value = "/import", consumes = {"multipart/form-data", "application/json"})
-    public ApiResult importQuestions(
+    @PostMapping(value = "/import", consumes = {"multipart/form-data", "application/x-www-form-urlencoded"})
+    public ApiResult importQuestionsForm(
             @RequestParam(value = "content", required = false) String content,
             @RequestParam(value = "exam_code", required = false) String examCode,
             @RequestParam(value = "table_name", required = false) String tableName,
@@ -291,8 +291,7 @@ public class QuestionController {
             @RequestParam(value = "question_type", required = false) String questionType,
             @RequestParam(value = "source_set", required = false) Integer sourceSet,
             @RequestParam(value = "tags", required = false) String tags,
-            @RequestParam(value = "images", required = false) MultipartFile[] images,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @RequestParam(value = "images", required = false) MultipartFile[] images) {
         
         System.out.println("========== /api/questions/import 接口被调用 ==========");
         
@@ -307,6 +306,11 @@ public class QuestionController {
             tags = (String) body.get("tags");
         }
         
+        // 打印接收到的参数用于调试
+        System.out.println("content: " + content);
+        System.out.println("examCode: " + examCode);
+        System.out.println("tableName: " + tableName);
+        
         try {
             Map<String, Object> result = questionImportService.importQuestions(
                     content, examCode, tableName, examName, questionType, sourceSet, tags, images);
@@ -317,7 +321,13 @@ public class QuestionController {
                 return ApiResult.fail((String) result.get("message"));
             }
         } catch (IOException e) {
+            System.err.println("文件处理失败: " + e.getMessage());
+            e.printStackTrace();
             return ApiResult.fail("文件处理失败: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("导入失败: " + e.getMessage());
+            e.printStackTrace();
+            return ApiResult.fail("服务器内部错误");
         }
     }
 }

@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/guide")
 public class GuideController {
 
     @Autowired
@@ -27,7 +27,7 @@ public class GuideController {
      * 获取考试指南
      * GET /api/guide
      */
-    @GetMapping("/guide")
+    @GetMapping("")
     public ApiResult<?> getGuide(@RequestParam(value = "exam_code", required = false) String examCode) {
         log.info("========== /api/guide 接口被调用 =========="+examCode );
 
@@ -42,7 +42,7 @@ public class GuideController {
      * 获取考试指南列表
      * GET /api/guide/list
      */
-    @GetMapping("/guide/list")
+    @GetMapping("/list")
     public ApiResult<?> getGuideList() {
         System.out.println("========== /api/guide/list 接口被调用 ==========");
         try {
@@ -59,7 +59,7 @@ public class GuideController {
      * 更新考试指南
      * PUT /api/guide
      */
-    @PutMapping("/guide")
+    @PutMapping("")
     public ApiResult<?> updateGuide(@RequestBody Map<String, Object> requestBody) {
         System.out.println("========== /api/guide 接口被调用(更新) ==========");
 
