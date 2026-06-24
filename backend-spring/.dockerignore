@@ -1,6 +1,30 @@
-**/build
-**/target
-**/.gradle
-**/.mvn
+# Gradle
+.gradle/
+build/
+!*/build/libs/
+*.log
+
+# IDE
+.idea/
+.vscode/
 *.iml
-.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+docs/
+
+# Test
+src/test/
