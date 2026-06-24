@@ -167,7 +167,7 @@
                                 <div class="review-question" v-html="question.question"></div>
                                 <div class="review-answers">
                                     <p><strong>你的答案：</strong>{{ getExamUserAnswerText(question.id) }}</p>
-                                    <p><strong>正确答案：</strong>{{ question.answer.join(', ') }}</p>
+                                    <p><strong>正确答案：</strong>{{ Array.isArray(question.answer) ? question.answer.join(', ') : question.answer }}</p>
                                 </div>
                             </div>
                         </div>
