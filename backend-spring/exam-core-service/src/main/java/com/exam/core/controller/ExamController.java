@@ -18,27 +18,115 @@ public class ExamController {
         this.examService = examService;
     }
 
-    /**
-     * 获取考试历史记录
-     * GET /api/exam/history?openid=xxx
-     */
-    @GetMapping("/history")
-    public ResponseEntity<?> getExamHistory(@RequestParam String openid) {
+    @GetMapping("/records")
+    public ResponseEntity<?> getRecords(@RequestParam(required = false) String openid) {
         if (openid == null || openid.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
+        }
+        List<Map<String, Object>> records = examService.getExamHistory(openid);
+        return ResponseEntity.ok(ApiResult.ok(records));
+    }
+
+    @PostMapping("/record")
+    public ResponseEntity<?> saveRecord(@RequestBody Map<String, Object> body) {
+        String openid = (String) body.get("openid");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> record = (Map<String, Object>) body.get("record");
+        if (openid == null || record == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少必要参数"));
+        }
+        examService.saveExamRecord(openid, record);
+        return ResponseEntity.ok(ApiResult.okMessage("保存成功"));
+    }
+
+    @DeleteMapping("/records")
+    public ResponseEntity<?> deleteRecords(@RequestParam(required = false) String openid) {
+        if (openid == null || openid.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
+        }
+        List<Map<String, Object>> records = examService.getExamHistory(openid);
+        records.forEach(r -> {
+            Long id = (Long) r.get("id");
+            examService.deleteExamRecord(openid, id);
+        });
+        return ResponseEntity.ok(ApiResult.okMessage("删除成功"));
+    }
+
+    @GetMapping("/progress")
+    public ResponseEntity<?> getProgress(
+            @RequestParam(required = false) String openid,
+            @RequestParam(name = "exam_code", required = false) String examCode) {
+        if (openid == null || openid.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
+        }
+        String sessionId = openid + ":" + (examCode != null ? examCode : "default");
+        Map<String, Object> progress = examService.getProgress(sessionId);
+        if (progress == null) {
+            progress = Map.of();
+        }
+        return ResponseEntity.ok(ApiResult.ok(progress));
+    }
+
+    @PostMapping("/progress")
+    public ResponseEntity<?> saveProgress(@RequestBody Map<String, Object> body) {
+        String openid = (String) body.get("openid");
+        String examCode = (String) body.get("exam_code");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> progress = (Map<String, Object>) body.get("progress");
+        if (openid == null || progress == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少必要参数"));
+        }
+        String sessionId = openid + ":" + (examCode != null ? examCode : "default");
+        examService.saveProgress(sessionId, progress);
+        return ResponseEntity.ok(ApiResult.okMessage("保存成功"));
+    }
+
+    @GetMapping("/session")
+    public ResponseEntity<?> getSession(@RequestParam(required = false) String openid) {
+        if (openid == null || openid.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
+        }
+        Map<String, Object> session = examService.getSession(openid);
+        if (session == null) {
+            session = Map.of();
+        }
+        return ResponseEntity.ok(ApiResult.ok(session));
+    }
+
+    @PostMapping("/session")
+    public ResponseEntity<?> saveSession(@RequestBody Map<String, Object> body) {
+        String openid = (String) body.get("openid");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> session = (Map<String, Object>) body.get("session");
+        if (openid == null || session == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少必要参数"));
+        }
+        examService.saveSession(openid, session);
+        return ResponseEntity.ok(ApiResult.okMessage("保存成功"));
+    }
+
+    @DeleteMapping("/session")
+    public ResponseEntity<?> deleteSession(@RequestParam(required = false) String openid) {
+        if (openid == null || openid.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
+        }
+        examService.deleteSession(openid);
+        return ResponseEntity.ok(ApiResult.okMessage("删除成功"));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<?> getExamHistory(@RequestParam(required = false) String openid) {
+        if (openid == null || openid.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
         }
         List<Map<String, Object>> history = examService.getExamHistory(openid);
         return ResponseEntity.ok(ApiResult.ok(history));
     }
 
-    /**
-     * 获取考试记录详情
-     * GET /api/exam/detail?openid=xxx&record_id=xxx
-     */
     @GetMapping("/detail")
-    public ResponseEntity<?> getExamDetail(@RequestParam String openid, @RequestParam Long record_id) {
+    public ResponseEntity<?> getExamDetail(@RequestParam(required = false) String openid, @RequestParam Long record_id) {
         if (openid == null || openid.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
         }
         Map<String, Object> detail = examService.getExamDetail(openid, record_id);
         if (detail == null) {
@@ -47,28 +135,20 @@ public class ExamController {
         return ResponseEntity.ok(ApiResult.ok(detail));
     }
 
-    /**
-     * 保存考试记录
-     * POST /api/exam/save
-     */
     @PostMapping("/save")
     public ResponseEntity<?> saveExamRecord(@RequestBody Map<String, Object> body) {
         String openid = (String) body.get("openid");
         if (openid == null || openid.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
         }
         Map<String, Object> saved = examService.saveExamRecord(openid, body);
         return ResponseEntity.ok(ApiResult.ok(saved));
     }
 
-    /**
-     * 删除考试记录
-     * DELETE /api/exam/delete?openid=xxx&record_id=xxx
-     */
     @DeleteMapping("/delete")
-    public ResponseEntity<?> deleteExamRecord(@RequestParam String openid, @RequestParam Long record_id) {
+    public ResponseEntity<?> deleteExamRecord(@RequestParam(required = false) String openid, @RequestParam Long record_id) {
         if (openid == null || openid.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少openid参数"));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "缺少openid参数"));
         }
         boolean deleted = examService.deleteExamRecord(openid, record_id);
         if (!deleted) {
@@ -77,106 +157,12 @@ public class ExamController {
         return ResponseEntity.ok(ApiResult.okMessage("删除成功"));
     }
 
-    /**
-     * 保存考试进度
-     * POST /api/exam/progress/save
-     */
-    @PostMapping("/progress/save")
-    public ResponseEntity<?> saveProgress(@RequestBody Map<String, Object> body) {
-        String sessionId = (String) body.get("session_id");
-        if (sessionId == null || sessionId.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        examService.saveProgress(sessionId, body);
-        return ResponseEntity.ok(ApiResult.okMessage("保存成功"));
-    }
-
-    /**
-     * 获取考试进度
-     * GET /api/exam/progress/get?session_id=xxx
-     */
-    @GetMapping("/progress/get")
-    public ResponseEntity<?> getProgress(@RequestParam String session_id) {
-        if (session_id == null || session_id.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        Map<String, Object> progress = examService.getProgress(session_id);
-        if (progress == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApiResult.ok(progress));
-    }
-
-    /**
-     * 删除考试进度
-     * DELETE /api/exam/progress/delete?session_id=xxx
-     */
-    @DeleteMapping("/progress/delete")
-    public ResponseEntity<?> deleteProgress(@RequestParam String session_id) {
-        if (session_id == null || session_id.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        examService.deleteProgress(session_id);
-        return ResponseEntity.ok(ApiResult.okMessage("删除成功"));
-    }
-
-    /**
-     * 保存考试会话
-     * POST /api/exam/session/save
-     */
-    @PostMapping("/session/save")
-    public ResponseEntity<?> saveSession(@RequestBody Map<String, Object> body) {
-        String sessionId = (String) body.get("session_id");
-        if (sessionId == null || sessionId.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        examService.saveSession(sessionId, body);
-        return ResponseEntity.ok(ApiResult.okMessage("保存成功"));
-    }
-
-    /**
-     * 获取考试会话
-     * GET /api/exam/session/get?session_id=xxx
-     */
-    @GetMapping("/session/get")
-    public ResponseEntity<?> getSession(@RequestParam String session_id) {
-        if (session_id == null || session_id.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        Map<String, Object> session = examService.getSession(session_id);
-        if (session == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ApiResult.ok(session));
-    }
-
-    /**
-     * 删除考试会话
-     * DELETE /api/exam/session/delete?session_id=xxx
-     */
-    @DeleteMapping("/session/delete")
-    public ResponseEntity<?> deleteSession(@RequestParam String session_id) {
-        if (session_id == null || session_id.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "缺少session_id参数"));
-        }
-        examService.deleteSession(session_id);
-        return ResponseEntity.ok(ApiResult.okMessage("删除成功"));
-    }
-
-    /**
-     * 清理所有会话（管理接口）
-     * DELETE /api/exam/session/clear
-     */
     @DeleteMapping("/session/clear")
     public ResponseEntity<?> clearAllSessions() {
         long count = examService.clearAllSessions();
         return ResponseEntity.ok(ApiResult.ok(Map.of("cleared", count)));
     }
 
-    /**
-     * 获取会话数量（管理接口）
-     * GET /api/exam/session/count
-     */
     @GetMapping("/session/count")
     public ResponseEntity<?> getSessionCount() {
         long count = examService.getSessionCount();

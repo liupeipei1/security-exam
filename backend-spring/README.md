@@ -1,8 +1,8 @@
 # Spring Cloud 微服务后端
 
-将原 Node.js `backend/server.js` 拆分为 Spring Boot + Spring Cloud 前后端分离架构。
+将原 Node.js `backend/server.js` 迁移到 **Spring Boot + Spring Cloud 微服务架构**。
 
-## 架构
+## 🏗️ 架构
 
 ```
 ┌─────────────┐     ┌──────────────────┐
@@ -18,31 +18,34 @@
                  │ Eureka 服务发现
     ┌────────────┼────────────┬─────────────┐
     ▼            ▼            ▼             ▼
- exam-account exam-user-center exam-question exam-exam
-  :8081       :8082           :8083        :8084
+ exam-account  exam-user-   exam-question  exam-core-
+   -auth        center                      service
+   :8081        :8085        :8083         :8084
     │            │               │            │
     └────────────┴───────────────┴────────────┘
                  │
          MySQL (exam-db) + Redis
 ```
 
+## 📦 服务列表
+
 | 模块 | 端口 | 职责 |
 |------|------|------|
 | exam-registry | 8761 | Eureka 注册中心 |
-| exam-gateway | 8080 | 统一入口、CORS、路由 |
-| exam-account-auth | 8081 | 微信登录、扫码登录、VIP、用户资料 |
-| exam-user-center | 8082 | 收藏、笔记管理 |
-| exam-question | 8083 | 题库、题目、做题缓存、文件上传 |
-| exam-core-service | 8084 | 考试管理 |
+| exam-gateway | 8080 | 统一入口、CORS、路由、JWT鉴权 |
+| exam-account-auth | 8081 | 微信登录、扫码登录、VIP、用户资料、支付 |
+| exam-user-center | 8085 | 收藏、笔记管理 |
+| exam-question | 8083 | 题库、题目、做题缓存、文件上传、语音合成、考试指南、知识库 |
+| exam-core-service | 8084 | 考试记录、进度管理、会话管理、题库配置 |
 
-## 环境要求
+## 🛠️ 环境要求
 
 - JDK 17+
 - Gradle 8.14+（或使用项目 Gradle Wrapper）
 - MySQL 8（库名 `exam-db`，沿用 `backend/DML/` 脚本）
 - Redis 7
 
-## 快速启动
+## 🚀 快速启动
 
 ### 1. 启动基础设施
 
@@ -66,30 +69,39 @@ set WECHAT_QR_REDIRECT_URI=http://localhost:8080/api/auth/qrcode/callback
 
 ```bash
 cd backend-spring
-gradle build -x test
+./gradlew build -x test
 
 # 终端 1
-gradle :exam-registry:bootRun
+./gradlew :exam-registry:bootRun
 
 # 终端 2（等 Eureka 就绪后）
-gradle :exam-gateway:bootRun
-gradle :exam-account-auth:bootRun
-gradle :exam-user-center:bootRun
-gradle :exam-question:bootRun
-gradle :exam-core-service:bootRun
+./gradlew :exam-gateway:bootRun
+./gradlew :exam-account-auth:bootRun
+./gradlew :exam-user-center:bootRun
+./gradlew :exam-question:bootRun
+./gradlew :exam-core-service:bootRun
 ```
 
-生成可执行 jar：`gradle :exam-gateway:bootJar`（产物在 `exam-gateway/build/libs/app.jar`）。
+生成可执行 jar：`./gradlew :exam-gateway:bootJar`（产物在 `exam-gateway/build/libs/`）。
 
-Windows 可使用项目根目录 `start-spring.bat`（若已提供）。
+Windows 可使用项目根目录 `start-spring.bat`。
 
 ### 4. 验证
 
-- 题库列表：`GET http://localhost:8080/api/banks`
-- 测试登录：`POST http://localhost:8080/api/auth/login`  
-  Body: `{"code":"dev","loginType":"mini"}`
+```bash
+# 检查 Eureka 服务注册
+curl http://localhost:8761/eureka/apps/
 
-## 前端
+# 测试登录（开发模式）
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"code":"dev","loginType":"mini"}'
+
+# 获取题库列表
+curl http://localhost:8080/api/exams
+```
+
+## 🎨 前端
 
 ```bash
 cd frontend
@@ -97,22 +109,27 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:5173 ，Vite 将 `/api` 代理到网关 `:8080`。
+访问 http://localhost:8000 ，Vite 将 `/api` 代理到网关 `:8080`。
 
-原根目录 `index.html` 仍可作参考，逐步迁移到 `frontend/`。
+## 🔌 API 路由配置
 
-## API 兼容性
+网关路由规则（`exam-gateway/src/main/resources/application.yml`）：
 
-网关对外路径与原 Node 版一致（`/api/auth/*`、`/api/user/*`、`/api/banks/*`、`/api/questions/*`、`/api/exam/*`），客户端仅需将基址从 `http://localhost:3001` 改为 `http://localhost:8080`。
+| 路径 | 目标服务 |
+|------|----------|
+| `/api/auth/**`, `/api/user/**`, `/api/pay/**` | exam-account-auth |
+| `/api/favorites/**`, `/api/notes/**` | exam-user-center |
+| `/api/questions/**`, `/api/question/**`, `/api/guide/**`, `/api/knowledge/**`, `/api/speech/**`, `/api/upload/**` | exam-question |
+| `/api/exam/**`, `/api/exams/**` | exam-core-service |
 
-## JWT 鉴权
+## 🔐 JWT 鉴权
 
 - 登录接口返回 `data.token`
 - 客户端请求头：`Authorization: Bearer <token>`
 - 网关校验 JWT，并向下游传递 `X-Openid`
 - 仍兼容 URL 参数 `openid`（过渡期）
 
-## 微信支付
+## 💳 微信支付
 
 | 接口 | 说明 |
 |------|------|
@@ -121,25 +138,23 @@ npm run dev
 
 `WECHAT_PAY_ENABLED=false` 时，`pay/create` 直接开通 VIP（开发模式）。
 
-## Docker 一键部署
+## 🐳 Docker 一键部署
 
 ```bash
-# 项目根目录
+cd backend-spring
 docker compose up -d --build
 ```
 
-服务：MySQL、Redis、Eureka、Gateway、Account、User-Center、Question、Exam。
+服务：MySQL、Redis、Eureka、Gateway、Account、User-Center、Question、Core-Service。
 
-## 原 Node 后端
-
-`backend/server.js` 保留作对照，新开发请以 `backend-spring` 为准。
-
-## 服务合并说明
-
-为优化服务架构，已对部分服务进行合并：
+## 📝 服务合并说明
 
 | 合并前 | 合并后 | 说明 |
 |--------|--------|------|
 | exam-auth-service + exam-user-center | exam-account-auth | 账户相关服务合并 |
 | exam-favorites-service + exam-note-service | exam-user-center | 用户中心服务合并 |
 | exam-upload-service | exam-question | 文件上传功能并入题库服务 |
+
+## 📋 原 Node 后端
+
+`backend/server.js` 保留作对照，新开发请以 `backend-spring` 为准。

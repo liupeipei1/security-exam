@@ -31,22 +31,18 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
-        ### user +auth 权限
         - id: exam-account-auth
           uri: lb://exam-account-auth
           predicates:
-            - Path=/api/auth/**
-    ##找打用户下的favorite
+            - Path=/api/auth/**,/api/user/**,/api/pay/**
         - id: exam-user-center
           uri: lb://exam-user-center
           predicates:
             - Path=/api/favorites/**,/api/notes/**
-   ### question
         - id: exam-question
           uri: lb://exam-question
           predicates:
-            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/exam/**,/api/upload/**
-  ###考试题目
+            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/upload/**
         - id: exam-core-service
           uri: lb://exam-core-service
           predicates:
