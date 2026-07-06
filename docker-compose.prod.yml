@@ -28,8 +28,8 @@ services:
       - exam-redis-data:/data
 
   backend:
-    build: ./backend
-    container_name: exam-backend
+    build: ./backend-spring
+    container_name: exam-backend-spring
     environment:
       DB_HOST: mysql
       DB_PASSWORD: 123456

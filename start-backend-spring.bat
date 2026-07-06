@@ -28,7 +28,7 @@ timeout /t 8 /nobreak >nul
 
 echo [6/6] Starting Question ^& Exam Services
 start "exam-question" cmd /k gradlew.bat :exam-question:bootRun
-start "exam-exam" cmd /k gradlew.bat :exam-core-service:bootRun
+start "exam-core" cmd /k gradlew.bat :exam-core-service:bootRun
 
 echo All services started in separate windows.
 echo Gateway: http://localhost:8080
