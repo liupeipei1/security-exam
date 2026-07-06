@@ -1,0 +1,245 @@
+image: atlassian/default-image:latest
+
+definitions:
+  services:
+    docker:
+      memory: 3072
+  caches:
+    gradle: ~/.gradle/caches
+    npm: ~/.npm
+  steps:
+    - step: &build-backend
+        name: 编译后端微服务
+        script:
+          - cd backend-spring
+          - ./gradlew build -x test --no-daemon
+        caches:
+          - gradle
+        artifacts:
+          - backend-spring/**/build/libs/*.jar
+
+    - step: &build-frontend
+        name: 编译前端
+        script:
+          - cd frontend
+          - npm install
+          - npm run build
+        caches:
+          - npm
+        artifacts:
+          - frontend/dist/**
+
+    - step: &build-and-push-image
+        name: 构建并推送 $SERVICE_NAME 镜像
+        script:
+          - cd backend-spring
+          - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+          - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+          - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+          - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+        services:
+          - docker
+        caches:
+          - gradle
+
+    - step: &deploy-local
+        name: 部署到本地 Docker
+        runs-on: self.hosted
+        script:
+          - cd backend-spring
+          - docker compose -f docker-compose.prod.yml pull
+          - docker compose -f docker-compose.prod.yml up -d
+
+pipelines:
+  default:
+    - step: *build-backend
+    - step: *build-frontend
+    - parallel:
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-registry 镜像
+            script:
+              - export SERVICE_NAME=exam-registry
+              - export DOCKERFILE_PATH=exam-registry/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-gateway 镜像
+            script:
+              - export SERVICE_NAME=exam-gateway
+              - export DOCKERFILE_PATH=exam-gateway/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-account-auth 镜像
+            script:
+              - export SERVICE_NAME=exam-account-auth
+              - export DOCKERFILE_PATH=exam-account-auth/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-question 镜像
+            script:
+              - export SERVICE_NAME=exam-question
+              - export DOCKERFILE_PATH=exam-question/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-user-center 镜像
+            script:
+              - export SERVICE_NAME=exam-user-center
+              - export DOCKERFILE_PATH=exam-user-center/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+        - step:
+            <<: *build-and-push-image
+            name: 推送 exam-core-service 镜像
+            script:
+              - export SERVICE_NAME=exam-core-service
+              - export DOCKERFILE_PATH=exam-core-service/Dockerfile
+              - cd backend-spring
+              - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+              - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+              - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+            services:
+              - docker
+            caches:
+              - gradle
+    - step: *deploy-local
+
+  branches:
+    master:
+      - step: *build-backend
+      - step: *build-frontend
+      - parallel:
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-registry 镜像
+              script:
+                - export SERVICE_NAME=exam-registry
+                - export DOCKERFILE_PATH=exam-registry/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-gateway 镜像
+              script:
+                - export SERVICE_NAME=exam-gateway
+                - export DOCKERFILE_PATH=exam-gateway/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-account-auth 镜像
+              script:
+                - export SERVICE_NAME=exam-account-auth
+                - export DOCKERFILE_PATH=exam-account-auth/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-question 镜像
+              script:
+                - export SERVICE_NAME=exam-question
+                - export DOCKERFILE_PATH=exam-question/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-user-center 镜像
+              script:
+                - export SERVICE_NAME=exam-user-center
+                - export DOCKERFILE_PATH=exam-user-center/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+          - step:
+              <<: *build-and-push-image
+              name: 推送 exam-core-service 镜像
+              script:
+                - export SERVICE_NAME=exam-core-service
+                - export DOCKERFILE_PATH=exam-core-service/Dockerfile
+                - cd backend-spring
+                - docker build -t $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT -f $DOCKERFILE_PATH .
+                - docker tag $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:$BITBUCKET_COMMIT
+                - docker push $DOCKER_HUB_USERNAME/$SERVICE_NAME:latest
+              services:
+                - docker
+              caches:
+                - gradle
+      - step: *deploy-local

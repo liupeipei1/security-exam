@@ -1,0 +1,211 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: exam-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: exam-db
+      MYSQL_USER: peipei
+      MYSQL_PASSWORD: 298280
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - exam-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: exam-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - exam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  exam-registry:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-registry:latest
+    container_name: exam-registry
+    ports:
+      - "8761:8761"
+    networks:
+      - exam-network
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  exam-account-auth:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-account-auth:latest
+    container_name: exam-account-auth
+    ports:
+      - "8081:8081"
+    networks:
+      - exam-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      exam-registry:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=exam-db
+      - DB_USER=peipei
+      - DB_PASSWORD=298280
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+      - JWT_SECRET=exam-secret-key-2024
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  exam-question:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-question:latest
+    container_name: exam-question
+    ports:
+      - "8083:8083"
+    networks:
+      - exam-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      exam-registry:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=exam-db
+      - DB_USER=peipei
+      - DB_PASSWORD=298280
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  exam-user-center:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-user-center:latest
+    container_name: exam-user-center
+    ports:
+      - "8085:8085"
+    networks:
+      - exam-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      exam-registry:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=exam-db
+      - DB_USER=peipei
+      - DB_PASSWORD=298280
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  exam-core-service:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-core-service:latest
+    container_name: exam-core-service
+    ports:
+      - "8084:8084"
+    networks:
+      - exam-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      exam-registry:
+        condition: service_healthy
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=exam-db
+      - DB_USER=peipei
+      - DB_PASSWORD=298280
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  exam-gateway:
+    image: ${DOCKER_HUB_USERNAME:-peipei}/exam-gateway:latest
+    container_name: exam-gateway
+    ports:
+      - "8080:8080"
+    networks:
+      - exam-network
+    depends_on:
+      exam-registry:
+        condition: service_healthy
+      exam-account-auth:
+        condition: service_healthy
+      exam-question:
+        condition: service_healthy
+      exam-user-center:
+        condition: service_healthy
+      exam-core-service:
+        condition: service_healthy
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
+      - JWT_SECRET=exam-secret-key-2024
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  exam-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
