@@ -226,21 +226,17 @@ docker compose up -d --build
 
 ### 架构方案
 
-由于没有独立服务器，采用以下方案：
+由于 Runner 就在本地 Docker Desktop 上运行，**无需外部镜像仓库**，直接本地构建部署：
 
 ```
-Bitbucket仓库 → Bitbucket Pipelines（构建+测试+推送镜像）→ Docker Hub
-                                                      ↓
-Bitbucket Self-Hosted Runner（本地Docker Desktop）← pull镜像 → docker compose up
+Bitbucket仓库 → Bitbucket Pipelines（编译）→ Self-Hosted Runner（本地构建+部署）
+                                                    ↓
+                                              docker compose up -d --build
 ```
 
 ### 前置准备
 
-1. **创建 Docker Hub 账号**：[https://hub.docker.com/](https://hub.docker.com/)
-2. **在 Bitbucket 添加环境变量**：
-   - `DOCKER_HUB_USERNAME`：Docker Hub 用户名
-   - `DOCKER_HUB_PASSWORD`：Docker Hub 密码
-3. **添加 Self-Hosted Runner**：
+1. **添加 Self-Hosted Runner**：
    - Bitbucket → 仓库 → Settings → Pipelines → Runners → Add runner
    - 获取 `RUNNER_UUID` 和 `RUNNER_TOKEN`
 
@@ -249,26 +245,21 @@ Bitbucket Self-Hosted Runner（本地Docker Desktop）← pull镜像 → docker 
 | 文件 | 说明 |
 |------|------|
 | `bitbucket-pipelines.yml` | Bitbucket Pipelines 配置 |
-| `backend-spring/docker-compose.prod.yml` | 生产环境部署配置（使用 Docker Hub 镜像） |
-| `start-bitbucket-runner.bat` | 本地 Runner 启动脚本 |
+| `start-bitbucket-runner.ps1` | 本地 Runner 启动脚本 |
 
 ### 启动本地 Runner
 
-```bash
-# Windows
-start-bitbucket-runner.bat
+```powershell
+# Windows PowerShell
+.\start-bitbucket-runner.ps1
 
 # 或手动启动（替换参数）
-docker run -d ^
-  --name bitbucket-runner ^
-  --restart always ^
-  -e BITBUCKET_REPO_SLUG=你的仓库名 ^
-  -e BITBUCKET_WORKSPACE=你的工作空间名 ^
-  -e BITBUCKET_RUNNER_UUID=你的Runner UUID ^
-  -e BITBUCKET_RUNNER_TOKEN=你的Runner Token ^
-  -v /var/run/docker.sock:/var/run/docker.sock ^
-  -v bitbucket-runner-cache:/cache ^
-  atlassian/bitbucket-pipelines-runner:2
+cd ~\bitbucket-runner
+java -jar runner.jar ^
+    --workspace "你的工作空间名" ^
+    --repo-slug "你的仓库名" ^
+    --uuid "你的Runner UUID" ^
+    --token "你的Runner Token"
 ```
 
 ### Pipeline 流程
@@ -277,16 +268,14 @@ docker run -d ^
 
 1. **编译后端**：`gradlew build -x test`
 2. **编译前端**：`npm run build`
-3. **并行构建镜像**：6个微服务同时构建并推送到 Docker Hub
-4. **部署到本地**：Runner 拉取最新镜像并重启服务
+3. **部署到本地**：Runner 执行 `docker compose up -d --build`
 
 ### 手动部署
 
 ```bash
-# 拉取最新镜像并重启
 cd backend-spring
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+docker compose down --remove-orphans
+docker compose up -d --build
 ```
 
 ---
