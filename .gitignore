@@ -21,3 +21,6 @@ backend-spring/**/build/
 backend-spring/**/.gradle/
 backend-spring/build/
 backend-spring/.gradle/
+/backend/*/build/
+/backend/.gradle/
+/backend/build/
