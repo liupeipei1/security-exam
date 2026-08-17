@@ -1,4 +1,4 @@
-rootProject.name = 'exam-parent'
+rootProject.name = 'security-exam'
 
 include 'exam-common'
 include 'exam-registry'
