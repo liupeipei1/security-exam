@@ -13,7 +13,7 @@ pipelines:
     - step:
         name: 编译后端微服务
         script:
-          - cd backend-spring
+          - cd backend
           - ./gradlew build -x test --no-daemon
         caches:
           - gradle
@@ -31,7 +31,7 @@ pipelines:
           - self.hosted
           - windows
         script:
-          - cd backend-spring
+          - cd backend
           - docker compose down --remove-orphans
           - docker compose up -d --build
 
@@ -40,7 +40,7 @@ pipelines:
       - step:
           name: 编译后端微服务
           script:
-            - cd backend-spring
+            - cd backend
             - ./gradlew build -x test --no-daemon
           caches:
             - gradle
@@ -58,6 +58,6 @@ pipelines:
             - self.hosted
             - windows
           script:
-            - cd backend-spring
+            - cd backend
             - docker compose down --remove-orphans
             - docker compose up -d --build

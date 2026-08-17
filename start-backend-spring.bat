@@ -1,6 +1,6 @@
 @echo off
 chcp 437 >nul
-cd /d "d:\code\security-exam\backend-spring"
+cd /d "d:\code\security-exam\backend"
 
 echo [1/6] Building project...
 call gradlew.bat build -x test

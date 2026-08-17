@@ -1,5 +1,5 @@
 # 多阶段构建：Gradle bootJar -> 运行单个 Spring Boot 服务
-# 构建: docker build -f backend-spring/docker/Dockerfile --build-arg MODULE=exam-gateway -t exam-gateway backend-spring
+# 构建: docker build -f backend/docker/Dockerfile --build-arg MODULE=exam-gateway -t exam-gateway backend-spring
 ARG MODULE=exam-gateway
 
 FROM gradle:8.14-jdk17 AS build

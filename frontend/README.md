@@ -1,6 +1,6 @@
 # Web 前端（Vue 3 + Vite）
 
-与 `backend-spring` 网关前后端分离，开发环境通过 Vite 代理访问 API。
+与 `backend` 网关前后端分离，开发环境通过 Vite 代理访问 API。
 
 ```bash
 npm install

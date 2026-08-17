@@ -68,7 +68,7 @@ set WECHAT_QR_REDIRECT_URI=http://localhost:8080/api/auth/qrcode/callback
 ### 3. 编译并启动（按顺序开多个终端）
 
 ```bash
-cd backend-spring
+cd backend
 ./gradlew build -x test
 
 # 终端 1
@@ -141,7 +141,7 @@ npm run dev
 ## 🐳 Docker 一键部署
 
 ```bash
-cd backend-spring
+cd backend
 docker compose up -d --build
 ```
 

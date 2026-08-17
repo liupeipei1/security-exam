@@ -8,7 +8,7 @@
 
 | 目录 | 说明 |
 |------|------|
-| [backend-spring/](backend-spring/README.md) | Spring Cloud 微服务后端（推荐） |
+| [backend/](backend/README.md) | Spring Cloud 微服务后端（推荐） |
 | [frontend/](frontend/README.md) | Vue 3 + Vite Web 前端 |
 | [miniprogram/](miniprogram/) | 微信小程序（API 指向网关 `:8080`） |
 | [backend/](backend/) | Node.js 后端（仅供对照参考） |
@@ -66,7 +66,7 @@ docker compose -f docker-compose.spring.yml up -d
 **2. 启动 Spring 微服务**
 
 ```bash
-cd backend-spring
+cd backend
 # 编译
 ./gradlew build -x test
 
@@ -171,8 +171,7 @@ security-exam/
 │   ├── personal_finance.sql  # 个人理财题库
 │   ├── security_exam_3.sql   # 网络安全三级题库
 │   └── user.sql              # 用户表
-├── backend/                  # Node.js 后端（仅供对照）
-├── backend-spring/           # Spring Cloud 微服务后端
+├── backend/           # Spring Cloud 微服务后端
 │   ├── exam-registry/        # Eureka注册中心 (:8761)
 │   ├── exam-gateway/         # API网关 (:8080)
 │   ├── exam-account-auth/    # 账户认证服务 (:8081)
@@ -202,7 +201,7 @@ security-exam/
 
 ```bash
 # 进入后端目录
-cd backend-spring
+cd backend
 
 # 编译并启动所有服务
 docker compose up -d --build
@@ -273,7 +272,7 @@ java -jar runner.jar ^
 ### 手动部署
 
 ```bash
-cd backend-spring
+cd backend
 docker compose down --remove-orphans
 docker compose up -d --build
 ```
