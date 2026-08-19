@@ -6,6 +6,7 @@
 
 # 忽略 node_modules（如果使用 npm）
 node_modules/
+frontend/dist/
 
 # 忽略系统文件
 .DS_Store
@@ -24,3 +25,15 @@ backend/.gradle/
 /backend/*/build/
 /backend/.gradle/
 /backend/build/
+
+# 忽略环境变量文件（保留模板）
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.dev
+!.env.uat
+!.env.prod
+
+# Docker volumes
+docker-volume/

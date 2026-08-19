@@ -6,18 +6,21 @@ services:
     image: mysql:8.0
     container_name: exam-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root123456
-      MYSQL_DATABASE: exam-db
-      MYSQL_USER: peipei
-      MYSQL_PASSWORD: 298280
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:root123456}
+      MYSQL_DATABASE: ${DB_NAME:exam-db-dev}
+      MYSQL_USER: ${DB_USER:peipei}
+      MYSQL_PASSWORD: ${DB_PASSWORD:298280}
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ../../DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
+      - ../../DML/exam_config.sql:/docker-entrypoint-initdb.d/02-exam_config.sql:ro
+      - ../../DML/knowledge_points.sql:/docker-entrypoint-initdb.d/03-knowledge_points.sql:ro
     networks:
       - exam-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root123456}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,6 +55,7 @@ services:
       - mysql
       - redis
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
@@ -77,16 +81,23 @@ services:
       exam-registry:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_NAME=exam-db
-      - DB_USER=peipei
-      - DB_PASSWORD=298280
+      - DB_NAME=${DB_NAME:exam-db-dev}
+      - DB_USER=${DB_USER:peipei}
+      - DB_PASSWORD=${DB_PASSWORD:298280}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=${REDIS_PASSWORD:}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
-      - JWT_SECRET=exam-secret-key-2024
+      - JWT_SECRET=${JWT_SECRET:exam-secret-key-2024}
+      - WECHAT_APPID=${WECHAT_APPID:}
+      - WECHAT_APPSECRET=${WECHAT_APPSECRET:}
+      - WECHAT_PAY_ENABLED=${WECHAT_PAY_ENABLED:false}
+      - WECHAT_PAY_MCH_ID=${WECHAT_PAY_MCH_ID:}
+      - WECHAT_PAY_API_KEY=${WECHAT_PAY_API_KEY:}
+      - WECHAT_PAY_NOTIFY_URL=${WECHAT_PAY_NOTIFY_URL:}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
       interval: 30s
@@ -111,14 +122,15 @@ services:
       exam-registry:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_NAME=exam-db
-      - DB_USER=peipei
-      - DB_PASSWORD=298280
+      - DB_NAME=${DB_NAME:exam-db-dev}
+      - DB_USER=${DB_USER:peipei}
+      - DB_PASSWORD=${DB_PASSWORD:298280}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=${REDIS_PASSWORD:}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -144,14 +156,15 @@ services:
       exam-registry:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_NAME=exam-db
-      - DB_USER=peipei
-      - DB_PASSWORD=298280
+      - DB_NAME=${DB_NAME:exam-db-dev}
+      - DB_USER=${DB_USER:peipei}
+      - DB_PASSWORD=${DB_PASSWORD:298280}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=${REDIS_PASSWORD:}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
@@ -177,14 +190,15 @@ services:
       exam-registry:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - DB_HOST=mysql
       - DB_PORT=3306
-      - DB_NAME=exam-db
-      - DB_USER=peipei
-      - DB_PASSWORD=298280
+      - DB_NAME=${DB_NAME:exam-db-dev}
+      - DB_USER=${DB_USER:peipei}
+      - DB_PASSWORD=${DB_PASSWORD:298280}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=${REDIS_PASSWORD:}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
@@ -214,8 +228,10 @@ services:
       exam-core-service:
         condition: service_healthy
     environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:dev}
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://exam-registry:8761/eureka/
-      - JWT_SECRET=exam-secret-key-2024
+      - JWT_SECRET=${JWT_SECRET:exam-secret-key-2024}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:168}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s

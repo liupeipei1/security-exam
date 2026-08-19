@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:exam-db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USER:peipei}
+    password: ${DB_PASSWORD:298280}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+  data:
+    redis:
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      host: ${REDIS_HOST:localhost}
+
+jwt:
+  secret: ${JWT_SECRET:change-me-prod-secret-key-32bytes-minimum!!}
+  expiration: 86400000
+
+wechat:
+  app-id: ${WECHAT_APPID:}
+  app-secret: ${WECHAT_APPSECRET:}
+  pay:
+    enabled: ${WECHAT_PAY_ENABLED:true}
+    mch-id: ${WECHAT_PAY_MCH_ID:}
+    mch-key: ${WECHAT_PAY_API_KEY:}
+    notify-url: ${WECHAT_PAY_NOTIFY_URL:}

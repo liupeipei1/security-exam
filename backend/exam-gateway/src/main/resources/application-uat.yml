@@ -1,0 +1,37 @@
+exam:
+  jwt:
+    secret: ${JWT_SECRET:change-me-uat-secret-key-32bytes-minimum!!}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - name: JwtAuth
+      discovery:
+        locator:
+          enabled: false
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: exam-account-auth
+          uri: lb://exam-account-auth
+          predicates:
+            - Path=/api/auth/**,/api/user/**,/api/pay/**
+        - id: exam-user-center
+          uri: lb://exam-user-center
+          predicates:
+            - Path=/api/favorites/**,/api/notes/**
+        - id: exam-question
+          uri: lb://exam-question
+          predicates:
+            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/upload/**
+        - id: exam-core-service
+          uri: lb://exam-core-service
+          predicates:
+            - Path=/api/exam/**,/api/exams/**

@@ -3,16 +3,16 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: exam-mysql
+    container_name: exam-mysql-uat
     ports:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123456}
-      MYSQL_DATABASE: ${DB_NAME:-exam-db}
+      MYSQL_DATABASE: ${DB_NAME:-exam-db-uat}
       MYSQL_USER: ${DB_USER:-peipei}
       MYSQL_PASSWORD: ${DB_PASSWORD:-298280}
     volumes:
-      - exam-mysql-data:/var/lib/mysql
+      - exam-mysql-uat-data:/var/lib/mysql
       - ./DML/security_exam_3.sql:/docker-entrypoint-initdb.d/01-security.sql:ro
       - ./DML/exam_config.sql:/docker-entrypoint-initdb.d/02-exam_config.sql:ro
       - ./DML/knowledge_points.sql:/docker-entrypoint-initdb.d/03-knowledge_points.sql:ro
@@ -25,25 +25,25 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: exam-redis
+    container_name: exam-redis-uat
     volumes:
-      - exam-redis-data:/data
+      - exam-redis-uat-data:/data
 
   backend:
     build: ./backend
-    container_name: exam-backend
+    container_name: exam-backend-uat
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-uat}
       DB_HOST: mysql
-      DB_NAME: ${DB_NAME:-exam-db}
+      DB_NAME: ${DB_NAME:-exam-db-uat}
       DB_USER: ${DB_USER:-peipei}
       DB_PASSWORD: ${DB_PASSWORD:-298280}
       REDIS_HOST: redis
-      JWT_SECRET: ${JWT_SECRET:-change-me-prod-secret-key-32bytes-minimum!!}
+      JWT_SECRET: ${JWT_SECRET:-change-me-uat-secret-key-32bytes-minimum!!}
       JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-168}
       WECHAT_APPID: ${WECHAT_APPID:-}
       WECHAT_APPSECRET: ${WECHAT_APPSECRET:-}
-      WECHAT_PAY_ENABLED: ${WECHAT_PAY_ENABLED:-true}
+      WECHAT_PAY_ENABLED: ${WECHAT_PAY_ENABLED:-false}
       WECHAT_PAY_MCH_ID: ${WECHAT_PAY_MCH_ID:-}
       WECHAT_PAY_API_KEY: ${WECHAT_PAY_API_KEY:-}
       WECHAT_PAY_NOTIFY_URL: ${WECHAT_PAY_NOTIFY_URL:-}
@@ -55,7 +55,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: exam-nginx
+    container_name: exam-nginx-uat
     ports:
       - "80:80"
       - "443:443"
@@ -67,5 +67,5 @@ services:
       - backend
 
 volumes:
-  exam-mysql-data:
-  exam-redis-data:
+  exam-mysql-uat-data:
+  exam-redis-uat-data:

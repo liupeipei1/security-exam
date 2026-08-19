@@ -1,12 +1,6 @@
-server:
-  port: 8080
-
-exam:
-  jwt:
-    secret: ${JWT_SECRET:change-me-exam-jwt-secret-key-32bytes-min}
-    expiration-hours: ${JWT_EXPIRATION_HOURS:168}
-
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: exam-gateway
   codec:
@@ -16,42 +10,14 @@ spring:
       enabled: true
       max-file-size: 50MB
       max-request-size: 50MB
-  cloud:
-    gateway:
-      default-filters:
-        - name: JwtAuth
-      discovery:
-        locator:
-          enabled: false
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOriginPatterns: "*"
-            allowedMethods: "*"
-            allowedHeaders: "*"
-            allowCredentials: true
-      routes:
-        - id: exam-account-auth
-          uri: lb://exam-account-auth
-          predicates:
-            - Path=/api/auth/**,/api/user/**,/api/pay/**
-        - id: exam-user-center
-          uri: lb://exam-user-center
-          predicates:
-            - Path=/api/favorites/**,/api/notes/**
-        - id: exam-question
-          uri: lb://exam-question
-          predicates:
-            - Path=/api/questions/**,/api/question/**,/api/guide/**,/api/knowledge/**,/api/speech/**,/api/upload/**
-        - id: exam-core-service
-          uri: lb://exam-core-service
-          predicates:
-            - Path=/api/exam/**,/api/exams/**
+
+server:
+  port: 8080
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 management:
   endpoints:
